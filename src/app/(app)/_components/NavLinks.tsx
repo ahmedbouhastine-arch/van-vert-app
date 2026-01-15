@@ -5,18 +5,20 @@ import { usePathname } from "next/navigation";
 import { Home, FileText, Users, Settings } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-const links = [
+const mainLinks = [
   { href: "/dashboard", icon: Home, label: "Dashboard" },
   { href: "/applications", icon: FileText, label: "Applications" },
   { href: "/admin", icon: Users, label: "Admin" },
 ];
 
-export function NavLinks() {
-  const pathname = usePathname();
+const secondaryLinks = [
+    { href: "/settings", icon: Settings, label: "Settings" },
+]
 
-  return (
-    <>
-      {links.map(({ href, icon: Icon, label }) => {
+function createLinks(links: {href: string, icon: React.ElementType, label: string}[]) {
+    const pathname = usePathname();
+
+    return links.map(({ href, icon: Icon, label }) => {
         // Handle nested routes for highlighting
         const isActive =
           href === "/dashboard"
@@ -38,25 +40,13 @@ export function NavLinks() {
             <span className="sr-only">{label}</span>
           </Link>
         );
-      })}
-    </>
-  );
+      });
+}
+
+export function NavLinks() {
+  return <>{createLinks(mainLinks)}</>;
 }
 
 export function SettingsLink() {
-  const pathname = usePathname();
-  const isActive = pathname === "/settings";
-
-  return (
-     <Link
-        href="/settings"
-        className={cn(
-          "flex h-9 w-9 items-center justify-center rounded-lg transition-colors hover:text-foreground md:h-8 md:w-8",
-          isActive ? "bg-accent text-accent-foreground" : "text-muted-foreground"
-        )}
-      >
-        <Settings className="h-5 w-5" />
-        <span className="sr-only">Settings</span>
-      </Link>
-  )
+    return <>{createLinks(secondaryLinks)}</>;
 }
