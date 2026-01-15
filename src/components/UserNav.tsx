@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { users } from "@/lib/data";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 
 export function UserNav() {
   const router = useRouter();
@@ -44,7 +45,9 @@ export function UserNav() {
         <DropdownMenuSeparator />
         <DropdownMenuGroup>
           <DropdownMenuItem>Profile</DropdownMenuItem>
-          <DropdownMenuItem>Settings</DropdownMenuItem>
+          <DropdownMenuItem asChild>
+            <Link href="/settings">Settings</Link>
+          </DropdownMenuItem>
         </DropdownMenuGroup>
         <DropdownMenuSeparator />
         <DropdownMenuItem onClick={() => router.push("/login")}>
