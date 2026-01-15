@@ -7,18 +7,23 @@ import { PilotPackLogo } from "@/components/icons";
 import { UserNav } from "@/components/UserNav";
 import { NavLinks, SettingsLink } from "./_components/NavLinks";
 import { Breadcrumbs } from "./_components/Breadcrumbs";
+import { users } from "@/lib/data";
 
 export default function AppLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+    // In a real app, you'd get this from an auth context
+    const currentUser = users.find(u => u.id === 'user1'); // Mock: assuming user1 is logged in
+    const isAdmin = currentUser?.role === 'admin';
+
   return (
     <div className="flex min-h-screen w-full flex-col bg-muted/40">
       <aside className="fixed inset-y-0 left-0 z-10 hidden w-14 flex-col border-r bg-background sm:flex">
         <nav className="flex flex-col items-center gap-4 px-2 sm:py-5">
           <Link
-            href="/dashboard"
+            href={isAdmin ? "/admin" : "/dashboard"}
             className="group flex h-9 w-9 shrink-0 items-center justify-center gap-2 rounded-full bg-primary text-lg font-semibold text-primary-foreground md:h-8 md:w-8 md:text-base"
           >
             <PilotPackLogo className="h-5 w-5 transition-all group-hover:scale-110" />
@@ -49,7 +54,7 @@ export default function AppLayout({
             <SheetContent side="left" className="sm:max-w-xs">
               <nav className="grid gap-6 text-lg font-medium">
                 <Link
-                  href="/dashboard"
+                  href={isAdmin ? "/admin" : "/dashboard"}
                   className="group flex h-10 w-10 shrink-0 items-center justify-center gap-2 rounded-full bg-primary text-lg font-semibold text-primary-foreground md:text-base"
                 >
                   <PilotPackLogo className="h-5 w-5 transition-all group-hover:scale-110" />
@@ -62,20 +67,24 @@ export default function AppLayout({
                   <Home className="h-5 w-5" />
                   Dashboard
                 </Link>
-                <Link
-                  href="/applications"
-                  className="flex items-center gap-4 px-2.5 text-muted-foreground hover:text-foreground"
-                >
-                  <FileText className="h-5 w-5" />
-                  Applications
-                </Link>
-                <Link
-                  href="/admin"
-                  className="flex items-center gap-4 px-2.5 text-muted-foreground hover:text-foreground"
-                >
-                  <Users className="h-5 w-5" />
-                  Admin
-                </Link>
+                {!isAdmin && (
+                  <Link
+                    href="/applications"
+                    className="flex items-center gap-4 px-2.5 text-muted-foreground hover:text-foreground"
+                  >
+                    <FileText className="h-5 w-5" />
+                    Applications
+                  </Link>
+                )}
+                {isAdmin && (
+                    <Link
+                    href="/admin"
+                    className="flex items-center gap-4 px-2.5 text-muted-foreground hover:text-foreground"
+                    >
+                    <Users className="h-5 w-5" />
+                    Admin
+                    </Link>
+                )}
                  <Link
                     href="/profile"
                     className="flex items-center gap-4 px-2.5 text-muted-foreground hover:text-foreground"
