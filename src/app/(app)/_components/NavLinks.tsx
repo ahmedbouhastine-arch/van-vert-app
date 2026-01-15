@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, FileText, Users } from "lucide-react";
+import { Home, FileText, Users, Settings } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const links = [
