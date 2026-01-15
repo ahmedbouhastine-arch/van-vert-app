@@ -1,9 +1,7 @@
+
 import type { User, LicenseType, Application } from '@/types';
 
-export const users: User[] = [
-  { id: 'user1', name: 'John Pilot', email: 'john.pilot@example.com', role: 'applicant', avatarUrl: 'https://picsum.photos/seed/avatar1/40/40' },
-  { id: 'user2', name: 'Jane Admin', email: 'jane.admin@example.com', role: 'admin', avatarUrl: 'https://picsum.photos/seed/avatar2/40/40' },
-];
+// This file contains mock data. In a real application, this would come from a database.
 
 export const documentRequirements = {
   photoId: { id: 'doc1', name: 'Photo ID', description: 'Government-issued photo ID (e.g., Passport, Driver\'s License)', requiresExpiry: true },

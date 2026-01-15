@@ -1,7 +1,8 @@
+
 "use client";
 
 import { useState, useTransition } from "react";
-import type { Application, ApplicationDocument, ApplicationStatus, User } from "@/types";
+import type { Application, ApplicationDocument, ApplicationStatus, UserProfile } from "@/types";
 import {
   Card,
   CardContent,
@@ -91,7 +92,7 @@ export function AdminApplicationClient({
   user,
 }: {
   application: Application;
-  user?: User;
+  user?: UserProfile;
 }) {
   const [appState, setAppState] = useState<Application>(initialApplication);
   const [feedback, setFeedback] = useState(initialApplication.feedback || "");
@@ -149,7 +150,7 @@ export function AdminApplicationClient({
             <StatusBadge status={appState.status} />
           </div>
           <CardDescription>
-            Applicant: {user?.name} ({user?.email}) | Last updated on {format(parseISO(appState.updatedAt), "PPP")}
+            Applicant: {user?.displayName} ({user?.email}) | Last updated on {format(parseISO(appState.updatedAt), "PPP")}
           </CardDescription>
         </CardHeader>
       </Card>

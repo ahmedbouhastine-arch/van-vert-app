@@ -1,4 +1,5 @@
 
+'use client';
 import Link from "next/link";
 import { MoreHorizontal } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -25,14 +26,21 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { applications, users } from "@/lib/data";
+import { applications } from "@/lib/data";
 import { StatusBadge } from "@/components/StatusBadge";
 import { format, parseISO } from "date-fns";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { useCollection } from "@/firebase";
+import { collection, query } from "firebase/firestore";
+import { useFirestore } from "@/firebase";
 
 export default function AdminDashboardPage() {
+  const firestore = useFirestore();
+  const usersQuery = firestore ? query(collection(firestore, "users")) : null;
+  const { data: users, loading: usersLoading } = useCollection(usersQuery);
+
   const allApplications = applications.map(app => {
-    const user = users.find(u => u.id === app.userId);
+    const user = users?.find((u: any) => u.id === app.userId);
     return { ...app, user };
   });
 
@@ -65,16 +73,20 @@ export default function AdminDashboardPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {allApplications.map((app) => (
+              {usersLoading ? (
+                <TableRow>
+                  <TableCell colSpan={5} className="text-center">Loading applications...</TableCell>
+                </TableRow>
+              ) : allApplications.map((app) => (
                 <TableRow key={app.id}>
                   <TableCell className="hidden sm:table-cell">
                     <div className="flex items-center gap-2">
                         <Avatar className="h-8 w-8">
-                            <AvatarImage src={app.user?.avatarUrl} alt={app.user?.name} data-ai-hint="person portrait" />
-                            <AvatarFallback>{app.user?.name.charAt(0)}</AvatarFallback>
+                            <AvatarImage src={app.user?.photoURL} alt={app.user?.displayName} data-ai-hint="person portrait" />
+                            <AvatarFallback>{app.user?.displayName?.charAt(0)}</AvatarFallback>
                         </Avatar>
                         <div>
-                            <div className="font-medium">{app.user?.name}</div>
+                            <div className="font-medium">{app.user?.displayName}</div>
                             <div className="text-xs text-muted-foreground">{app.user?.email}</div>
                         </div>
                     </div>

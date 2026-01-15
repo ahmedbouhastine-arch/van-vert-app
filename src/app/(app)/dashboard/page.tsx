@@ -1,4 +1,7 @@
 
+
+'use client';
+
 import Link from "next/link";
 import { PlusCircle, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -10,27 +13,29 @@ import {
   CardTitle,
   CardFooter,
 } from "@/components/ui/card";
-import { applications, users } from "@/lib/data";
+import { applications } from "@/lib/data";
 import { StatusBadge } from "@/components/StatusBadge";
 import { format, parseISO } from "date-fns";
+import { useUser } from "@/firebase";
 
 export default function DashboardPage() {
-  const user = users.find(u => u.role === 'applicant');
+  const { user } = useUser();
+  
   if (!user) return null;
 
   // Get the 3 most recently updated applications for the preview
   const recentApplications = applications
-    .filter(app => app.userId === user.id)
+    .filter(app => app.userId === user.uid)
     .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
     .slice(0, 3);
 
-  const totalApplications = applications.filter(app => app.userId === user.id).length;
+  const totalApplications = applications.filter(app => app.userId === user.uid).length;
 
   return (
     <div className="flex flex-col gap-8">
       <div className="flex items-center justify-between">
         <div className="flex flex-col gap-1">
-            <h1 className="text-3xl font-bold font-headline tracking-tight">Welcome, {user.name}!</h1>
+            <h1 className="text-3xl font-bold font-headline tracking-tight">Welcome, {user.displayName || 'Pilot'}!</h1>
             <p className="text-muted-foreground">Here's a quick look at your recent activity.</p>
         </div>
         <Link href="/applications/new">

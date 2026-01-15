@@ -1,3 +1,4 @@
+
 "use client";
 
 import Link from "next/link";
@@ -15,7 +16,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { CheckCircle2, XCircle } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { useToast } from "@/hooks/use-toast";
+import { getAuth, createUserWithEmailAndPassword, GoogleAuthProvider, signInWithPopup, updateProfile } from "firebase/auth";
+import { useFirebaseApp, useFirestore } from "@/firebase";
+import { doc, setDoc, serverTimestamp } from "firebase/firestore";
+
 
 const passwordRequirements = [
     { id: "length", text: "At least 8 characters long", regex: /.{8,}/ },
@@ -26,8 +31,11 @@ const passwordRequirements = [
 
 export default function RegisterPage() {
     const router = useRouter();
+    const { toast } = useToast();
     const [password, setPassword] = useState("");
-    const [passwordError, setPasswordError] = useState("");
+    const app = useFirebaseApp();
+    const auth = getAuth(app);
+    const firestore = useFirestore();
 
     const validatedRequirements = passwordRequirements.map(req => ({
         ...req,
@@ -36,15 +44,71 @@ export default function RegisterPage() {
 
     const allRequirementsMet = validatedRequirements.every(req => req.isValid);
 
-    const handleRegister = (event: React.FormEvent<HTMLFormElement>) => {
+    const handleRegister = async (event: React.FormEvent<HTMLFormElement>) => {
         event.preventDefault();
         if (!allRequirementsMet) {
-            setPasswordError("Please ensure your password meets all requirements.");
+            toast({
+                variant: 'destructive',
+                title: 'Invalid Password',
+                description: 'Please ensure your password meets all requirements.',
+            });
             return;
         }
-        setPasswordError("");
-        // Mock registration logic
-        router.push("/dashboard");
+        
+        const formData = new FormData(event.currentTarget);
+        const email = formData.get("email") as string;
+        const fullName = formData.get("full-name") as string;
+
+        try {
+            const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+            const user = userCredential.user;
+            
+            await updateProfile(user, { displayName: fullName });
+
+            if (firestore) {
+              const userRef = doc(firestore, "users", user.uid);
+              await setDoc(userRef, {
+                displayName: fullName,
+                email: user.email,
+                role: "applicant",
+                createdAt: serverTimestamp(),
+              });
+            }
+            
+            // The layout will handle redirection
+        } catch (error: any) {
+            toast({
+                variant: 'destructive',
+                title: 'Registration Failed',
+                description: error.message,
+            });
+        }
+    }
+
+    const handleGoogleLogin = async () => {
+        const provider = new GoogleAuthProvider();
+        try {
+            const result = await signInWithPopup(auth, provider);
+            const user = result.user;
+
+            if (firestore) {
+              const userRef = doc(firestore, "users", user.uid);
+              await setDoc(userRef, {
+                displayName: user.displayName,
+                email: user.email,
+                role: "applicant",
+                createdAt: serverTimestamp(),
+              }, { merge: true }); // Merge to not overwrite role if they already exist
+            }
+
+            // The layout will handle redirection
+        } catch (error: any) {
+            toast({
+                variant: 'destructive',
+                title: 'Login Failed',
+                description: error.message,
+            });
+        }
     }
 
   return (
@@ -59,12 +123,13 @@ export default function RegisterPage() {
         <form onSubmit={handleRegister} className="grid gap-4">
           <div className="grid gap-2">
             <Label htmlFor="full-name">Full Name</Label>
-            <Input id="full-name" placeholder="John Pilot" required />
+            <Input id="full-name" name="full-name" placeholder="John Pilot" required />
           </div>
           <div className="grid gap-2">
             <Label htmlFor="email">Email</Label>
             <Input
               id="email"
+              name="email"
               type="email"
               placeholder="pilot@example.com"
               required
@@ -92,13 +157,12 @@ export default function RegisterPage() {
                     </div>
                 ))}
             </div>
-            {passwordError && <p className="text-sm font-medium text-destructive">{passwordError}</p>}
           <Button type="submit" className="w-full" disabled={!allRequirementsMet && password.length > 0}>
             Create an account
           </Button>
         </form>
          <Separator className="my-6" />
-        <Button variant="outline" className="w-full">
+        <Button variant="outline" className="w-full" onClick={handleGoogleLogin}>
              <svg role="img" viewBox="0 0 24 24" className="mr-2 h-4 w-4"><path fill="currentColor" d="M12.48 10.92v3.28h7.84c-.24 1.84-.85 3.18-1.73 4.1-1.02 1.02-2.3 1.84-4.25 1.84-5.18 0-9.4-4.22-9.4-9.4s4.22-9.4 9.4-9.4c2.6 0 4.38 1.02 5.7 2.23l2.42-2.34C18.57.45 15.82 0 12.48 0 5.6 0 0 5.6 0 12.48s5.6 12.48 12.48 12.48c7.28 0 12.1-5.13 12.1-12.48 0-.8-.08-1.55-.25-2.25z"></path></svg>
           Sign up with Google
         </Button>

@@ -1,4 +1,6 @@
 
+'use client';
+
 import Link from "next/link";
 import { PanelLeft, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -8,19 +10,30 @@ import { PilotPackLogo } from "@/components/icons";
 import { UserNav } from "@/components/UserNav";
 import { MainNavLinks, SecondaryNavLinks, MobileNavLinks } from "./_components/NavLinks";
 import { Breadcrumbs } from "./_components/Breadcrumbs";
-import { users } from "@/lib/data";
+import { useUser } from "@/firebase";
+import { useRouter } from "next/navigation";
+import { useEffect } from "react";
 
 export default function AppLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-    // In a real app, you'd get this from an auth context or a cookie.
-    // For this mock, we'll determine the role from the URL search params on the server.
-    // This is NOT a secure way to handle roles in a real app.
-    const currentUser = users.find(u => u.id === 'user1'); // Mock: assuming user1 is logged in
-    const isAdmin = currentUser?.role === 'admin';
+    const { user, loading, claims } = useUser();
+    const router = useRouter();
+    const isAdmin = claims?.role === 'admin';
     const homePath = isAdmin ? "/admin" : "/dashboard";
+
+    useEffect(() => {
+        if (!loading && !user) {
+            router.push('/login');
+        }
+    }, [user, loading, router]);
+
+
+    if (loading) {
+        return <div>Loading...</div>
+    }
 
   return (
     <div className="flex min-h-screen w-full flex-col bg-muted/40">

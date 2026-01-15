@@ -1,9 +1,15 @@
-export type User = {
-  id: string;
-  name: string;
+
+import type { User as FirebaseUser } from 'firebase/auth';
+
+export type UserProfile = {
   email: string;
+  displayName?: string;
   role: 'applicant' | 'admin';
-  avatarUrl: string;
+  createdAt: any; // Firestore server timestamp
+};
+
+export type AppUser = FirebaseUser & {
+  profile: UserProfile;
 };
 
 export type DocumentStatus = 'missing' | 'uploaded' | 'needs_attention' | 'approved' | 'rejected';
@@ -48,3 +54,12 @@ export type LicenseType = {
   description: string;
   documentRequirements: DocumentRequirement[];
 };
+
+// Remove the mock User type
+// export type User = {
+//   id: string;
+//   name: string;
+//   email: string;
+//   role: 'applicant' | 'admin';
+//   avatarUrl: string;
+// };

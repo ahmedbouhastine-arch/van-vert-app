@@ -1,7 +1,11 @@
 
-import { applications, users } from "@/lib/data";
+'use client';
+
+import { applications } from "@/lib/data";
 import { notFound } from "next/navigation";
 import { AdminApplicationClient } from "./_components/AdminApplicationClient";
+import { useFirestore, useDoc } from "@/firebase";
+import { doc } from "firebase/firestore";
 
 export default function AdminApplicationDetailPage({
   params,
@@ -14,7 +18,13 @@ export default function AdminApplicationDetailPage({
     notFound();
   }
 
-  const user = users.find(u => u.id === application.userId);
+  const firestore = useFirestore();
+  const userRef = firestore ? doc(firestore, 'users', application.userId) : null;
+  const { data: user, loading } = useDoc(userRef);
+
+  if (loading) {
+    return <div>Loading user...</div>
+  }
 
   return (
     <div className="flex flex-col gap-4">
@@ -23,7 +33,7 @@ export default function AdminApplicationDetailPage({
                 Review Application
             </h1>
             <p className="text-muted-foreground">
-                Reviewing {user?.name}'s application for {application.licenseType}.
+                Reviewing {user?.displayName}'s application for {application.licenseType}.
             </p>
         </div>
         <AdminApplicationClient application={application} user={user} />

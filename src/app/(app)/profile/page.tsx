@@ -1,3 +1,6 @@
+
+'use client';
+
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import {
@@ -8,11 +11,15 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { users } from "@/lib/data";
+import { useUser } from "@/firebase";
 import Link from "next/link";
 
 export default function ProfilePage() {
-  const user = users[0]; // Mock user
+  const { user, claims } = useUser();
+
+  if (!user) {
+    return <div>Loading...</div>;
+  }
 
   return (
     <div className="grid gap-6">
@@ -28,16 +35,16 @@ export default function ProfilePage() {
         <CardHeader>
           <div className="flex items-center gap-4">
             <Avatar className="h-20 w-20">
-              <AvatarImage
-                src={user.avatarUrl}
-                alt={user.name}
+              {user.photoURL && <AvatarImage
+                src={user.photoURL}
+                alt={user.displayName || ''}
                 data-ai-hint="person portrait"
-              />
-              <AvatarFallback>{user.name.charAt(0)}</AvatarFallback>
+              />}
+              <AvatarFallback>{user.displayName?.charAt(0) || user.email?.charAt(0)}</AvatarFallback>
             </Avatar>
             <div>
               <CardTitle className="text-3xl font-bold font-headline">
-                {user.name}
+                {user.displayName || "User"}
               </CardTitle>
               <CardDescription className="text-lg">{user.email}</CardDescription>
             </div>
@@ -46,7 +53,7 @@ export default function ProfilePage() {
         <CardContent className="mt-4">
           <div className="grid gap-2">
             <div className="text-sm text-muted-foreground">Role</div>
-            <div className="font-medium capitalize">{user.role}</div>
+            <div className="font-medium capitalize">{claims?.role}</div>
           </div>
         </CardContent>
         <CardFooter className="border-t px-6 py-4">

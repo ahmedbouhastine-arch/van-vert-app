@@ -1,4 +1,6 @@
 
+'use client';
+
 import Link from "next/link";
 import { PlusCircle, MoreHorizontal } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -25,15 +27,16 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { applications, users } from "@/lib/data";
+import { applications } from "@/lib/data";
 import { StatusBadge } from "@/components/StatusBadge";
 import { format, parseISO } from "date-fns";
+import { useUser } from "@/firebase";
 
 export default function MyApplicationsPage() {
-  const user = users.find(u => u.role === 'applicant');
+  const { user } = useUser();
   if (!user) return null;
 
-  const userApplications = applications.filter(app => app.userId === user.id);
+  const userApplications = applications.filter(app => app.userId === user.uid);
 
   return (
     <div className="flex flex-col gap-4">

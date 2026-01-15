@@ -1,4 +1,6 @@
-import Link from "next/link"
+
+'use client';
+
 import {
   Card,
   CardContent,
@@ -18,10 +20,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { users } from "@/lib/data"
+import { useUser } from "@/firebase"
 
 export default function SettingsPage() {
-    const user = users[0]; // Mock user
+    const { user } = useUser();
+
+    if (!user) {
+        return <div>Loading...</div>
+    }
 
   return (
     <div className="grid gap-6">
@@ -45,11 +51,11 @@ export default function SettingsPage() {
             <div className="grid grid-cols-2 gap-4">
                 <div className="grid gap-2">
                 <Label htmlFor="full-name">Full Name</Label>
-                <Input id="full-name" defaultValue={user.name} />
+                <Input id="full-name" defaultValue={user.displayName || ''} />
                 </div>
                 <div className="grid gap-2">
                 <Label htmlFor="email">Email</Label>
-                <Input id="email" type="email" defaultValue={user.email} />
+                <Input id="email" type="email" defaultValue={user.email || ''} readOnly />
                 </div>
             </div>
           </form>
