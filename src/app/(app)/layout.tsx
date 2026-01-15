@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Home, Users, FileText, PanelLeft, Search, Settings } from "lucide-react";
+import { Home, Users, FileText, PanelLeft, Search, Settings, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
@@ -27,6 +27,13 @@ export default function AppLayout({
           <NavLinks />
         </nav>
         <nav className="mt-auto flex flex-col items-center gap-4 px-2 sm:py-5">
+          <Link
+            href="/profile"
+            className="flex h-9 w-9 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:text-foreground md:h-8 md:w-8"
+          >
+            <User className="h-5 w-5" />
+            <span className="sr-only">Profile</span>
+          </Link>
           <SettingsLink />
         </nav>
       </aside>
@@ -69,6 +76,13 @@ export default function AppLayout({
                   <Users className="h-5 w-5" />
                   Admin
                 </Link>
+                 <Link
+                    href="/profile"
+                    className="flex items-center gap-4 px-2.5 text-muted-foreground hover:text-foreground"
+                  >
+                    <User className="h-5 w-5" />
+                    Profile
+                  </Link>
                  <Link
                     href="/settings"
                     className="flex items-center gap-4 px-2.5 text-muted-foreground hover:text-foreground"
