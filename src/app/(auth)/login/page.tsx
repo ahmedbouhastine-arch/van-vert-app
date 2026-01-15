@@ -10,24 +10,18 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
+import { User, Shield } from "lucide-react";
 
 export default function LoginPage() {
   const router = useRouter();
 
-  const handleLogin = (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    const formData = new FormData(event.currentTarget);
-    const email = formData.get("email") as string;
-    
-    // Mock authentication logic
-    if (email.toLowerCase().includes('admin')) {
-      router.push("/admin");
-    } else {
-      router.push("/dashboard");
-    }
+  const handleLoginAsUser = () => {
+    router.push("/dashboard");
+  };
+
+  const handleLoginAsAdmin = () => {
+    router.push("/admin");
   };
 
   return (
@@ -35,35 +29,20 @@ export default function LoginPage() {
       <CardHeader>
         <CardTitle className="text-2xl font-headline">Login</CardTitle>
         <CardDescription>
-          Enter your email below to login to your account
+          Sign in to your PilotPack account.
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <form onSubmit={handleLogin} className="grid gap-4">
-          <div className="grid gap-2">
-            <Label htmlFor="email">Email</Label>
-            <Input
-              id="email"
-              name="email"
-              type="email"
-              placeholder="pilot@example.com"
-              defaultValue="john.pilot@example.com"
-              required
-            />
-          </div>
-          <div className="grid gap-2">
-            <div className="flex items-center">
-              <Label htmlFor="password">Password</Label>
-              <Link href="#" className="ml-auto inline-block text-sm underline">
-                Forgot your password?
-              </Link>
-            </div>
-            <Input id="password" type="password" required defaultValue="password" />
-          </div>
-          <Button type="submit" className="w-full">
-            Login
+        <div className="grid gap-4">
+          <Button onClick={handleLoginAsUser} className="w-full">
+            <User className="mr-2" />
+            Sign in as User
           </Button>
-        </form>
+          <Button onClick={handleLoginAsAdmin} variant="secondary" className="w-full">
+             <Shield className="mr-2" />
+            Sign in as Admin
+          </Button>
+        </div>
         <Separator className="my-6" />
         <Button variant="outline" className="w-full">
             <svg role="img" viewBox="0 0 24 24" className="mr-2 h-4 w-4"><path fill="currentColor" d="M12.48 10.92v3.28h7.84c-.24 1.84-.85 3.18-1.73 4.1-1.02 1.02-2.3 1.84-4.25 1.84-5.18 0-9.4-4.22-9.4-9.4s4.22-9.4 9.4-9.4c2.6 0 4.38 1.02 5.7 2.23l2.42-2.34C18.57.45 15.82 0 12.48 0 5.6 0 0 5.6 0 12.48s5.6 12.48 12.48 12.48c7.28 0 12.1-5.13 12.1-12.48 0-.8-.08-1.55-.25-2.25z"></path></svg>
