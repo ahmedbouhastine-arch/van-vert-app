@@ -60,8 +60,8 @@ export default function AppLayout({
                   Dashboard
                 </Link>
                 <Link
-                  href="/dashboard"
-                  className="flex items-center gap-4 px-2.5 text-foreground"
+                  href="/applications"
+                  className="flex items-center gap-4 px-2.5 text-muted-foreground hover:text-foreground"
                 >
                   <FileText className="h-5 w-5" />
                   Applications
