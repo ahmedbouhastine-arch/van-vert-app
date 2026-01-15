@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -13,12 +14,35 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
+import { CheckCircle2, XCircle } from "lucide-react";
+import { cn } from "@/lib/utils";
+
+const passwordRequirements = [
+    { id: "length", text: "At least 8 characters long", regex: /.{8,}/ },
+    { id: "uppercase", text: "Contains an uppercase letter", regex: /[A-Z]/ },
+    { id: "lowercase", text: "Contains a lowercase letter", regex: /[a-z]/ },
+    { id: "number", text: "Contains a number", regex: /[0-9]/ },
+];
 
 export default function RegisterPage() {
     const router = useRouter();
+    const [password, setPassword] = useState("");
+    const [passwordError, setPasswordError] = useState("");
+
+    const validatedRequirements = passwordRequirements.map(req => ({
+        ...req,
+        isValid: req.regex.test(password),
+    }));
+
+    const allRequirementsMet = validatedRequirements.every(req => req.isValid);
 
     const handleRegister = (event: React.FormEvent<HTMLFormElement>) => {
         event.preventDefault();
+        if (!allRequirementsMet) {
+            setPasswordError("Please ensure your password meets all requirements.");
+            return;
+        }
+        setPasswordError("");
         // Mock registration logic
         router.push("/dashboard");
     }
@@ -48,9 +72,28 @@ export default function RegisterPage() {
           </div>
           <div className="grid gap-2">
             <Label htmlFor="password">Password</Label>
-            <Input id="password" type="password" />
+            <Input 
+                id="password" 
+                type="password" 
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+            />
           </div>
-          <Button type="submit" className="w-full">
+           <div className="grid gap-2 text-xs text-muted-foreground">
+                {validatedRequirements.map(req => (
+                    <div key={req.id} className="flex items-center gap-2">
+                        {req.isValid ? (
+                            <CheckCircle2 className="h-3.5 w-3.5 text-green-500" />
+                        ) : (
+                            <XCircle className="h-3.5 w-3.5 text-red-500" />
+                        )}
+                        <span>{req.text}</span>
+                    </div>
+                ))}
+            </div>
+            {passwordError && <p className="text-sm font-medium text-destructive">{passwordError}</p>}
+          <Button type="submit" className="w-full" disabled={!allRequirementsMet && password.length > 0}>
             Create an account
           </Button>
         </form>
