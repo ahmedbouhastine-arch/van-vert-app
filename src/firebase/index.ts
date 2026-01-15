@@ -12,6 +12,7 @@ import { useUser } from './auth/use-user';
 import { useCollection } from './firestore/use-collection';
 import { useDoc } from './firestore/use-doc';
 
+
 function initializeFirebase(options: FirebaseOptions = {}) {
   const app = getApps().length === 0 ? initializeApp({ ...firebaseConfig, ...options }) : getApp();
   const firestore = getFirestore(app);
