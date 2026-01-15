@@ -13,7 +13,7 @@ import { Input } from "@/components/ui/input";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { PilotPackLogo } from "@/components/icons";
 import { UserNav } from "@/components/UserNav";
-import { NavLinks } from "./_components/NavLinks";
+import { NavLinks, SettingsLink } from "./_components/NavLinks";
 import { cn } from "@/lib/utils";
 
 export default function AppLayout({
@@ -35,15 +35,7 @@ export default function AppLayout({
           <NavLinks />
         </nav>
         <nav className="mt-auto flex flex-col items-center gap-4 px-2 sm:py-5">
-          <Link
-            href="/settings"
-            className={cn(
-              "flex h-9 w-9 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:text-foreground md:h-8 md:w-8"
-            )}
-          >
-            <Settings className="h-5 w-5" />
-            <span className="sr-only">Settings</span>
-          </Link>
+          <SettingsLink />
         </nav>
       </aside>
       <div className="flex flex-col sm:gap-4 sm:py-4 sm:pl-14">
