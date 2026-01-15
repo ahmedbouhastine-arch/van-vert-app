@@ -1,40 +1,56 @@
+
 "use client";
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, FileText, Users, Settings } from "lucide-react";
+import { Home, FileText, Users, Settings, User } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { users } from "@/lib/data";
 
-// In a real app, you'd get this from an auth context
-const currentUser = users.find(u => u.id === 'user1'); // Mock: assuming user1 is logged in
-const isAdmin = currentUser?.role === 'admin';
+type NavLinkItem = {
+  href: string;
+  icon: React.ElementType;
+  label: string;
+  for: "applicant" | "admin" | "all";
+};
 
-const mainLinks = [
-  { href: "/dashboard", icon: Home, label: "Dashboard", for: "all" },
+const mainLinks: NavLinkItem[] = [
+  { href: "/dashboard", icon: Home, label: "Dashboard", for: "applicant" },
   { href: "/applications", icon: FileText, label: "Applications", for: "applicant" },
   { href: "/admin", icon: Users, label: "Admin", for: "admin" },
 ];
 
-const secondaryLinks = [
-    { href: "/settings", icon: Settings, label: "Settings", for: "all" },
-]
+const secondaryLinks: NavLinkItem[] = [
+  { href: "/profile", icon: User, label: "Profile", for: "all" },
+  { href: "/settings", icon: Settings, label: "Settings", for: "all" },
+];
 
-function createLinks(links: {href: string, icon: React.ElementType, label: string, for: string}[]) {
+const createLinks = (links: NavLinkItem[], isAdmin: boolean, isMobile: boolean = false) => {
     const pathname = usePathname();
 
     const filteredLinks = links.filter(link => {
         if (link.for === 'all') return true;
         if (isAdmin) return link.for === 'admin';
         return link.for === 'applicant';
-    })
+    });
 
     return filteredLinks.map(({ href, icon: Icon, label }) => {
-        // Handle nested routes for highlighting
-        const isActive =
-          href === "/dashboard"
-            ? pathname === href
-            : pathname.startsWith(href);
+        const isActive = href === "/" ? pathname === href : pathname.startsWith(href);
+        
+        if (isMobile) {
+            return (
+                <Link
+                    key={href}
+                    href={href}
+                    className={cn(
+                        "flex items-center gap-4 px-2.5 text-muted-foreground hover:text-foreground",
+                        isActive && "text-foreground"
+                    )}
+                >
+                    <Icon className="h-5 w-5" />
+                    {label}
+                </Link>
+            )
+        }
 
         return (
           <Link
@@ -54,10 +70,15 @@ function createLinks(links: {href: string, icon: React.ElementType, label: strin
       });
 }
 
-export function NavLinks() {
-  return <>{createLinks(mainLinks)}</>;
+export function MainNavLinks({ isAdmin }: { isAdmin: boolean }) {
+  return <>{createLinks(mainLinks, isAdmin)}</>;
 }
 
-export function SettingsLink() {
-    return <>{createLinks(secondaryLinks)}</>;
+export function SecondaryNavLinks({ isAdmin }: { isAdmin: boolean }) {
+    return <>{createLinks(secondaryLinks, isAdmin)}</>;
+}
+
+export function MobileNavLinks({ isAdmin }: { isAdmin: boolean }) {
+    const allLinks = [...mainLinks, ...secondaryLinks];
+    return <>{createLinks(allLinks, isAdmin, true)}</>
 }

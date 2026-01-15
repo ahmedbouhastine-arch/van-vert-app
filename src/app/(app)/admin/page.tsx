@@ -1,3 +1,4 @@
+
 import Link from "next/link";
 import { MoreHorizontal } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -37,14 +38,15 @@ export default function AdminDashboardPage() {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex items-center">
-        <h1 className="text-lg font-semibold md:text-2xl font-headline">All Applications</h1>
+      <div className="flex flex-col gap-1">
+        <h1 className="text-3xl font-bold font-headline tracking-tight">Admin Dashboard</h1>
+        <p className="text-muted-foreground">Review and manage all submitted pilot license applications.</p>
       </div>
       <Card>
         <CardHeader>
-          <CardTitle>Application Review</CardTitle>
+          <CardTitle>All Applications</CardTitle>
           <CardDescription>
-            Review and manage all submitted pilot license applications.
+            A list of all applications submitted by users.
           </CardDescription>
         </CardHeader>
         <CardContent>

@@ -1,3 +1,4 @@
+
 import Link from "next/link";
 import { PlusCircle, MoreHorizontal } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -37,7 +38,10 @@ export default function MyApplicationsPage() {
   return (
     <div className="flex flex-col gap-4">
       <div className="flex items-center">
-        <h1 className="text-lg font-semibold md:text-2xl font-headline">My Applications</h1>
+        <div className="flex flex-col gap-1">
+            <h1 className="text-3xl font-bold font-headline tracking-tight">My Applications</h1>
+            <p className="text-muted-foreground">Manage and track the status of your pilot license applications.</p>
+        </div>
         <div className="ml-auto flex items-center gap-2">
           <Link href="/applications/new">
             <Button size="sm" className="h-8 gap-1">
@@ -53,7 +57,7 @@ export default function MyApplicationsPage() {
         <CardHeader>
           <CardTitle>Your License Applications</CardTitle>
           <CardDescription>
-            Manage and track the status of your pilot license applications.
+            A list of all your active and past applications.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -101,7 +105,7 @@ export default function MyApplicationsPage() {
                         <DropdownMenuItem asChild>
                             <Link href={`/applications/${app.id}`}>View Details</Link>
                         </DropdownMenuItem>
-                        <DropdownMenuItem>View Feedback</DropdownMenuItem>
+                        {app.feedback && <DropdownMenuItem>View Feedback</DropdownMenuItem>}
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </TableCell>

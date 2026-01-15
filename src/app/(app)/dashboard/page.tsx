@@ -1,3 +1,4 @@
+
 import Link from "next/link";
 import { PlusCircle, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -28,13 +29,13 @@ export default function DashboardPage() {
   return (
     <div className="flex flex-col gap-8">
       <div className="flex items-center justify-between">
-        <div>
+        <div className="flex flex-col gap-1">
             <h1 className="text-3xl font-bold font-headline tracking-tight">Welcome, {user.name}!</h1>
             <p className="text-muted-foreground">Here's a quick look at your recent activity.</p>
         </div>
         <Link href="/applications/new">
             <Button>
-              <PlusCircle className="mr-2" />
+              <PlusCircle className="mr-2 h-4 w-4" />
               New Application
             </Button>
           </Link>
@@ -47,11 +48,11 @@ export default function DashboardPage() {
             A preview of your most recently updated applications.
           </CardDescription>
         </CardHeader>
-        <CardContent className="grid gap-4">
+        <CardContent className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
             {recentApplications.length === 0 && (
-                <div className="text-center text-muted-foreground py-8">
-                    <p>You have no applications yet.</p>
-                    <Link href="/applications/new" className="mt-2 inline-block">
+                <div className="text-center text-muted-foreground py-8 col-span-full">
+                    <p className="mb-2">You have no applications yet.</p>
+                    <Link href="/applications/new">
                         <Button>Start your first application</Button>
                     </Link>
                 </div>
@@ -72,14 +73,14 @@ export default function DashboardPage() {
                      <CardFooter>
                          <Link href={`/applications/${app.id}`} className="w-full">
                             <Button variant="outline" className="w-full">
-                                View Details <ArrowRight className="ml-2" />
+                                View Details <ArrowRight className="ml-2 h-4 w-4" />
                             </Button>
                          </Link>
                      </CardFooter>
                  </Card>
             ))}
         </CardContent>
-        {totalApplications > 0 && (
+        {totalApplications > recentApplications.length && (
             <CardFooter className="border-t pt-6">
                 <Link href="/applications" className="w-full">
                     <Button variant="secondary" className="w-full">View All My Applications ({totalApplications})</Button>
