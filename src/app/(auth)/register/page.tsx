@@ -3,7 +3,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -18,7 +18,7 @@ import { Separator } from "@/components/ui/separator";
 import { CheckCircle2, XCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { getAuth, createUserWithEmailAndPassword, GoogleAuthProvider, signInWithPopup, updateProfile } from "firebase/auth";
-import { useFirebaseApp, useFirestore } from "@/firebase";
+import { useFirebaseApp, useFirestore, useUser } from "@/firebase";
 import { doc, setDoc, serverTimestamp } from "firebase/firestore";
 
 
@@ -36,6 +36,15 @@ export default function RegisterPage() {
     const app = useFirebaseApp();
     const auth = getAuth(app);
     const firestore = useFirestore();
+    const { user, loading, claims } = useUser();
+
+    useEffect(() => {
+        if (!loading && user) {
+            const isAdmin = claims?.role === 'admin';
+            const homePath = isAdmin ? '/admin' : '/dashboard';
+            router.push(homePath);
+        }
+    }, [user, loading, claims, router]);
 
     const validatedRequirements = passwordRequirements.map(req => ({
         ...req,
@@ -75,7 +84,7 @@ export default function RegisterPage() {
               });
             }
             
-            // The layout will handle redirection
+            // Redirection is handled by useEffect
         } catch (error: any) {
             toast({
                 variant: 'destructive',
@@ -101,7 +110,7 @@ export default function RegisterPage() {
               }, { merge: true }); // Merge to not overwrite role if they already exist
             }
 
-            // The layout will handle redirection
+            // Redirection is handled by useEffect
         } catch (error: any) {
             toast({
                 variant: 'destructive',
@@ -109,6 +118,10 @@ export default function RegisterPage() {
                 description: error.message,
             });
         }
+    }
+
+    if (loading || user) {
+        return <div>Loading...</div>;
     }
 
   return (
