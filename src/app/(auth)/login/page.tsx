@@ -16,13 +16,23 @@ import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { getAuth, signInWithEmailAndPassword, GoogleAuthProvider, signInWithPopup } from "firebase/auth";
 import { useToast } from "@/hooks/use-toast";
-import { useFirebaseApp } from "@/firebase";
+import { useFirebaseApp, useUser } from "@/firebase";
+import { useEffect } from "react";
 
 export default function LoginPage() {
     const router = useRouter();
     const { toast } = useToast();
     const app = useFirebaseApp();
     const auth = getAuth(app);
+    const { user, loading, claims } = useUser();
+
+    useEffect(() => {
+        if (!loading && user) {
+            const isAdmin = claims?.role === 'admin';
+            const homePath = isAdmin ? '/admin' : '/dashboard';
+            router.push(homePath);
+        }
+    }, [user, loading, claims, router]);
 
     const handleLogin = async (event: React.FormEvent<HTMLFormElement>) => {
         event.preventDefault();
@@ -32,7 +42,7 @@ export default function LoginPage() {
         
         try {
             await signInWithEmailAndPassword(auth, email, password);
-            // The layout will handle redirection based on role
+            // Redirection is handled by the useEffect hook
         } catch (error: any) {
             toast({
                 variant: 'destructive',
@@ -46,7 +56,7 @@ export default function LoginPage() {
         const provider = new GoogleAuthProvider();
         try {
             await signInWithPopup(auth, provider);
-            // The layout will handle redirection based on role
+            // Redirection is handled by the useEffect hook
         } catch (error: any) {
             toast({
                 variant: 'destructive',
@@ -54,6 +64,10 @@ export default function LoginPage() {
                 description: error.message,
             });
         }
+    }
+
+    if (loading || user) {
+      return <div>Loading...</div>;
     }
 
   return (

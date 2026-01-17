@@ -2,7 +2,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { onAuthStateChanged, onIdTokenChanged, type User } from 'firebase/auth';
+import { onAuthStateChanged, type User } from 'firebase/auth';
 import { useAuth, useFirestore } from '../provider';
 import { doc, onSnapshot, type DocumentData } from 'firebase/firestore';
 
@@ -16,34 +16,35 @@ export function useUser() {
   const auth = useAuth();
   const firestore = useFirestore();
   const [state, setState] = useState<AuthState>({
-    user: auth.currentUser,
+    user: null, // Start with null user
     claims: null,
     loading: true,
   });
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
-      setState((prevState) => ({ ...prevState, user, loading: false }));
+      if (user) {
+        setState({ user, claims: null, loading: true }); // Set loading to true while we fetch claims
+      } else {
+        setState({ user: null, claims: null, loading: false });
+      }
     });
+
     return () => unsubscribe();
   }, [auth]);
 
   useEffect(() => {
-    if (state.user) {
-      const claimsSub = onIdTokenChanged(state.user, async (user) => {
-        setState((prevState) => ({ ...prevState, user, loading: true }));
-      });
-      
+    if (state.user && firestore) {
       const userDocRef = doc(firestore, `users/${state.user.uid}`);
-      const userSub = onSnapshot(userDocRef, (doc) => {
-        const claims = doc.data();
+      const unsubscribe = onSnapshot(userDocRef, (doc) => {
+        const claims = doc.data() || null;
         setState((prevState) => ({ ...prevState, claims, loading: false }));
+      }, (error) => {
+        console.error("Error fetching user document:", error);
+        setState((prevState) => ({ ...prevState, claims: null, loading: false }));
       });
 
-      return () => {
-        claimsSub();
-        userSub();
-      }
+      return () => unsubscribe();
     }
   }, [state.user, firestore]);
 
