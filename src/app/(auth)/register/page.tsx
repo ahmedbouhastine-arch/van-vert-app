@@ -17,7 +17,7 @@ import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { CheckCircle2, XCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { getAuth, createUserWithEmailAndPassword, GoogleAuthProvider, signInWithPopup, updateProfile } from "firebase/auth";
+import { getAuth, createUserWithEmailAndPassword, GoogleAuthProvider, signInWithPopup, updateProfile, sendEmailVerification } from "firebase/auth";
 import { useFirebaseApp, useFirestore, useUser } from "@/firebase";
 import { doc, setDoc, serverTimestamp } from "firebase/firestore";
 
@@ -73,6 +73,7 @@ export default function RegisterPage() {
             const user = userCredential.user;
             
             await updateProfile(user, { displayName: fullName });
+            await sendEmailVerification(user);
 
             if (firestore) {
               const userRef = doc(firestore, "users", user.uid);
@@ -84,7 +85,12 @@ export default function RegisterPage() {
               });
             }
             
-            // Redirection is handled by useEffect
+            toast({
+                title: "Registration successful!",
+                description: "A verification email has been sent. Please check your inbox.",
+              });
+              
+            // Redirection is handled by the useEffect hook
         } catch (error: any) {
             toast({
                 variant: 'destructive',
