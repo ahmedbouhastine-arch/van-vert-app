@@ -21,12 +21,18 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { useUser } from "@/firebase"
+import { LoadingScreen } from "@/components/LoadingScreen";
 
 export default function SettingsPage() {
-    const { user } = useUser();
+    const { user, claims, loading } = useUser();
 
-    if (!user) {
-        return <div>Loading...</div>
+    if (loading) {
+      return <LoadingScreen text="Loading settings..." />
+    }
+
+    if (!user || !claims) {
+      // This should be caught by the layout and redirected, but as a fallback:
+      return <LoadingScreen text="User not found." />;
     }
 
   return (
@@ -47,7 +53,7 @@ export default function SettingsPage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <form className="grid gap-4">
+          <form className="grid gap-6">
             <div className="grid grid-cols-2 gap-4">
                 <div className="grid gap-2">
                 <Label htmlFor="full-name">Full Name</Label>
@@ -57,6 +63,12 @@ export default function SettingsPage() {
                 <Label htmlFor="email">Email</Label>
                 <Input id="email" type="email" defaultValue={user.email || ''} readOnly />
                 </div>
+            </div>
+            <div className="grid gap-2">
+              <Label>Role</Label>
+              <p className="text-sm capitalize font-medium text-muted-foreground">
+                {claims.role.replace(/-/g, ' ')}
+              </p>
             </div>
           </form>
         </CardContent>
