@@ -1,4 +1,3 @@
-
 'use client';
 
 import { applications } from "@/lib/data";
@@ -6,6 +5,7 @@ import { notFound } from "next/navigation";
 import { AdminApplicationClient } from "./_components/AdminApplicationClient";
 import { useFirestore, useDoc } from "@/firebase";
 import { doc } from "firebase/firestore";
+import { LoadingScreen } from "@/components/LoadingScreen";
 
 export default function AdminApplicationDetailPage({
   params,
@@ -23,7 +23,7 @@ export default function AdminApplicationDetailPage({
   const { data: user, loading } = useDoc(userRef);
 
   if (loading) {
-    return <div>Loading user...</div>
+    return <LoadingScreen text="Loading user..." />
   }
 
   return (

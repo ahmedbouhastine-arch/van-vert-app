@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useEffect, useTransition } from 'react';
@@ -16,6 +15,7 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import { Loader2 } from 'lucide-react';
+import { LoadingScreen } from '@/components/LoadingScreen';
 
 export default function VerifyEmailPage() {
   const { user, loading, claims } = useUser();
@@ -81,11 +81,7 @@ export default function VerifyEmailPage() {
   };
 
   if (loading || !user || user.emailVerified) {
-    return (
-      <div className="flex min-h-screen items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin" />
-      </div>
-    );
+    return <LoadingScreen />;
   }
 
   return (
