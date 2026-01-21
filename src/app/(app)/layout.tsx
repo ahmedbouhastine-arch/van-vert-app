@@ -11,6 +11,7 @@ import { Breadcrumbs } from "./_components/Breadcrumbs";
 import { useUser } from "@/firebase";
 import { useRouter, usePathname } from "next/navigation";
 import { useEffect } from "react";
+import { LoadingScreen } from "@/components/LoadingScreen";
 
 export default function AppLayout({
   children,
@@ -52,7 +53,7 @@ export default function AppLayout({
 
     // While loading, or if we are about to redirect, show a loading screen.
     if (loading) {
-        return <div className="flex h-screen items-center justify-center">Loading...</div>;
+        return <LoadingScreen />;
     }
 
     // This block handles rendering for unverified new users to prevent content flashing
@@ -64,7 +65,7 @@ export default function AppLayout({
         if (isNewUser && !user.emailVerified && !isAdmin) {
              // The useEffect above will trigger a redirect.
              // We render a loading state to prevent the main app layout from flashing.
-            return <div className="flex h-screen items-center justify-center">Loading...</div>;
+            return <LoadingScreen />;
         }
     }
 

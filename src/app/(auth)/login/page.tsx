@@ -18,6 +18,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useFirebaseApp, useUser } from "@/firebase";
 import { useEffect } from "react";
 import { GoogleIcon } from "@/components/GoogleIcon";
+import { LoadingScreen } from "@/components/LoadingScreen";
 
 export default function LoginPage() {
     const router = useRouter();
@@ -67,7 +68,7 @@ export default function LoginPage() {
     }
 
     if (loading || user) {
-      return <div>Loading...</div>;
+      return <LoadingScreen />;
     }
 
   return (

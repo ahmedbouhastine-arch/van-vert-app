@@ -1,4 +1,3 @@
-
 'use client';
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -13,12 +12,13 @@ import {
 } from "@/components/ui/card";
 import { useUser } from "@/firebase";
 import Link from "next/link";
+import { LoadingScreen } from "@/components/LoadingScreen";
 
 export default function ProfilePage() {
   const { user, claims } = useUser();
 
   if (!user) {
-    return <div>Loading...</div>;
+    return <LoadingScreen />;
   }
 
   return (

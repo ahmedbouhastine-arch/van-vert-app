@@ -20,6 +20,7 @@ import { getAuth, createUserWithEmailAndPassword, GoogleAuthProvider, signInWith
 import { useFirebaseApp, useFirestore, useUser } from "@/firebase";
 import { doc, setDoc, serverTimestamp } from "firebase/firestore";
 import { GoogleIcon } from "@/components/GoogleIcon";
+import { LoadingScreen } from "@/components/LoadingScreen";
 
 
 const passwordRequirements = [
@@ -127,7 +128,7 @@ export default function RegisterPage() {
     }
 
     if (loading || user) {
-        return <div>Loading...</div>;
+        return <LoadingScreen />;
     }
 
   return (
