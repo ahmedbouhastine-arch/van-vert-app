@@ -50,10 +50,10 @@ export default function AppLayout({
               >
                 V<span className="sr-only">Van-Vert</span>
             </Link>
-          <MainNavLinks isAdmin={isAdmin} />
+          <MainNavLinks claims={claims} />
         </nav>
         <nav className="mt-auto flex flex-col items-center gap-4 px-2 sm:py-5">
-          <SecondaryNavLinks isAdmin={isAdmin} />
+          <SecondaryNavLinks claims={claims} />
         </nav>
       </aside>
       <div className="flex flex-col sm:gap-4 sm:py-4 sm:pl-14">
@@ -73,7 +73,7 @@ export default function AppLayout({
                 >
                   Van-Vert
                 </Link>
-                 <MobileNavLinks isAdmin={isAdmin} />
+                 <MobileNavLinks claims={claims} />
               </nav>
             </SheetContent>
           </Sheet>

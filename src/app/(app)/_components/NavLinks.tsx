@@ -3,20 +3,21 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, FileText, Users, Settings, User } from "lucide-react";
+import { Home, FileText, Users, Settings, User, UserCog } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 type NavLinkItem = {
   href: string;
   icon: React.ElementType;
   label: string;
-  for: "applicant" | "admin" | "all";
+  for: "applicant" | "admin" | "head-admin" | "all";
 };
 
 const mainLinks: NavLinkItem[] = [
   { href: "/dashboard", icon: Home, label: "Dashboard", for: "applicant" },
   { href: "/applications", icon: FileText, label: "Applications", for: "applicant" },
-  { href: "/admin", icon: Users, label: "Admin", for: "admin" },
+  { href: "/admin", icon: Users, label: "Applications", for: "admin" },
+  { href: "/admin/users", icon: UserCog, label: "User Management", for: "head-admin" },
 ];
 
 const secondaryLinks: NavLinkItem[] = [
@@ -24,13 +25,16 @@ const secondaryLinks: NavLinkItem[] = [
   { href: "/settings", icon: Settings, label: "Settings", for: "all" },
 ];
 
-const createLinks = (links: NavLinkItem[], isAdmin: boolean, isMobile: boolean = false) => {
+const createLinks = (links: NavLinkItem[], claims: any, isMobile: boolean = false) => {
     const pathname = usePathname();
+    const role = claims?.role;
 
     const filteredLinks = links.filter(link => {
         if (link.for === 'all') return true;
-        if (isAdmin) return link.for === 'admin';
-        return link.for === 'applicant';
+        if (link.for === 'applicant' && role === 'applicant') return true;
+        if (link.for === 'admin' && (role === 'admin' || role === 'head-admin')) return true;
+        if (link.for === 'head-admin' && role === 'head-admin') return true;
+        return false;
     });
 
     return filteredLinks.map(({ href, icon: Icon, label }) => {
@@ -70,15 +74,15 @@ const createLinks = (links: NavLinkItem[], isAdmin: boolean, isMobile: boolean =
       });
 }
 
-export function MainNavLinks({ isAdmin }: { isAdmin: boolean }) {
-  return <>{createLinks(mainLinks, isAdmin)}</>;
+export function MainNavLinks({ claims }: { claims: any }) {
+  return <>{createLinks(mainLinks, claims)}</>;
 }
 
-export function SecondaryNavLinks({ isAdmin }: { isAdmin: boolean }) {
-    return <>{createLinks(secondaryLinks, isAdmin)}</>;
+export function SecondaryNavLinks({ claims }: { claims: any }) {
+    return <>{createLinks(secondaryLinks, claims)}</>;
 }
 
-export function MobileNavLinks({ isAdmin }: { isAdmin: boolean }) {
+export function MobileNavLinks({ claims }: { claims: any }) {
     const allLinks = [...mainLinks, ...secondaryLinks];
-    return <>{createLinks(allLinks, isAdmin, true)}</>
+    return <>{createLinks(allLinks, claims, true)}</>
 }
