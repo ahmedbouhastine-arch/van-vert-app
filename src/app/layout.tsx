@@ -5,8 +5,8 @@ import { Toaster } from "@/components/ui/toaster";
 import { FirebaseClientProvider } from '@/firebase/client-provider';
 
 export const metadata: Metadata = {
-  title: 'PilotPack',
-  description: 'Collect and organize pilot documents for license conversion.',
+  title: 'Van-Vert',
+  description: 'Collect and organize documents for license conversion.',
 };
 
 export default function RootLayout({

@@ -35,7 +35,7 @@ export default function DashboardPage() {
     <div className="flex flex-col gap-8">
       <div className="flex items-center justify-between">
         <div className="flex flex-col gap-1">
-            <h1 className="text-3xl font-bold font-headline tracking-tight">Welcome, {user.displayName || 'Pilot'}!</h1>
+            <h1 className="text-3xl font-bold font-headline tracking-tight">Welcome, {user.displayName || 'User'}!</h1>
             <p className="text-muted-foreground">Here's a quick look at your recent activity.</p>
         </div>
         <Link href="/applications/new">
