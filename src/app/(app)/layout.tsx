@@ -9,7 +9,7 @@ import { UserNav } from "@/components/UserNav";
 import { MainNavLinks, SecondaryNavLinks, MobileNavLinks } from "./_components/NavLinks";
 import { Breadcrumbs } from "./_components/Breadcrumbs";
 import { useUser } from "@/firebase";
-import { useRouter, usePathname } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 import { LoadingScreen } from "@/components/LoadingScreen";
 
@@ -20,7 +20,6 @@ export default function AppLayout({
 }) {
     const { user, loading, claims } = useUser();
     const router = useRouter();
-    const pathname = usePathname();
     const isAdmin = claims?.role === 'admin';
     const homePath = isAdmin ? "/admin" : "/dashboard";
 
@@ -31,42 +30,13 @@ export default function AppLayout({
 
         if (!user) {
             router.push('/login');
-            return;
         }
-
-        // --- Email Verification Gate ---
-        // Define a cutoff date. Users created after this date need verification.
-        // Existing users created before are considered legacy and don't need verification.
-        const verificationCutoffDate = new Date('2024-07-20T00:00:00Z');
-        const userCreationDate = user.metadata.creationTime ? new Date(user.metadata.creationTime) : new Date(0);
-
-        const isNewUser = userCreationDate > verificationCutoffDate;
-        
-        if (isNewUser && !user.emailVerified && !isAdmin) {
-            // Redirect to verification page if they are not already on it.
-            if (pathname !== '/verify-email') {
-                router.push('/verify-email');
-            }
-        }
-    }, [user, loading, claims, router, pathname, isAdmin]);
+    }, [user, loading, router]);
 
 
     // While loading, or if we are about to redirect, show a loading screen.
-    if (loading) {
+    if (loading || !user) {
         return <LoadingScreen />;
-    }
-
-    // This block handles rendering for unverified new users to prevent content flashing
-    if (user) {
-        const verificationCutoffDate = new Date('2024-07-20T00:00:00Z');
-        const userCreationDate = user.metadata.creationTime ? new Date(user.metadata.creationTime) : new Date(0);
-        const isNewUser = userCreationDate > verificationCutoffDate;
-
-        if (isNewUser && !user.emailVerified && !isAdmin) {
-             // The useEffect above will trigger a redirect.
-             // We render a loading state to prevent the main app layout from flashing.
-            return <LoadingScreen />;
-        }
     }
 
 
