@@ -1,10 +1,9 @@
-
 import type { User as FirebaseUser } from 'firebase/auth';
 
 export type UserProfile = {
   email: string;
   displayName?: string;
-  role: 'applicant' | 'admin';
+  role: 'applicant' | 'admin' | 'head-admin';
   createdAt: any; // Firestore server timestamp
 };
 
