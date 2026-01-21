@@ -1,7 +1,7 @@
 'use client';
 
 import Link from "next/link";
-import { PanelLeft, Search, Plane } from "lucide-react";
+import { PanelLeft, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
@@ -77,7 +77,7 @@ export default function AppLayout({
                 href={homePath}
                 className="group flex h-9 w-9 shrink-0 items-center justify-center gap-2 rounded-full bg-primary text-lg font-semibold text-primary-foreground md:h-8 md:w-8 md:text-base"
               >
-                <Plane className="h-4 w-4 transition-all group-hover:scale-110" />
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4 transition-all group-hover:scale-110"><path d="M17.8 19.2 16 11l3.5-3.5C21 6 21.5 4 21 3c-1-.5-3 0-4.5 1.5L13 8 4.8 6.2"/><path d="m2 2 3 11 9 4 4 1 1-4-4-9-11-3z"/></svg>
                 <span className="sr-only">Van-Vert</span>
             </Link>
           <MainNavLinks isAdmin={isAdmin} />
@@ -101,7 +101,7 @@ export default function AppLayout({
                   href={homePath}
                   className="flex items-center gap-2 text-lg font-semibold"
                 >
-                  <Plane className="h-6 w-6" />
+                  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-6 w-6"><path d="M17.8 19.2 16 11l3.5-3.5C21 6 21.5 4 21 3c-1-.5-3 0-4.5 1.5L13 8 4.8 6.2"/><path d="m2 2 3 11 9 4 4 1 1-4-4-9-11-3z"/></svg>
                   <span>Van-Vert</span>
                 </Link>
                  <MobileNavLinks isAdmin={isAdmin} />
