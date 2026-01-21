@@ -33,7 +33,7 @@ export default function VerifyEmailPage() {
     }
 
     if (user.emailVerified) {
-      const isAdmin = claims?.role === 'admin';
+      const isAdmin = claims?.role === 'admin' || claims?.role === 'head-admin';
       const homePath = isAdmin ? '/admin' : '/dashboard';
       router.push(homePath);
     }
@@ -63,7 +63,7 @@ export default function VerifyEmailPage() {
     await auth.currentUser.reload();
     // The useEffect hook will detect the change in user.emailVerified and redirect
     if (auth.currentUser.emailVerified) {
-        const isAdmin = claims?.role === 'admin';
+        const isAdmin = claims?.role === 'admin' || claims?.role === 'head-admin';
         const homePath = isAdmin ? '/admin' : '/dashboard';
         router.push(homePath);
     } else {

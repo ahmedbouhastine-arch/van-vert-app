@@ -29,7 +29,7 @@ export default function LoginPage() {
 
     useEffect(() => {
         if (!loading && user) {
-            const isAdmin = claims?.role === 'admin';
+            const isAdmin = claims?.role === 'admin' || claims?.role === 'head-admin';
             const homePath = isAdmin ? '/admin' : '/dashboard';
             router.push(homePath);
         }
