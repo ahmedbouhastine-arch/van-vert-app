@@ -1,4 +1,3 @@
-
 'use client';
 
 import {
@@ -20,11 +19,15 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { useUser } from "@/firebase"
+import { useUser, useFirestore } from "@/firebase"
 import { LoadingScreen } from "@/components/LoadingScreen";
+import { doc, updateDoc } from "firebase/firestore";
+import { useToast } from "@/hooks/use-toast";
 
 export default function SettingsPage() {
     const { user, claims, loading } = useUser();
+    const firestore = useFirestore();
+    const { toast } = useToast();
 
     if (loading) {
       return <LoadingScreen text="Loading settings..." />
@@ -34,6 +37,24 @@ export default function SettingsPage() {
       // This should be caught by the layout and redirected, but as a fallback:
       return <LoadingScreen text="User not found." />;
     }
+
+    const handleRoleChange = async (newRole: 'applicant' | 'admin' | 'head-admin') => {
+      if (!user || !firestore) return;
+      const userRef = doc(firestore, "users", user.uid);
+      try {
+          await updateDoc(userRef, { role: newRole });
+          toast({
+              title: "Success",
+              description: `Your role has been updated to ${newRole}.`,
+          });
+      } catch (error: any) {
+          toast({
+              variant: 'destructive',
+              title: 'Update failed',
+              description: error.message,
+          });
+      }
+    };
 
   return (
     <div className="grid gap-6">
@@ -65,10 +86,17 @@ export default function SettingsPage() {
                 </div>
             </div>
             <div className="grid gap-2">
-              <Label>Role</Label>
-              <p className="text-sm capitalize font-medium text-muted-foreground">
-                {claims.role.replace(/-/g, ' ')}
-              </p>
+                <Label htmlFor="role">Role</Label>
+                <Select value={claims.role} onValueChange={(value) => handleRoleChange(value as any)}>
+                    <SelectTrigger id="role" className="w-full max-w-sm">
+                        <SelectValue placeholder="Select a role" />
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="applicant">Applicant</SelectItem>
+                        <SelectItem value="admin">Admin</SelectItem>
+                        <SelectItem value="head-admin">Head Admin</SelectItem>
+                    </SelectContent>
+                </Select>
             </div>
           </form>
         </CardContent>
