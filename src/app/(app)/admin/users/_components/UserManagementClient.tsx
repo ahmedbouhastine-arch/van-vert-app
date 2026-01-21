@@ -24,8 +24,8 @@ function UserRow({ user, currentUser, onRoleChange }: { user: UserWithProfile, c
     
     const isCurrentUser = user.id === currentUser.uid;
 
-    // A head-admin cannot demote another head-admin as a safeguard
-    const canChangeRole = !isCurrentUser && user.role !== 'head-admin';
+    // A user cannot change their own role.
+    const canChangeRole = !isCurrentUser;
 
     return (
         <TableRow>
@@ -51,10 +51,11 @@ function UserRow({ user, currentUser, onRoleChange }: { user: UserWithProfile, c
                         <SelectContent>
                             <SelectItem value="applicant">Applicant</SelectItem>
                             <SelectItem value="admin">Admin</SelectItem>
+                            <SelectItem value="head-admin">Head Admin</SelectItem>
                         </SelectContent>
                     </Select>
                 ) : (
-                    <span className="text-sm text-muted-foreground">{isCurrentUser ? "Cannot change own role" : "Cannot change Head Admin"}</span>
+                    <span className="text-sm text-muted-foreground">Cannot change own role</span>
                 )}
             </TableCell>
             <TableCell className="text-right">

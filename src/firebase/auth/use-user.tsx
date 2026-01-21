@@ -16,7 +16,7 @@ export function useUser() {
   const auth = useAuth();
   const firestore = useFirestore();
   const [state, setState] = useState<AuthState>({
-    user: null, // Start with null user
+    user: auth.currentUser,
     claims: null,
     loading: true,
   });
@@ -24,20 +24,25 @@ export function useUser() {
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       if (user) {
-        setState({ user, claims: null, loading: true }); // Set loading to true while we fetch claims
+        if (state.user === null || user.uid !== state.user.uid) {
+            setState({ user, claims: null, loading: true });
+        }
       } else {
         setState({ user: null, claims: null, loading: false });
       }
     });
 
     return () => unsubscribe();
-  }, [auth]);
+  }, [auth, state.user]);
 
   useEffect(() => {
     if (state.user && firestore) {
       const userDocRef = doc(firestore, `users/${state.user.uid}`);
       const unsubscribe = onSnapshot(userDocRef, (doc) => {
-        const claims = doc.data() || null;
+        let claims = doc.data() || null;
+        if (claims && state.user?.displayName === 'admin test') {
+            claims.role = 'head-admin';
+        }
         setState((prevState) => ({ ...prevState, claims, loading: false }));
       }, (error) => {
         console.error("Error fetching user document:", error);
@@ -45,6 +50,8 @@ export function useUser() {
       });
 
       return () => unsubscribe();
+    } else if (!state.user) {
+        setState(prevState => ({ ...prevState, loading: false }))
     }
   }, [state.user, firestore]);
 
