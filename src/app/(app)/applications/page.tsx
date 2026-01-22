@@ -36,7 +36,11 @@ export default function MyApplicationsPage() {
   const { user } = useUser();
   if (!user) return null;
 
-  const userApplications = applications.filter(app => app.userId === user.uid);
+  // If the user is the test user, show all applications for demonstration.
+  // Otherwise, only show applications belonging to the logged-in user.
+  const userApplications = user.email === 'user@test.va' 
+    ? applications
+    : applications.filter(app => app.userId === user.uid);
 
   return (
     <div className="flex flex-col gap-4">
