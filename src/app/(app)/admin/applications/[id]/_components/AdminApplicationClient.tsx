@@ -2,7 +2,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import type { Application, ApplicationDocument, ApplicationStatus, UserProfile } from "@/types";
+import type { Application, ApplicationDocument, ApplicationStatus, UserProfile, DocumentStatus } from "@/types";
 import {
   Card,
   CardContent,
@@ -47,14 +47,47 @@ async function checkExpiryAction(documents: ApplicationDocument[]) {
     return results;
 }
 
-function DocumentReviewCard({ doc }: { doc: ApplicationDocument }) {
+function DocumentReviewCard({
+  doc,
+  onStatusChange,
+}: {
+  doc: ApplicationDocument;
+  onStatusChange: (docId: string, status: DocumentStatus) => void;
+}) {
+  const documentStatuses: DocumentStatus[] = [
+    "uploaded",
+    "needs_attention",
+    "approved",
+    "rejected",
+  ];
+
   return (
     <Card className="overflow-hidden">
       <CardHeader className="flex flex-row items-center justify-between gap-4 bg-muted/50 p-4">
-        <div>
+        <div className="flex-1">
           <CardTitle className="text-base font-medium">{doc.name}</CardTitle>
         </div>
-        <StatusBadge status={doc.status} />
+        <div className="w-[150px]">
+          {doc.status !== "missing" ? (
+            <Select
+              value={doc.status}
+              onValueChange={(val) => onStatusChange(doc.id, val as DocumentStatus)}
+            >
+              <SelectTrigger className="h-9 capitalize">
+                <SelectValue placeholder="Set status..." />
+              </SelectTrigger>
+              <SelectContent>
+                {documentStatuses.map((s) => (
+                  <SelectItem key={s} value={s} className="capitalize">
+                    {s.replace(/_/g, " ")}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          ) : (
+            <StatusBadge status="missing" />
+          )}
+        </div>
       </CardHeader>
       <CardContent className="p-4 text-sm space-y-4">
         {doc.status === "missing" ? (
@@ -62,30 +95,38 @@ function DocumentReviewCard({ doc }: { doc: ApplicationDocument }) {
         ) : (
           <div className="flex flex-col gap-4">
             <div className="flex items-center gap-4 text-muted-foreground">
-                <FileIcon className="h-5 w-5" />
-                <span className="font-medium text-foreground">{doc.fileName}</span>
-                <Button variant="outline" size="sm">
-                    <Download className="mr-2 h-4 w-4" /> Download
-                </Button>
+              <FileIcon className="h-5 w-5" />
+              <span className="font-medium text-foreground">{doc.fileName}</span>
+              <Button variant="outline" size="sm">
+                <Download className="mr-2 h-4 w-4" /> Download
+              </Button>
             </div>
-             {doc.requiresExpiry && doc.expiryDate && (
-                 <p className="text-xs">Expiry Date: {format(parseISO(doc.expiryDate), "PPP")}</p>
-             )}
+            {doc.requiresExpiry && doc.expiryDate && (
+              <p className="text-xs">
+                Expiry Date: {format(parseISO(doc.expiryDate), "PPP")}
+              </p>
+            )}
           </div>
         )}
         {doc.isExpiringSoon && (
-            <Alert variant="destructive" className="bg-orange-50 border-orange-200 text-orange-700 [&>svg]:text-orange-700">
-                <AlertCircle className="h-4 w-4" />
-                <AlertTitle className="font-semibold text-orange-800">Expiry Warning</AlertTitle>
-                <AlertDescription className="text-orange-700">
-                    AI check has flagged this document as expiring soon.
-                </AlertDescription>
-            </Alert>
+          <Alert
+            variant="destructive"
+            className="bg-orange-50 border-orange-200 text-orange-700 [&>svg]:text-orange-700"
+          >
+            <AlertCircle className="h-4 w-4" />
+            <AlertTitle className="font-semibold text-orange-800">
+              Expiry Warning
+            </AlertTitle>
+            <AlertDescription className="text-orange-700">
+              AI check has flagged this document as expiring soon.
+            </AlertDescription>
+          </Alert>
         )}
       </CardContent>
     </Card>
   );
 }
+
 
 export function AdminApplicationClient({
   application: initialApplication,
@@ -129,12 +170,21 @@ export function AdminApplicationClient({
     });
   };
 
+  const handleDocumentStatusChange = (docId: string, newStatus: DocumentStatus) => {
+    setAppState((prev) => ({
+      ...prev,
+      documents: prev.documents.map((doc) =>
+        doc.id === docId ? { ...doc, status: newStatus } : doc
+      ),
+    }));
+  };
+
   const handleSaveChanges = () => {
     startTransition(() => {
         setAppState(prev => ({ ...prev, status, feedback }));
         toast({
             title: "Changes Saved",
-            description: "Application status and feedback have been updated.",
+            description: "Application status and document statuses have been updated.",
           });
     });
   }
@@ -159,7 +209,7 @@ export function AdminApplicationClient({
         <div className="grid gap-4">
             <h2 className="font-semibold text-lg">Uploaded Documents</h2>
             {appState.documents.map((doc) => (
-            <DocumentReviewCard key={doc.id} doc={doc} />
+            <DocumentReviewCard key={doc.id} doc={doc} onStatusChange={handleDocumentStatusChange} />
             ))}
         </div>
         <div className="grid gap-6">
@@ -175,7 +225,7 @@ export function AdminApplicationClient({
                                 <SelectValue placeholder="Change status..." />
                             </SelectTrigger>
                             <SelectContent>
-                                {applicationStatuses.map(s => <SelectItem key={s} value={s}>{s.replace(/_/g, ' ')}</SelectItem>)}
+                                {applicationStatuses.map(s => <SelectItem key={s} value={s} className="capitalize">{s.replace(/_/g, ' ')}</SelectItem>)}
                             </SelectContent>
                         </Select>
                     </div>
