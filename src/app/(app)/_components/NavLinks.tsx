@@ -38,7 +38,9 @@ const createLinks = (links: NavLinkItem[], claims: any, isMobile: boolean = fals
     });
 
     return filteredLinks.map(({ href, icon: Icon, label }) => {
-        const isActive = href === "/" ? pathname === href : pathname.startsWith(href);
+        const isActive = href === "/admin" 
+            ? pathname === href 
+            : (href === "/" ? pathname === href : pathname.startsWith(href));
         
         if (isMobile) {
             return (
