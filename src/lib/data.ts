@@ -160,13 +160,5 @@ export const mockUsers: (UserProfile & { id: string, photoURL?: string })[] = [
         role: 'applicant',
         createdAt: '2023-11-15T14:30:00Z',
         photoURL: `https://picsum.photos/seed/user2/100/100`,
-    },
-    {
-        id: 'admin-user-example',
-        displayName: 'Alex Admin',
-        email: 'alex.admin@example.com',
-        role: 'admin',
-        createdAt: '2023-09-20T08:00:00Z',
-        photoURL: `https://picsum.photos/seed/admin1/100/100`,
     }
 ];
