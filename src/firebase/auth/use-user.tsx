@@ -12,48 +12,47 @@ interface AuthState {
   loading: boolean;
 }
 
-export function useUser() {
+export function useUser(): AuthState {
   const auth = useAuth();
   const firestore = useFirestore();
-  const [state, setState] = useState<AuthState>({
-    user: auth.currentUser,
-    claims: null,
-    loading: true,
-  });
+  const [user, setUser] = useState<User | null>(() => auth.currentUser);
+  const [claims, setClaims] = useState<DocumentData | null>(null);
+  const [loading, setLoading] = useState(true);
 
+  // Listen for auth state changes
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
-      if (user) {
-        if (state.user === null || user.uid !== state.user.uid) {
-            setState({ user, claims: null, loading: true });
-        }
-      } else {
-        setState({ user: null, claims: null, loading: false });
-      }
+    const unsubscribe = onAuthStateChanged(auth, (authUser) => {
+      setUser(authUser);
+      setLoading(true); // Always set loading to true when auth state might be changing
     });
-
     return () => unsubscribe();
-  }, [auth, state.user]);
+  }, [auth]);
 
+  // Listen for user document changes (claims)
   useEffect(() => {
-    if (state.user && firestore) {
-      const userDocRef = doc(firestore, `users/${state.user.uid}`);
+    if (user && firestore) {
+      setLoading(true); // Start loading claims
+      const userDocRef = doc(firestore, `users/${user.uid}`);
       const unsubscribe = onSnapshot(userDocRef, (doc) => {
-        let claims = doc.data() || null;
-        if (claims && state.user?.displayName === 'admin test') {
-            claims.role = 'head-admin';
+        let userClaims = doc.data() || null;
+        if (userClaims && user?.displayName === 'admin test') {
+            userClaims.role = 'head-admin';
         }
-        setState((prevState) => ({ ...prevState, claims, loading: false }));
+        setClaims(userClaims);
+        setLoading(false); // Finished loading claims
       }, (error) => {
         console.error("Error fetching user document:", error);
-        setState((prevState) => ({ ...prevState, claims: null, loading: false }));
+        setClaims(null);
+        setLoading(false); // Finished loading (with an error)
       });
 
       return () => unsubscribe();
-    } else if (!state.user) {
-        setState(prevState => ({ ...prevState, loading: false }))
+    } else {
+      // No user, so no claims to fetch and we are not loading.
+      setClaims(null);
+      setLoading(false);
     }
-  }, [state.user, firestore]);
+  }, [user, firestore]);
 
-  return state;
+  return { user, claims, loading };
 }
