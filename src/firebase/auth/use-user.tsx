@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useEffect, useState } from 'react';
@@ -19,38 +18,38 @@ export function useUser(): AuthState {
   const [claims, setClaims] = useState<DocumentData | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // Listen for auth state changes
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (authUser) => {
+    const unsubscribeAuth = onAuthStateChanged(auth, (authUser) => {
       setUser(authUser);
-      setLoading(true); // Always set loading to true when auth state might be changing
+      // If user logs out, we are done loading.
+      if (!authUser) {
+        setClaims(null);
+        setLoading(false);
+      }
     });
-    return () => unsubscribe();
+
+    return () => unsubscribeAuth();
   }, [auth]);
 
-  // Listen for user document changes (claims)
   useEffect(() => {
+    // This effect runs when `user` state changes.
     if (user && firestore) {
-      setLoading(true); // Start loading claims
+      setLoading(true); // Start loading claims for the new user.
       const userDocRef = doc(firestore, `users/${user.uid}`);
-      const unsubscribe = onSnapshot(userDocRef, (doc) => {
-        let userClaims = doc.data() || null;
+      const unsubscribeClaims = onSnapshot(userDocRef, (snapshot) => {
+        let userClaims = snapshot.data() || null;
         if (userClaims && user?.displayName === 'admin test') {
             userClaims.role = 'head-admin';
         }
         setClaims(userClaims);
-        setLoading(false); // Finished loading claims
+        setLoading(false); // Claims are loaded (or not found), so loading is finished.
       }, (error) => {
         console.error("Error fetching user document:", error);
         setClaims(null);
-        setLoading(false); // Finished loading (with an error)
+        setLoading(false); // Also finished loading on error.
       });
 
-      return () => unsubscribe();
-    } else {
-      // No user, so no claims to fetch and we are not loading.
-      setClaims(null);
-      setLoading(false);
+      return () => unsubscribeClaims();
     }
   }, [user, firestore]);
 
