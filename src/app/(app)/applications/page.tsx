@@ -1,7 +1,7 @@
-
 'use client';
 
 import Link from "next/link";
+import { useState } from "react";
 import { PlusCircle, MoreHorizontal } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -12,6 +12,14 @@ import {
   CardTitle,
   CardFooter,
 } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -34,6 +42,7 @@ import { useUser } from "@/firebase";
 
 export default function MyApplicationsPage() {
   const { user } = useUser();
+  const [selectedFeedback, setSelectedFeedback] = useState<string | null>(null);
   if (!user) return null;
 
   // If the user is the test user, show all applications for demonstration.
@@ -112,7 +121,7 @@ export default function MyApplicationsPage() {
                         <DropdownMenuItem asChild>
                             <Link href={`/applications/${app.id}`}>View Details</Link>
                         </DropdownMenuItem>
-                        {app.feedback && <DropdownMenuItem>View Feedback</DropdownMenuItem>}
+                        {app.feedback && <DropdownMenuItem onSelect={() => setSelectedFeedback(app.feedback || null)}>View Feedback</DropdownMenuItem>}
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </TableCell>
@@ -128,6 +137,19 @@ export default function MyApplicationsPage() {
           </div>
         </CardFooter>
       </Card>
+      <Dialog open={!!selectedFeedback} onOpenChange={(isOpen) => !isOpen && setSelectedFeedback(null)}>
+        <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+                <DialogTitle>Feedback from Admin</DialogTitle>
+                <DialogDescription className="pt-4 text-base text-foreground">
+                    {selectedFeedback}
+                </DialogDescription>
+            </DialogHeader>
+            <DialogFooter className="sm:justify-start">
+                <Button onClick={() => setSelectedFeedback(null)} variant="outline">Close</Button>
+            </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
