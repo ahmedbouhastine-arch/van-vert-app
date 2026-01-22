@@ -21,12 +21,12 @@ export function Breadcrumbs() {
   const pathname = usePathname();
   const segments = pathname.split("/").filter(Boolean);
 
-  // Do not show breadcrumbs on the root dashboard page
-  if (segments.length === 0) {
+  // Do not show breadcrumbs on the root dashboard pages
+  if (segments.length === 0 || (segments.length === 1 && (segments[0] === 'dashboard' || segments[0] === 'admin'))) {
     return <div className="hidden md:flex h-10 items-center"></div>; // Placeholder to maintain layout
   }
 
-  // Handle case where it's just /dashboard or something similar - show a single root breadcrumb
+  // Handle case where it's just one level deep but not a root dashboard
   if (segments.length === 1) {
     return (
         <Breadcrumb className="hidden md:flex">
@@ -47,9 +47,9 @@ export function Breadcrumbs() {
           let href = originalHref;
           const isLast = index === segments.length - 1;
           
-          // When the path is /admin/applications/..., the "Applications" part should link back to /admin
+          // When the path is /admin/applications/..., the "Applications" part should link back to /admin/applications
           if (segment === 'applications' && segments[0] === 'admin' && !isLast) {
-            href = '/admin';
+            href = '/admin/applications';
           }
 
           return (
