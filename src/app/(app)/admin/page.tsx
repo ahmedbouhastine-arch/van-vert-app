@@ -26,18 +26,32 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { applications } from "@/lib/data";
+import { applications, mockUsers } from "@/lib/data";
 import { StatusBadge } from "@/components/StatusBadge";
 import { format, parseISO } from "date-fns";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useCollection } from "@/firebase";
 import { collection, query } from "firebase/firestore";
 import { useFirestore } from "@/firebase";
+import { useMemo } from "react";
 
 export default function AdminDashboardPage() {
   const firestore = useFirestore();
   const usersQuery = firestore ? query(collection(firestore, "users")) : null;
-  const { data: users, loading: usersLoading } = useCollection(usersQuery);
+  const { data: firestoreUsers, loading: usersLoading } = useCollection(usersQuery);
+
+  const users = useMemo(() => {
+    const realUsers = (firestoreUsers as any[]) ?? [];
+    const allUsers = [...realUsers];
+    const realUserIds = new Set(realUsers.map((u: any) => u.id));
+
+    for (const mockUser of mockUsers) {
+      if (!realUserIds.has(mockUser.id)) {
+        allUsers.push(mockUser);
+      }
+    }
+    return allUsers;
+  }, [firestoreUsers]);
 
   const allApplications = applications.map(app => {
     const user = users?.find((u: any) => u.id === app.userId);

@@ -1,6 +1,6 @@
 
 'use client';
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useCollection, useFirestore } from "@/firebase";
 import { collection, doc, updateDoc, query } from "firebase/firestore";
 import type { UserProfile } from "@/types";
@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
 import { type User } from "firebase/auth";
+import { mockUsers as mockUserExamples } from "@/lib/data";
 
 type UserWithProfile = UserProfile & { id: string; photoURL?: string; };
 
@@ -70,8 +71,22 @@ function UserRow({ user, currentUser, onRoleChange }: { user: UserWithProfile, c
 export function UserManagementClient({ currentUser }: { currentUser: User }) {
     const firestore = useFirestore();
     const usersQuery = firestore ? query(collection(firestore, "users")) : null;
-    const { data: users, loading } = useCollection<UserWithProfile>(usersQuery);
+    const { data: firestoreUsers, loading } = useCollection<UserWithProfile>(usersQuery);
     const { toast } = useToast();
+
+    const users = useMemo(() => {
+        const realUsers = firestoreUsers ?? [];
+        const allUsers = [...realUsers];
+        const realUserIds = new Set(realUsers.map(u => u.id));
+
+        for (const mockUser of mockUserExamples) {
+            if (!realUserIds.has(mockUser.id)) {
+                allUsers.push(mockUser as UserWithProfile);
+            }
+        }
+        
+        return allUsers;
+    }, [firestoreUsers]);
 
     const handleRoleChange = async (userId: string, newRole: 'applicant' | 'admin' | 'head-admin') => {
         if (!firestore) return;
@@ -86,7 +101,7 @@ export function UserManagementClient({ currentUser }: { currentUser: User }) {
             toast({
                 variant: 'destructive',
                 title: 'Update failed',
-                description: error.message,
+                description: `Could not update role. This might be a mock user. Error: ${error.message}`,
             });
         }
     };
