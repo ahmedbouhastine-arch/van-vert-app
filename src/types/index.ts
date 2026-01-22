@@ -1,3 +1,4 @@
+
 import type { User as FirebaseUser } from 'firebase/auth';
 
 export type UserProfile = {
@@ -53,12 +54,3 @@ export type LicenseType = {
   description: string;
   documentRequirements: DocumentRequirement[];
 };
-
-// Remove the mock User type
-// export type User = {
-//   id: string;
-//   name: string;
-//   email: string;
-//   role: 'applicant' | 'admin';
-//   avatarUrl: string;
-// };

@@ -1,5 +1,5 @@
 
-import type { User, LicenseType, Application } from '@/types';
+import type { UserProfile, LicenseType, Application } from '@/types';
 
 // This file contains mock data. In a real application, this would come from a database.
 
@@ -142,4 +142,31 @@ export const applications: Application[] = [
       { id: 'appdoc24', docRequirementId: 'doc3', name: 'Medical Certificate', description: 'Valid aviation medical certificate', status: 'uploaded', requiresExpiry: true, fileName: 'medical.pdf', uploadedAt: new Date().toISOString(), expiryDate: nextYear.toISOString().split('T')[0] },
     ],
   }
+];
+
+export const mockUsers: (UserProfile & { id: string, photoURL?: string })[] = [
+    {
+        id: 'user1',
+        displayName: 'John Pilot',
+        email: 'john.pilot@example.com',
+        role: 'applicant',
+        createdAt: '2023-10-01T10:00:00Z',
+        photoURL: `https://picsum.photos/seed/user1/100/100`,
+    },
+    {
+        id: 'user2',
+        displayName: 'Jane Aviation',
+        email: 'jane.aviation@example.com',
+        role: 'applicant',
+        createdAt: '2023-11-15T14:30:00Z',
+        photoURL: `https://picsum.photos/seed/user2/100/100`,
+    },
+    {
+        id: 'admin-user-example',
+        displayName: 'Alex Admin',
+        email: 'alex.admin@example.com',
+        role: 'admin',
+        createdAt: '2023-09-20T08:00:00Z',
+        photoURL: `https://picsum.photos/seed/admin1/100/100`,
+    }
 ];
