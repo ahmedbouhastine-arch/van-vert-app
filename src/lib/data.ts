@@ -1,5 +1,5 @@
 
-import type { UserProfile, LicenseType, Application } from '@/types';
+import type { UserProfile, LicenseType, Application, AnalyticsDataPoint, AuditLogEntry } from '@/types';
 
 // This file contains mock data. In a real application, this would come from a database.
 
@@ -160,5 +160,61 @@ export const mockUsers: (UserProfile & { id: string, photoURL?: string })[] = [
         role: 'applicant',
         createdAt: '2023-11-15T14:30:00Z',
         photoURL: `https://picsum.photos/seed/user2/100/100`,
+    },
+    {
+        id: 'admin_user_id_1',
+        displayName: 'Alice Admin',
+        email: 'alice.admin@example.com',
+        role: 'admin',
+        createdAt: '2023-10-02T10:00:00Z',
+        photoURL: `https://picsum.photos/seed/user3/100/100`,
     }
+];
+
+export const analyticsData: AnalyticsDataPoint[] = [
+    { date: 'Jan 24', submitted: 15, approved: 10, rejected: 2 },
+    { date: 'Feb 24', submitted: 20, approved: 15, rejected: 3 },
+    { date: 'Mar 24', submitted: 25, approved: 20, rejected: 4 },
+    { date: 'Apr 24', submitted: 30, approved: 22, rejected: 5 },
+    { date: 'May 24', submitted: 28, approved: 25, rejected: 1 },
+    { date: 'Jun 24', submitted: 35, approved: 30, rejected: 3 },
+];
+
+export const auditLogs: AuditLogEntry[] = [
+    {
+        id: 'log1',
+        adminId: 'admin_user_id_1',
+        adminName: 'Alice Admin',
+        adminEmail: 'alice.admin@example.com',
+        action: 'Approved Application',
+        details: 'Application #app4 for CPL Conversion',
+        timestamp: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(),
+    },
+    {
+        id: 'log2',
+        adminId: 'head_admin_user_id',
+        adminName: 'admin test',
+        adminEmail: 'admin.test@example.com',
+        action: 'Updated User Role',
+        details: 'Changed role of Jane Aviation to Admin',
+        timestamp: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
+    },
+    {
+        id: 'log3',
+        adminId: 'admin_user_id_1',
+        adminName: 'Alice Admin',
+        adminEmail: 'alice.admin@example.com',
+        action: 'Rejected Application',
+        details: 'Application #app5 for ATPL Conversion',
+        timestamp: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(),
+    },
+     {
+        id: 'log4',
+        adminId: 'head_admin_user_id',
+        adminName: 'admin test',
+        adminEmail: 'admin.test@example.com',
+        action: 'Viewed Audit Log',
+        details: '',
+        timestamp: new Date(Date.now() - 4 * 24 * 60 * 60 * 1000).toISOString(),
+    },
 ];

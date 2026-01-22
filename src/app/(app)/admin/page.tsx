@@ -9,7 +9,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { FileText, UserCog } from "lucide-react";
+import { FileText, UserCog, LineChart, History } from "lucide-react";
 import { useUser } from "@/firebase";
 
 export default function AdminDashboardPage() {
@@ -39,6 +39,22 @@ export default function AdminDashboardPage() {
                 </Link>
             </CardContent>
         </Card>
+        <Card>
+            <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                    <LineChart className="h-6 w-6" />
+                    <span>Analytics</span>
+                </CardTitle>
+                <CardDescription>
+                    View application trends and statistics.
+                </CardDescription>
+            </CardHeader>
+            <CardContent>
+                <Link href="/admin/analytics">
+                    <Button>View Analytics</Button>
+                </Link>
+            </CardContent>
+        </Card>
         {isHeadAdmin && (
              <Card>
                 <CardHeader>
@@ -53,6 +69,24 @@ export default function AdminDashboardPage() {
                 <CardContent>
                     <Link href="/admin/users">
                         <Button>Manage Users</Button>
+                    </Link>
+                </CardContent>
+            </Card>
+        )}
+        {isHeadAdmin && (
+             <Card>
+                <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                        <History className="h-6 w-6" />
+                        <span>Audit Log</span>
+                    </CardTitle>
+                    <CardDescription>
+                        Track all administrative actions.
+                    </CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <Link href="/admin/audit-log">
+                        <Button>View Logs</Button>
                     </Link>
                 </CardContent>
             </Card>

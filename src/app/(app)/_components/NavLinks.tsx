@@ -3,7 +3,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, FileText, Settings, User, UserCog, LayoutDashboard } from "lucide-react";
+import { Home, FileText, Settings, User, UserCog, LayoutDashboard, LineChart, History } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 type NavLinkItem = {
@@ -18,7 +18,9 @@ const mainLinks: NavLinkItem[] = [
   { href: "/applications", icon: FileText, label: "Applications", for: "applicant" },
   { href: "/admin", icon: LayoutDashboard, label: "Dashboard", for: "admin" },
   { href: "/admin/applications", icon: FileText, label: "Applications", for: "admin" },
+  { href: "/admin/analytics", icon: LineChart, label: "Analytics", for: "admin" },
   { href: "/admin/users", icon: UserCog, label: "User Management", for: "head-admin" },
+  { href: "/admin/audit-log", icon: History, label: "Audit Log", for: "head-admin" },
 ];
 
 const secondaryLinks: NavLinkItem[] = [
