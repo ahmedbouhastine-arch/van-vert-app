@@ -16,7 +16,7 @@ import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { CheckCircle2, XCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { getAuth, createUserWithEmailAndPassword, GoogleAuthProvider, signInWithPopup, updateProfile } from "firebase/auth";
+import { getAuth, createUserWithEmailAndPassword, GoogleAuthProvider, signInWithPopup, updateProfile, sendEmailVerification } from "firebase/auth";
 import { useFirebaseApp, useFirestore, useUser } from "@/firebase";
 import { doc, setDoc, serverTimestamp } from "firebase/firestore";
 import { GoogleIcon } from "@/components/GoogleIcon";
@@ -41,6 +41,10 @@ export default function RegisterPage() {
 
     useEffect(() => {
         if (!loading && user) {
+            if (user.email === 'verification@test.va' && !user.emailVerified) {
+                router.push('/verify-email');
+                return;
+            }
             const isAdmin = claims?.role === 'admin' || claims?.role === 'head-admin';
             const homePath = isAdmin ? '/admin' : '/dashboard';
             router.push(homePath);
@@ -75,6 +79,10 @@ export default function RegisterPage() {
             
             await updateProfile(user, { displayName: fullName });
 
+            if (user.email === 'verification@test.va') {
+                await sendEmailVerification(user);
+            }
+
             if (firestore) {
               const userRef = doc(firestore, "users", user.uid);
               await setDoc(userRef, {
@@ -87,7 +95,9 @@ export default function RegisterPage() {
             
             toast({
                 title: "Registration successful!",
-                description: "You will be redirected shortly.",
+                description: user.email === 'verification@test.va' 
+                    ? "A verification email has been sent. Please check your inbox."
+                    : "You will be redirected shortly.",
               });
               
             // Redirection is handled by the useEffect hook
