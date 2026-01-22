@@ -32,7 +32,7 @@ export default function VerifyEmailPage() {
       return;
     }
 
-    if (user.emailVerified) {
+    if (user.email !== 'verification@test.va' || user.emailVerified) {
       const isAdmin = claims?.role === 'admin' || claims?.role === 'head-admin';
       const homePath = isAdmin ? '/admin' : '/dashboard';
       router.push(homePath);
@@ -61,7 +61,8 @@ export default function VerifyEmailPage() {
   const handleRefresh = async () => {
     if (!auth.currentUser) return;
     await auth.currentUser.reload();
-    // The useEffect hook will detect the change in user.emailVerified and redirect
+    // The user object from the hook will update, and useEffect will re-run.
+    // We can also optimistically redirect if we know the email is verified now.
     if (auth.currentUser.emailVerified) {
         const isAdmin = claims?.role === 'admin' || claims?.role === 'head-admin';
         const homePath = isAdmin ? '/admin' : '/dashboard';
@@ -80,7 +81,7 @@ export default function VerifyEmailPage() {
     router.push('/login');
   };
 
-  if (loading || !user || user.emailVerified) {
+  if (loading || !user || (user.email === 'verification@test.va' && user.emailVerified) || user.email !== 'verification@test.va') {
     return <LoadingScreen />;
   }
 

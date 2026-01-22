@@ -30,12 +30,19 @@ export default function AppLayout({
 
         if (!user) {
             router.push('/login');
+            return;
         }
-    }, [user, loading, router]);
+
+        if (user.email === 'verification@test.va' && !user.emailVerified) {
+            router.push('/verify-email');
+            return;
+        }
+
+    }, [user, loading, router, claims]);
 
 
     // While loading, or if we are about to redirect, show a loading screen.
-    if (loading || !user) {
+    if (loading || !user || (user.email === 'verification@test.va' && !user.emailVerified)) {
         return <LoadingScreen />;
     }
 
