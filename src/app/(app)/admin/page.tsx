@@ -53,10 +53,12 @@ export default function AdminDashboardPage() {
     return allUsers;
   }, [firestoreUsers]);
 
-  const allApplications = applications.map(app => {
-    const user = users?.find((u: any) => u.id === app.userId);
-    return { ...app, user };
-  });
+  const allApplications = applications
+    .filter((app) => app.status !== "draft")
+    .map(app => {
+      const user = users?.find((u: any) => u.id === app.userId);
+      return { ...app, user };
+    });
 
   return (
     <div className="flex flex-col gap-4">
