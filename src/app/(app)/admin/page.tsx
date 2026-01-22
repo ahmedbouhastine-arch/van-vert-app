@@ -37,7 +37,7 @@ import { useMemo } from "react";
 
 export default function AdminDashboardPage() {
   const firestore = useFirestore();
-  const usersQuery = firestore ? query(collection(firestore, "users")) : null;
+  const usersQuery = useMemo(() => firestore ? query(collection(firestore, "users")) : null, [firestore]);
   const { data: firestoreUsers, loading: usersLoading } = useCollection(usersQuery);
 
   const users = useMemo(() => {

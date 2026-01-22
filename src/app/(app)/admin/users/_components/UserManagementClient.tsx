@@ -70,7 +70,7 @@ function UserRow({ user, currentUser, onRoleChange }: { user: UserWithProfile, c
 
 export function UserManagementClient({ currentUser }: { currentUser: User }) {
     const firestore = useFirestore();
-    const usersQuery = firestore ? query(collection(firestore, "users")) : null;
+    const usersQuery = useMemo(() => firestore ? query(collection(firestore, "users")) : null, [firestore]);
     const { data: firestoreUsers, loading } = useCollection<UserWithProfile>(usersQuery);
     const { toast } = useToast();
 
