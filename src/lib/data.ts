@@ -86,7 +86,7 @@ export const applications: Application[] = [
   },
   {
     id: 'app3',
-    userId: 'user2', // A different user
+    userId: 'user1', // A different user
     licenseType: 'CPL Conversion',
     status: 'in_review',
     submittedAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(),
@@ -114,7 +114,7 @@ export const applications: Application[] = [
   },
   {
     id: 'app5',
-    userId: 'user2',
+    userId: 'user1',
     licenseType: 'ATPL Conversion',
     status: 'rejected',
     submittedAt: new Date(Date.now() - 20 * 24 * 60 * 60 * 1000).toISOString(),
@@ -147,8 +147,8 @@ export const applications: Application[] = [
 export const mockUsers: (UserProfile & { id: string, photoURL?: string })[] = [
     {
         id: 'user1',
-        displayName: 'John Pilot',
-        email: 'john.pilot@example.com',
+        displayName: 'Test User',
+        email: 'user@test.va',
         role: 'applicant',
         createdAt: '2023-10-01T10:00:00Z',
         photoURL: `https://picsum.photos/seed/user1/100/100`,
