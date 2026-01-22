@@ -3,7 +3,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, FileText, Users, Settings, User, UserCog } from "lucide-react";
+import { Home, FileText, Settings, User, UserCog, LayoutDashboard } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 type NavLinkItem = {
@@ -16,7 +16,8 @@ type NavLinkItem = {
 const mainLinks: NavLinkItem[] = [
   { href: "/dashboard", icon: Home, label: "Dashboard", for: "applicant" },
   { href: "/applications", icon: FileText, label: "Applications", for: "applicant" },
-  { href: "/admin", icon: Users, label: "Applications", for: "admin" },
+  { href: "/admin", icon: LayoutDashboard, label: "Dashboard", for: "admin" },
+  { href: "/admin/applications", icon: FileText, label: "Applications", for: "admin" },
   { href: "/admin/users", icon: UserCog, label: "User Management", for: "head-admin" },
 ];
 
@@ -38,7 +39,7 @@ const createLinks = (links: NavLinkItem[], claims: any, isMobile: boolean = fals
     });
 
     return filteredLinks.map(({ href, icon: Icon, label }) => {
-        const isActive = href === "/admin" 
+        const isActive = (href === "/admin" || href === "/dashboard")
             ? pathname === href 
             : (href === "/" ? pathname === href : pathname.startsWith(href));
         
