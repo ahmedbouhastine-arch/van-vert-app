@@ -54,3 +54,20 @@ export type LicenseType = {
   description: string;
   documentRequirements: DocumentRequirement[];
 };
+
+export type AnalyticsDataPoint = {
+  date: string;
+  submitted: number;
+  approved: number;
+  rejected: number;
+};
+
+export type AuditLogEntry = {
+  id: string;
+  adminId: string;
+  adminName: string;
+  adminEmail: string;
+  action: string;
+  timestamp: string;
+  details?: string;
+};
