@@ -6,7 +6,7 @@ import { AdminApplicationClient } from "./_components/AdminApplicationClient";
 import { useFirestore, useDoc } from "@/firebase";
 import { doc } from "firebase/firestore";
 import { LoadingScreen } from "@/components/LoadingScreen";
-import { use } from "react";
+import { use, useMemo } from "react";
 
 export default function AdminApplicationDetailPage({
   params,
@@ -21,7 +21,10 @@ export default function AdminApplicationDetailPage({
   }
 
   const firestore = useFirestore();
-  const userRef = firestore ? doc(firestore, 'users', application.userId) : null;
+  const userRef = useMemo(() => 
+    firestore ? doc(firestore, 'users', application.userId) : null,
+    [firestore, application.userId]
+  );
   const { data: user, loading } = useDoc(userRef);
 
   if (loading) {
