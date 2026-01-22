@@ -43,11 +43,17 @@ export function Breadcrumbs() {
     <Breadcrumb className="hidden md:flex">
       <BreadcrumbList>
         {segments.map((segment, index) => {
-          const href = "/" + segments.slice(0, index + 1).join("/");
+          const originalHref = "/" + segments.slice(0, index + 1).join("/");
+          let href = originalHref;
           const isLast = index === segments.length - 1;
+          
+          // When the path is /admin/applications/..., the "Applications" part should link back to /admin
+          if (segment === 'applications' && segments[0] === 'admin' && !isLast) {
+            href = '/admin';
+          }
 
           return (
-            <React.Fragment key={href}>
+            <React.Fragment key={originalHref}>
               <BreadcrumbItem>
                 {isLast ? (
                   <BreadcrumbPage>{formatSegment(segment)}</BreadcrumbPage>
