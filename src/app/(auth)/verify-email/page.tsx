@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useEffect, useTransition } from 'react';
@@ -32,7 +33,7 @@ export default function VerifyEmailPage() {
       return;
     }
 
-    if (user.email !== 'verification@test.va' || user.emailVerified) {
+    if (user.emailVerified) {
       const isAdmin = claims?.role === 'admin' || claims?.role === 'head-admin';
       const homePath = isAdmin ? '/admin' : '/dashboard';
       router.push(homePath);
@@ -81,7 +82,7 @@ export default function VerifyEmailPage() {
     router.push('/login');
   };
 
-  if (loading || !user || (user.email === 'verification@test.va' && user.emailVerified) || user.email !== 'verification@test.va') {
+  if (loading || !user || user.emailVerified) {
     return <LoadingScreen />;
   }
 

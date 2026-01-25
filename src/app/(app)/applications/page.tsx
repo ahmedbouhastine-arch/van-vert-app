@@ -1,3 +1,4 @@
+
 'use client';
 
 import Link from "next/link";
@@ -45,11 +46,8 @@ export default function MyApplicationsPage() {
   const [selectedFeedback, setSelectedFeedback] = useState<string | null>(null);
   if (!user) return null;
 
-  // If the user is the test user, show all applications for demonstration.
-  // Otherwise, only show applications belonging to the logged-in user.
-  const userApplications = user.email === 'user@test.va' 
-    ? applications
-    : applications.filter(app => app.userId === user.uid);
+  // Only show applications belonging to the logged-in user.
+  const userApplications = applications.filter(app => app.userId === user.uid);
 
   return (
     <div className="flex flex-col gap-4">

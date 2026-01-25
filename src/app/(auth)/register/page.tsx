@@ -1,3 +1,4 @@
+
 "use client";
 
 import Link from "next/link";
@@ -41,7 +42,8 @@ export default function RegisterPage() {
 
     useEffect(() => {
         if (!loading && user) {
-            if (user.email === 'verification@test.va' && !user.emailVerified) {
+            const isEmailPasswordUser = user.providerData.some(p => p.providerId === 'password');
+            if (isEmailPasswordUser && !user.emailVerified) {
                 router.push('/verify-email');
                 return;
             }
@@ -79,9 +81,7 @@ export default function RegisterPage() {
             
             await updateProfile(user, { displayName: fullName });
 
-            if (user.email === 'verification@test.va') {
-                await sendEmailVerification(user);
-            }
+            await sendEmailVerification(user);
 
             if (firestore) {
               const userRef = doc(firestore, "users", user.uid);
@@ -95,9 +95,7 @@ export default function RegisterPage() {
             
             toast({
                 title: "Registration successful!",
-                description: user.email === 'verification@test.va' 
-                    ? "A verification email has been sent. Please check your inbox."
-                    : "You will be redirected shortly.",
+                description: "A verification email has been sent. Please check your inbox.",
               });
               
             // Redirection is handled by the useEffect hook

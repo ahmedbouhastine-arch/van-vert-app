@@ -1,3 +1,4 @@
+
 'use client';
 
 import Link from "next/link";
@@ -32,8 +33,12 @@ export default function AppLayout({
             router.push('/login');
             return;
         }
+        
+        const isEmailPasswordUser = user.providerData.some(
+            (provider) => provider.providerId === 'password'
+        );
 
-        if (user.email === 'verification@test.va' && !user.emailVerified) {
+        if (isEmailPasswordUser && !user.emailVerified) {
             router.push('/verify-email');
             return;
         }
@@ -41,8 +46,12 @@ export default function AppLayout({
     }, [user, loading, router, claims]);
 
 
+    const isEmailPasswordUser = user?.providerData.some(
+        (provider) => provider.providerId === 'password'
+    );
+    
     // While loading, or if we are about to redirect, show a loading screen.
-    if (loading || !user || (user.email === 'verification@test.va' && !user.emailVerified)) {
+    if (loading || !user || (isEmailPasswordUser && !user.emailVerified)) {
         return <LoadingScreen />;
     }
 
