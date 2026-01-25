@@ -1,9 +1,10 @@
+
 'use client';
 
 import { applications } from "@/lib/data";
 import { notFound } from "next/navigation";
 import { AdminApplicationClient } from "./_components/AdminApplicationClient";
-import { useFirestore, useDoc } from "@/firebase";
+import { useFirestore, useDoc, useUser } from "@/firebase";
 import { doc } from "firebase/firestore";
 import { LoadingScreen } from "@/components/LoadingScreen";
 import { use, useMemo } from "react";
@@ -21,14 +22,16 @@ export default function AdminApplicationDetailPage({
   }
 
   const firestore = useFirestore();
+  const { claims, loading: claimsLoading } = useUser();
+
   const userRef = useMemo(() => 
     firestore ? doc(firestore, 'users', application.userId) : null,
     [firestore, application.userId]
   );
-  const { data: user, loading } = useDoc(userRef);
+  const { data: user, loading: userLoading } = useDoc(userRef);
 
-  if (loading) {
-    return <LoadingScreen text="Loading user..." />
+  if (userLoading || claimsLoading) {
+    return <LoadingScreen text="Loading application data..." />
   }
 
   return (
@@ -41,7 +44,7 @@ export default function AdminApplicationDetailPage({
                 Reviewing {user?.displayName}'s application for {application.licenseType}.
             </p>
         </div>
-        <AdminApplicationClient application={application} user={user} />
+        <AdminApplicationClient application={application} user={user} claims={claims} />
     </div>
   );
 }

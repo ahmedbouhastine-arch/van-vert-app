@@ -10,14 +10,14 @@ type NavLinkItem = {
   href: string;
   icon: React.ElementType;
   label: string;
-  for: "applicant" | "admin" | "head-admin" | "all";
+  for: "applicant" | "reviewer" | "admin" | "head-admin" | "all";
 };
 
 const mainLinks: NavLinkItem[] = [
   { href: "/dashboard", icon: Home, label: "Dashboard", for: "applicant" },
   { href: "/applications", icon: FileText, label: "Applications", for: "applicant" },
-  { href: "/admin", icon: LayoutDashboard, label: "Dashboard", for: "admin" },
-  { href: "/admin/applications", icon: FileText, label: "Applications", for: "admin" },
+  { href: "/admin", icon: LayoutDashboard, label: "Dashboard", for: "reviewer" },
+  { href: "/admin/applications", icon: FileText, label: "Applications", for: "reviewer" },
   { href: "/admin/analytics", icon: LineChart, label: "Analytics", for: "admin" },
   { href: "/admin/users", icon: UserCog, label: "User Management", for: "head-admin" },
   { href: "/admin/audit-log", icon: History, label: "Audit Log", for: "head-admin" },
@@ -35,6 +35,7 @@ const createLinks = (links: NavLinkItem[], claims: any, isMobile: boolean = fals
     const filteredLinks = links.filter(link => {
         if (link.for === 'all') return true;
         if (link.for === 'applicant' && role === 'applicant') return true;
+        if (link.for === 'reviewer' && (role === 'reviewer' || role === 'admin' || role === 'head-admin')) return true;
         if (link.for === 'admin' && (role === 'admin' || role === 'head-admin')) return true;
         if (link.for === 'head-admin' && role === 'head-admin') return true;
         return false;

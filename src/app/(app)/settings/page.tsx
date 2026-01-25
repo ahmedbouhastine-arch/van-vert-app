@@ -1,3 +1,4 @@
+
 'use client';
 
 import {
@@ -38,7 +39,7 @@ export default function SettingsPage() {
       return <LoadingScreen text="User not found." />;
     }
 
-    const handleRoleChange = async (newRole: 'applicant' | 'admin' | 'head-admin') => {
+    const handleRoleChange = async (newRole: 'applicant' | 'admin' | 'head-admin' | 'reviewer') => {
       if (!user || !firestore) return;
       const userRef = doc(firestore, "users", user.uid);
       try {
@@ -93,6 +94,7 @@ export default function SettingsPage() {
                     </SelectTrigger>
                     <SelectContent>
                         <SelectItem value="applicant">Applicant</SelectItem>
+                        <SelectItem value="reviewer">Reviewer</SelectItem>
                         <SelectItem value="admin">Admin</SelectItem>
                         <SelectItem value="head-admin">Head Admin</SelectItem>
                     </SelectContent>
