@@ -86,7 +86,15 @@ export function UserManagementClient({ currentUser }: { currentUser: User }) {
             }
         }
         
-        return allUsers;
+        // Deduplicate users by email to prevent duplicates from showing up in the UI
+        const seenEmails = new Set();
+        return allUsers.filter(user => {
+            if (!user.email || seenEmails.has(user.email)) {
+                return false;
+            }
+            seenEmails.add(user.email);
+            return true;
+        });
     }, [firestoreUsers]);
 
     const handleRoleChange = async (userId: string, newRole: 'applicant' | 'admin' | 'head-admin' | 'reviewer') => {
