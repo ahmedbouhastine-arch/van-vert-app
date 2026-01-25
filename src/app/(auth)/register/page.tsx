@@ -42,11 +42,6 @@ export default function RegisterPage() {
 
     useEffect(() => {
         if (!loading && user) {
-            const isEmailPasswordUser = user.providerData.some(p => p.providerId === 'password');
-            if (isEmailPasswordUser && !user.emailVerified) {
-                router.push('/verify-email');
-                return;
-            }
             const isAdmin = claims?.role === 'admin' || claims?.role === 'head-admin';
             const homePath = isAdmin ? '/admin' : '/dashboard';
             router.push(homePath);
@@ -81,8 +76,6 @@ export default function RegisterPage() {
             
             await updateProfile(user, { displayName: fullName });
 
-            await sendEmailVerification(user);
-
             if (firestore) {
               const userRef = doc(firestore, "users", user.uid);
               await setDoc(userRef, {
@@ -95,7 +88,7 @@ export default function RegisterPage() {
             
             toast({
                 title: "Registration successful!",
-                description: "A verification email has been sent. Please check your inbox.",
+                description: "You can now log in with your new account.",
               });
               
             // Redirection is handled by the useEffect hook

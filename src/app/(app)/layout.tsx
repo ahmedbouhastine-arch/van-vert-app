@@ -32,29 +32,11 @@ export default function AppLayout({
             router.push('/login');
             return;
         }
-        
-        const isEmailPasswordUser = user.providerData.some(
-            (provider) => provider.providerId === 'password'
-        );
-
-        const isTestAccount = user.email === 'admin.test@example.com' || user.email?.endsWith('@test.va');
-
-        if (isEmailPasswordUser && !user.emailVerified && !isTestAccount) {
-            router.push('/verify-email');
-            return;
-        }
 
     }, [user, loading, router]);
-
-
-    const isEmailPasswordUser = user?.providerData.some(
-        (provider) => provider.providerId === 'password'
-    );
-    
-    const isTestAccount = user?.email === 'admin.test@example.com' || user?.email?.endsWith('@test.va');
     
     // While loading, or if we are about to redirect, show a loading screen.
-    if (loading || !user || (isEmailPasswordUser && !user.emailVerified && !isTestAccount)) {
+    if (loading || !user) {
         return <LoadingScreen />;
     }
 
