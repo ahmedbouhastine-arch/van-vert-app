@@ -15,7 +15,7 @@ import { mockUsers as mockUserExamples } from "@/lib/data";
 
 type UserWithProfile = UserProfile & { id: string; photoURL?: string; };
 
-function UserRow({ user, currentUser, onRoleChange }: { user: UserWithProfile, currentUser: User, onRoleChange: (userId: string, role: 'applicant' | 'admin' | 'head-admin') => void }) {
+function UserRow({ user, currentUser, onRoleChange }: { user: UserWithProfile, currentUser: User, onRoleChange: (userId: string, role: 'applicant' | 'admin' | 'head-admin' | 'reviewer') => void }) {
     const [selectedRole, setSelectedRole] = useState(user.role);
     const { toast } = useToast();
 
@@ -51,6 +51,7 @@ function UserRow({ user, currentUser, onRoleChange }: { user: UserWithProfile, c
                         </SelectTrigger>
                         <SelectContent>
                             <SelectItem value="applicant">Applicant</SelectItem>
+                            <SelectItem value="reviewer">Reviewer</SelectItem>
                             <SelectItem value="admin">Admin</SelectItem>
                             <SelectItem value="head-admin">Head Admin</SelectItem>
                         </SelectContent>
@@ -88,7 +89,7 @@ export function UserManagementClient({ currentUser }: { currentUser: User }) {
         return allUsers;
     }, [firestoreUsers]);
 
-    const handleRoleChange = async (userId: string, newRole: 'applicant' | 'admin' | 'head-admin') => {
+    const handleRoleChange = async (userId: string, newRole: 'applicant' | 'admin' | 'head-admin' | 'reviewer') => {
         if (!firestore) return;
         const userRef = doc(firestore, "users", userId);
         try {

@@ -50,9 +50,11 @@ async function checkExpiryAction(documents: ApplicationDocument[]) {
 function DocumentReviewCard({
   doc,
   onStatusChange,
+  isReviewer,
 }: {
   doc: ApplicationDocument;
   onStatusChange: (docId: string, status: DocumentStatus) => void;
+  isReviewer: boolean;
 }) {
   const documentStatuses: DocumentStatus[] = [
     "uploaded",
@@ -72,6 +74,7 @@ function DocumentReviewCard({
             <Select
               value={doc.status}
               onValueChange={(val) => onStatusChange(doc.id, val as DocumentStatus)}
+              disabled={isReviewer}
             >
               <SelectTrigger className="h-9 capitalize">
                 <SelectValue placeholder="Set status..." />
@@ -131,15 +134,18 @@ function DocumentReviewCard({
 export function AdminApplicationClient({
   application: initialApplication,
   user,
+  claims,
 }: {
   application: Application;
   user?: UserProfile;
+  claims: any;
 }) {
   const [appState, setAppState] = useState<Application>(initialApplication);
   const [feedback, setFeedback] = useState(initialApplication.feedback || "");
   const [status, setStatus] = useState<ApplicationStatus>(initialApplication.status);
   const [isPending, startTransition] = useTransition();
   const { toast } = useToast();
+  const isReviewer = claims?.role === 'reviewer';
   
   const handleCheckExpiry = () => {
     startTransition(async () => {
@@ -209,7 +215,7 @@ export function AdminApplicationClient({
         <div className="grid gap-4">
             <h2 className="font-semibold text-lg">Uploaded Documents</h2>
             {appState.documents.map((doc) => (
-            <DocumentReviewCard key={doc.id} doc={doc} onStatusChange={handleDocumentStatusChange} />
+            <DocumentReviewCard key={doc.id} doc={doc} onStatusChange={handleDocumentStatusChange} isReviewer={isReviewer} />
             ))}
         </div>
         <div className="grid gap-6">
@@ -220,7 +226,7 @@ export function AdminApplicationClient({
                 <CardContent className="space-y-6">
                     <div>
                         <Label htmlFor="status" className="mb-2 block">Application Status</Label>
-                        <Select value={status} onValueChange={(val) => setStatus(val as ApplicationStatus)}>
+                        <Select value={status} onValueChange={(val) => setStatus(val as ApplicationStatus)} disabled={isReviewer}>
                             <SelectTrigger id="status">
                                 <SelectValue placeholder="Change status..." />
                             </SelectTrigger>
@@ -237,12 +243,13 @@ export function AdminApplicationClient({
                             value={feedback}
                             onChange={(e) => setFeedback(e.target.value)}
                             rows={5}
+                            readOnly={isReviewer}
                         />
                     </div>
                     <Button onClick={handleCheckExpiry} disabled={isPending} variant="secondary" className="w-full">
                         <Bot className="mr-2 h-4 w-4" /> {isPending ? 'Checking...' : 'AI Check Document Expiry'}
                     </Button>
-                    <Button onClick={handleSaveChanges} disabled={isPending} className="w-full">
+                    <Button onClick={handleSaveChanges} disabled={isPending || isReviewer} className="w-full">
                         <Save className="mr-2 h-4 w-4" /> {isPending ? 'Saving...' : 'Save Changes'}
                     </Button>
                 </CardContent>

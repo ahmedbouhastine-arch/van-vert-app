@@ -15,6 +15,7 @@ import { useUser } from "@/firebase";
 export default function AdminDashboardPage() {
     const { claims } = useUser();
     const isHeadAdmin = claims?.role === 'head-admin';
+    const isAdmin = claims?.role === 'admin' || isHeadAdmin;
 
   return (
     <div className="flex flex-col gap-4">
@@ -39,22 +40,24 @@ export default function AdminDashboardPage() {
                 </Link>
             </CardContent>
         </Card>
-        <Card>
-            <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                    <LineChart className="h-6 w-6" />
-                    <span>Analytics</span>
-                </CardTitle>
-                <CardDescription>
-                    View application trends and statistics.
-                </CardDescription>
-            </CardHeader>
-            <CardContent>
-                <Link href="/admin/analytics">
-                    <Button>View Analytics</Button>
-                </Link>
-            </CardContent>
-        </Card>
+        {isAdmin && (
+            <Card>
+                <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                        <LineChart className="h-6 w-6" />
+                        <span>Analytics</span>
+                    </CardTitle>
+                    <CardDescription>
+                        View application trends and statistics.
+                    </CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <Link href="/admin/analytics">
+                        <Button>View Analytics</Button>
+                    </Link>
+                </CardContent>
+            </Card>
+        )}
         {isHeadAdmin && (
              <Card>
                 <CardHeader>
