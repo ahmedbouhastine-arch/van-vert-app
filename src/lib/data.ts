@@ -169,14 +169,6 @@ export const mockUsers: (UserProfile & { id: string, photoURL?: string })[] = [
         createdAt: '2023-10-02T10:00:00Z',
         photoURL: `https://picsum.photos/seed/user3/100/100`,
     },
-    {
-        id: 'reviewer_user_id_1',
-        displayName: 'Rachel Reviewer',
-        email: 'rachel.reviewer@example.com',
-        role: 'reviewer',
-        createdAt: '2023-10-03T10:00:00Z',
-        photoURL: `https://picsum.photos/seed/user4/100/100`,
-    }
 ];
 
 export const analyticsData: AnalyticsDataPoint[] = [
