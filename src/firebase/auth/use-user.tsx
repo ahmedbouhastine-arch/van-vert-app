@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, createContext, useContext } from 'react';
 import { onAuthStateChanged, type User } from 'firebase/auth';
 import { useAuth, useFirestore } from '../provider';
 import { doc, onSnapshot, type DocumentData } from 'firebase/firestore';
@@ -11,47 +11,51 @@ interface AuthState {
   loading: boolean;
 }
 
-export function useUser(): AuthState {
+const UserContext = createContext<AuthState | undefined>(undefined);
+
+export function UserProvider({ children }: { children: React.ReactNode }) {
   const auth = useAuth();
   const firestore = useFirestore();
-  const [user, setUser] = useState<User | null>(() => auth.currentUser);
-  const [claims, setClaims] = useState<DocumentData | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [state, setState] = useState<AuthState>({
+      user: null,
+      claims: null,
+      loading: true,
+  });
 
   useEffect(() => {
     const unsubscribeAuth = onAuthStateChanged(auth, (authUser) => {
-      setUser(authUser);
-      // If user logs out, we are done loading.
-      if (!authUser) {
-        setClaims(null);
-        setLoading(false);
+      if (authUser) {
+          // User is signed in.
+          if (!firestore) return;
+          const userDocRef = doc(firestore, `users/${authUser.uid}`);
+          const unsubscribeClaims = onSnapshot(userDocRef, (snapshot) => {
+              let userClaims = snapshot.data() || null;
+              if (userClaims && authUser?.displayName === 'admin test') {
+                  userClaims.role = 'head-admin';
+              }
+              setState({ user: authUser, claims: userClaims, loading: false });
+          }, (error) => {
+              console.error("Error fetching user document:", error);
+              setState({ user: authUser, claims: null, loading: false });
+          });
+          return unsubscribeClaims;
+      } else {
+          // User is signed out.
+          setState({ user: null, claims: null, loading: false });
+          return;
       }
     });
 
     return () => unsubscribeAuth();
-  }, [auth]);
+  }, [auth, firestore]);
+  
+  return <UserContext.Provider value={state}>{children}</UserContext.Provider>;
+}
 
-  useEffect(() => {
-    // This effect runs when `user` state changes.
-    if (user && firestore) {
-      setLoading(true); // Start loading claims for the new user.
-      const userDocRef = doc(firestore, `users/${user.uid}`);
-      const unsubscribeClaims = onSnapshot(userDocRef, (snapshot) => {
-        let userClaims = snapshot.data() || null;
-        if (userClaims && user?.displayName === 'admin test') {
-            userClaims.role = 'head-admin';
-        }
-        setClaims(userClaims);
-        setLoading(false); // Claims are loaded (or not found), so loading is finished.
-      }, (error) => {
-        console.error("Error fetching user document:", error);
-        setClaims(null);
-        setLoading(false); // Also finished loading on error.
-      });
-
-      return () => unsubscribeClaims();
+export function useUser(): AuthState {
+    const context = useContext(UserContext);
+    if (context === undefined) {
+        throw new Error('useUser must be used within a UserProvider');
     }
-  }, [user, firestore]);
-
-  return { user, claims, loading };
+    return context;
 }

@@ -8,7 +8,7 @@ import { firebaseConfig } from './config';
 
 import { FirebaseClientProvider } from './client-provider';
 import { FirebaseProvider, useFirebase, useFirebaseApp, useAuth, useFirestore } from './provider';
-import { useUser } from './auth/use-user';
+import { useUser, UserProvider } from './auth/use-user';
 import { useCollection } from './firestore/use-collection';
 import { useDoc } from './firestore/use-doc';
 
@@ -26,6 +26,7 @@ export {
   firebaseConfig,
   FirebaseProvider,
   FirebaseClientProvider,
+  UserProvider,
   useFirebase,
   useFirebaseApp,
   useAuth,
