@@ -33,14 +33,9 @@ export default function AppLayout({
             return;
         }
 
-        if (!user.emailVerified) {
-            router.push('/verify-email');
-            return;
-        }
-
     }, [user, loading, router]);
     
-    if (loading || !user || !user.emailVerified) {
+    if (loading || !user) {
         return <LoadingScreen />;
     }
 
