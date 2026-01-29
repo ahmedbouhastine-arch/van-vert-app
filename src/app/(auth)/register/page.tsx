@@ -76,6 +76,7 @@ export default function RegisterPage() {
             const user = userCredential.user;
             
             await updateProfile(user, { displayName: fullName });
+            await sendEmailVerification(user);
 
             if (firestore) {
               const userRef = doc(firestore, "users", user.uid);
@@ -89,10 +90,10 @@ export default function RegisterPage() {
             
             toast({
                 title: "Registration successful!",
-                description: "You can now log in with your new account.",
+                description: "A verification email has been sent. Please check your inbox.",
               });
               
-            // Redirection is handled by the useEffect hook
+            router.push('/login');
         } catch (error: any) {
             toast({
                 variant: 'destructive',
