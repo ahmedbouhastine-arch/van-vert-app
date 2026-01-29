@@ -3,17 +3,17 @@
 
 import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
-import { useUser } from '@/firebase';
-import { getAuth, signOut, sendEmailVerification } from 'firebase/auth';
+import { useUser, useAuth } from '@/firebase';
+import { signOut, sendEmailVerification } from 'firebase/auth';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { LoadingScreen } from '@/components/LoadingScreen';
 
 export default function VerifyEmailPage() {
-    const { user, loading } = useUser();
+    const { user, loading, claims } = useUser();
     const router = useRouter();
-    const auth = getAuth();
+    const auth = useAuth();
     const { toast } = useToast();
 
     useEffect(() => {
@@ -25,10 +25,11 @@ export default function VerifyEmailPage() {
             return;
         }
         if (user.emailVerified) {
-            const homePath = user.providerData?.[0]?.providerId === 'password' ? '/dashboard' : '/admin';
+            const isAdmin = claims?.role === 'admin' || claims?.role === 'head-admin' || claims?.role === 'reviewer';
+            const homePath = isAdmin ? '/admin' : '/dashboard';
             router.push(homePath);
         }
-    }, [user, loading, router]);
+    }, [user, loading, claims, router]);
 
     const handleResend = async () => {
         if (user) {

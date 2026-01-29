@@ -12,8 +12,8 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { useUser } from "@/firebase";
-import { getAuth, signOut } from "firebase/auth";
+import { useUser, useAuth } from "@/firebase";
+import { signOut } from "firebase/auth";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useToast } from "@/hooks/use-toast";
@@ -21,7 +21,7 @@ import { useToast } from "@/hooks/use-toast";
 export function UserNav() {
   const router = useRouter();
   const { user } = useUser();
-  const auth = getAuth();
+  const auth = useAuth();
   const { toast } = useToast();
 
   const handleLogout = async () => {
