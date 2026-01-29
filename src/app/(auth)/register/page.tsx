@@ -76,7 +76,6 @@ export default function RegisterPage() {
             const user = userCredential.user;
             
             await updateProfile(user, { displayName: fullName });
-            await sendEmailVerification(user);
 
             if (firestore) {
               const userRef = doc(firestore, "users", user.uid);
@@ -90,7 +89,7 @@ export default function RegisterPage() {
             
             toast({
                 title: "Registration successful!",
-                description: "A verification email has been sent. Please check your inbox.",
+                description: "You can now log in.",
               });
               
             router.push('/login');
