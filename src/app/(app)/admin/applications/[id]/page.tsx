@@ -7,15 +7,14 @@ import { AdminApplicationClient } from "./_components/AdminApplicationClient";
 import { useFirestore, useDoc, useUser } from "@/firebase";
 import { doc } from "firebase/firestore";
 import { LoadingScreen } from "@/components/LoadingScreen";
-import { use, useMemo } from "react";
+import { useMemo } from "react";
 
 export default function AdminApplicationDetailPage({
   params,
 }: {
   params: { id: string };
 }) {
-  const resolvedParams = use(params);
-  const application = applications.find((app) => app.id === resolvedParams.id);
+  const application = applications.find((app) => app.id === params.id);
   
   if (!application) {
     notFound();
