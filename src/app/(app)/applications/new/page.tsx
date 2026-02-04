@@ -11,6 +11,19 @@ import { Button } from "@/components/ui/button";
 import { ArrowRight } from "lucide-react";
 
 export default function NewApplicationPage() {
+  const getAppIdForLicense = (licenseId: string) => {
+    switch (licenseId) {
+      case "ppl":
+        return "app1";
+      case "cpl":
+        return "app2";
+      case "atpl":
+        return "app3";
+      default:
+        return "app1";
+    }
+  };
+
   return (
     <div className="mx-auto grid w-full max-w-4xl gap-4">
       <div className="flex flex-col gap-2">
@@ -29,8 +42,8 @@ export default function NewApplicationPage() {
               <CardDescription>{license.description}</CardDescription>
             </CardHeader>
             <CardContent>
-                {/* In a real app, this would create a new application */}
-              <Link href="/applications/app1">
+              {/* In a real app, this would create a new application */}
+              <Link href={`/applications/${getAppIdForLicense(license.id)}`}>
                 <Button>
                   Start Application <ArrowRight className="ml-2 h-4 w-4" />
                 </Button>

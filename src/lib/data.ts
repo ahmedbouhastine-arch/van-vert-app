@@ -108,35 +108,88 @@ const mockFlightLogs: FlightLog[] = [
     { id: 'fl8', date: new Date(new Date().setMonth(new Date().getMonth() - 7)).toISOString().split('T')[0], duration: 5.0, aircraft: 'Cessna 172', remarks: 'Old flight' },
 ];
 
+const testUserId = 'user-test-va-id';
+
+export const mockUsers: (UserProfile & { id: string, photoURL?: string })[] = [
+    {
+        id: testUserId,
+        email: 'user@test.va',
+        displayName: 'Test VA User',
+        role: 'applicant',
+        createdAt: new Date().toISOString(),
+        photoURL: 'https://images.unsplash.com/photo-1590086782792-42dd2350140d?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw0fHxwZXJzb24lMjBwb3J0cmFpdHxlbnwwfHx8fDE3Njg0NTYzODZ8MA&ixlib=rb-4.1.0&q=80&w=1080',
+    }
+];
 
 export const applications: Application[] = [
   {
     id: 'app1',
-    userId: 'user1',
+    userId: testUserId,
+    licenseType: 'PPL Conversion',
+    status: 'submitted',
+    submittedAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(),
+    updatedAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(),
+    feedback: undefined,
+    documents: licenseTypes.find(lt => lt.id === 'ppl')!.documentRequirements.map((req, i) => ({
+        id: `app1-doc${i}`,
+        docRequirementId: req.id,
+        name: req.name,
+        description: req.description,
+        status: 'uploaded',
+        requiresExpiry: req.requiresExpiry,
+        fileName: `${req.name.replace(/ /g, '_').toLowerCase()}.pdf`,
+        uploadedAt: new Date().toISOString(),
+        expiryDate: req.requiresExpiry ? nextYear.toISOString().split('T')[0] : undefined,
+    })),
+    flightLogs: mockFlightLogs,
+  },
+  {
+    id: 'app2',
+    userId: testUserId,
+    licenseType: 'CPL Conversion',
+    status: 'in_review',
+    submittedAt: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString(),
+    updatedAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
+    feedback: "Your medical certificate is Class 2, but a Class 1 is required for a CPL. Please upload the correct document.",
+    documents: licenseTypes.find(lt => lt.id === 'cpl')!.documentRequirements.map((req, i) => {
+        const isMedical = req.id === documentRequirements.medicalCertClass1.id;
+        return {
+            id: `app2-doc${i}`,
+            docRequirementId: req.id,
+            name: req.name,
+            description: req.description,
+            status: isMedical ? 'needs_attention' : 'approved',
+            requiresExpiry: req.requiresExpiry,
+            fileName: `${req.name.replace(/ /g, '_').toLowerCase()}.pdf`,
+            uploadedAt: new Date().toISOString(),
+            expiryDate: req.requiresExpiry ? nextYear.toISOString().split('T')[0] : undefined,
+        }
+    }),
+    flightLogs: mockFlightLogs,
+  },
+  {
+    id: 'app3',
+    userId: testUserId,
     licenseType: 'ATPL Conversion',
     status: 'draft',
     submittedAt: undefined,
     updatedAt: new Date().toISOString(),
     feedback: "Please double-check the expiry date on your medical certificate.",
-    documents: [
-      { id: 'appdoc1', docRequirementId: 'doc1', name: documentRequirements.photoId.name, description: documentRequirements.photoId.description, status: 'uploaded', requiresExpiry: true, fileName: 'passport.pdf', uploadedAt: new Date().toISOString(), expiryDate: nextYear.toISOString().split('T')[0] },
-      { id: 'appdoc2', docRequirementId: 'doc17', name: documentRequirements.atplLicense.name, description: documentRequirements.atplLicense.description, status: 'missing', requiresExpiry: true },
-      { id: 'appdoc3', docRequirementId: 'doc4', name: documentRequirements.licenseVerification.name, description: documentRequirements.licenseVerification.description, status: 'missing', requiresExpiry: false },
-      { id: 'appdoc4', docRequirementId: 'doc18', name: documentRequirements.logbookATPL.name, description: documentRequirements.logbookATPL.description, status: 'missing', requiresExpiry: false },
-      { id: 'appdoc5', docRequirementId: 'doc13', name: documentRequirements.medicalCertClass1.name, description: documentRequirements.medicalCertClass1.description, status: 'uploaded', requiresExpiry: true, fileName: 'medical.pdf', uploadedAt: new Date().toISOString(), expiryDate: nextYear.toISOString().split('T')[0] },
-      { id: 'appdoc6', docRequirementId: 'doc19', name: documentRequirements.typeRating.name, description: documentRequirements.typeRating.description, status: 'missing', requiresExpiry: true },
-      { id: 'appdoc7', docRequirementId: 'doc20', name: documentRequirements.simRecords.name, description: documentRequirements.simRecords.description, status: 'missing', requiresExpiry: false },
-      { id: 'appdoc8', docRequirementId: 'doc21', name: documentRequirements.operatorExperience.name, description: documentRequirements.operatorExperience.description, status: 'missing', requiresExpiry: false },
-      { id: 'appdoc9', docRequirementId: 'doc22', name: documentRequirements.advancedTheoryATPL.name, description: documentRequirements.advancedTheoryATPL.description, status: 'missing', requiresExpiry: false },
-      { id: 'appdoc10', docRequirementId: 'doc5', name: documentRequirements.englishProficiency.name, description: documentRequirements.englishProficiency.description, status: 'uploaded', requiresExpiry: true, fileName: 'english_test.pdf', uploadedAt: new Date().toISOString(), expiryDate: nextYear.toISOString().split('T')[0] },
-      { id: 'appdoc11', docRequirementId: 'doc3', name: documentRequirements.photos.name, description: documentRequirements.photos.description, status: 'missing', requiresExpiry: false },
-      { id: 'appdoc12', docRequirementId: 'doc2', name: documentRequirements.applicationForm.name, description: documentRequirements.applicationForm.description, status: 'missing', requiresExpiry: false },
-    ],
+    documents: licenseTypes.find(lt => lt.id === 'atpl')!.documentRequirements.map((req, i) => ({
+      id: `app3-doc${i}`,
+      docRequirementId: req.id,
+      name: req.name,
+      description: req.description,
+      status: i < 3 ? 'uploaded' : 'missing',
+      requiresExpiry: req.requiresExpiry,
+      fileName: i < 3 ? `${req.name.replace(/ /g, '_').toLowerCase()}.pdf` : undefined,
+      uploadedAt: i < 3 ? new Date().toISOString() : undefined,
+      expiryDate: i < 3 && req.requiresExpiry ? nextYear.toISOString().split('T')[0] : undefined,
+    })),
     flightLogs: mockFlightLogs,
   },
 ];
 
-export const mockUsers: (UserProfile & { id: string, photoURL?: string })[] = [];
 
 export const analyticsData: AnalyticsDataPoint[] = [
     { date: 'Jan 24', submitted: 15, approved: 10, rejected: 2 },
