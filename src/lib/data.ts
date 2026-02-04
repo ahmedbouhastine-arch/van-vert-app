@@ -4,24 +4,53 @@ import type { UserProfile, LicenseType, Application, AnalyticsDataPoint, AuditLo
 // This file contains mock data. In a real application, this would come from a database.
 
 export const documentRequirements = {
-  photoId: { id: 'doc1', name: 'Photo ID', description: 'Government-issued photo ID (e.g., Passport, Driver\'s License)', requiresExpiry: true },
-  pilotLicense: { id: 'doc2', name: 'Pilot License', description: 'Your current pilot license certificate', requiresExpiry: true },
-  medicalCert: { id: 'doc3', name: 'Medical Certificate', description: 'Valid aviation medical certificate', requiresExpiry: true },
-  logbook: { id: 'doc4', name: 'Logbook Summary', description: 'Last 5 pages of your pilot logbook', requiresExpiry: false },
-  englishProficiency: { id: 'doc5', name: 'English Proficiency', description: 'English language proficiency test results (Level 4 or higher)', requiresExpiry: true },
-};
+    // Common
+    photoId: { id: 'doc1', name: 'Passport or National ID', description: 'A clear, valid copy of your passport or national ID.', requiresExpiry: true },
+    applicationForm: { id: 'doc2', name: 'Application Form & Payment', description: 'Completed application form and proof of payment.', requiresExpiry: false },
+    photos: { id: 'doc3', name: 'Passport-Style Photos', description: 'Two recent, identical passport-style photographs.', requiresExpiry: false },
+    licenseVerification: { id: 'doc4', name: 'License Verification Letter', description: 'An official verification letter from the license-issuing authority.', requiresExpiry: false },
+    englishProficiency: { id: 'doc5', name: 'English Proficiency Certificate', description: 'Proof of English proficiency, ICAO Level 4 or higher.', requiresExpiry: true },
+    
+    // PPL
+    pplLicense: { id: 'doc6', name: 'Existing PPL License', description: 'A copy of your current Private Pilot License.', requiresExpiry: true },
+    logbookPPL: { id: 'doc7', name: 'Pilot Logbook', description: 'Copies showing total hours and recent flights.', requiresExpiry: false },
+    medicalCertClass2: { id: 'doc8', name: 'Class 2 Medical Certificate', description: 'A valid Class 2 or higher medical certificate.', requiresExpiry: true },
+    airLawExam: { id: 'doc9', name: 'Air Law Exam Proof', description: 'Proof of passing the local air law or regulations exam.', requiresExpiry: false },
+    rtLicense: { id: 'doc10', name: 'Radio Telephony (RT) License', description: 'Your current Radio Telephony license or certificate, if applicable.', requiresExpiry: true },
+    
+    // CPL
+    cplLicense: { id: 'doc11', name: 'Existing CPL License', description: 'A copy of your current Commercial Pilot License.', requiresExpiry: true },
+    logbookCPL: { id: 'doc12', name: 'Detailed Logbook Summary', description: 'Logbook copies showing PIC, cross-country, night, and instrument hours.', requiresExpiry: false },
+    medicalCertClass1: { id: 'doc13', name: 'Class 1 Medical Certificate', description: 'A valid Class 1 medical certificate.', requiresExpiry: true },
+    instrumentRating: { id: 'doc14', name: 'Instrument Rating Certificate', description: 'Your current Instrument Rating certificate, if held.', requiresExpiry: true },
+    multiEngineRating: { id: 'doc15', name: 'Multi-Engine Rating Certificate', description: 'Your current Multi-Engine rating certificate, if held.', requiresExpiry: true },
+    atplTheory: { id: 'doc16', name: 'ATPL Theory Credits', description: 'Exam results for ATPL theory credits or conversion exams.', requiresExpiry: false },
+  
+    // ATPL
+    atplLicense: { id: 'doc17', name: 'Existing ATPL License', description: 'A copy of your current ATPL or "Frozen" ATPL.', requiresExpiry: true },
+    logbookATPL: { id: 'doc18', name: 'Flight Time Breakdown', description: 'A complete, certified breakdown of your flight time (e.g., from your airline).', requiresExpiry: false },
+    typeRating: { id: 'doc19', name: 'Type Rating Certificates', description: 'Copies of all current type rating certificates.', requiresExpiry: true },
+    simRecords: { id: 'doc20', name: 'Simulator Training Records', description: 'Recent simulator proficiency or recurrent training records.', requiresExpiry: false },
+    operatorExperience: { id: 'doc21', name: 'Operator Experience Letters', description: 'Letters of employment or records from previous operators.', requiresExpiry: false },
+    advancedTheory: { id: 'doc22', name: 'Advanced Theory Exam Results', description: 'Results from any required advanced theory conversion exams.', requiresExpiry: false },
+  };
 
 export const licenseTypes: LicenseType[] = [
   {
-    id: 'atpl',
-    name: 'ATPL Conversion',
-    description: 'Convert your foreign Airline Transport Pilot License.',
+    id: 'ppl',
+    name: 'PPL Conversion',
+    description: 'Convert your foreign Private Pilot License.',
     documentRequirements: [
-      documentRequirements.photoId,
-      documentRequirements.pilotLicense,
-      documentRequirements.medicalCert,
-      documentRequirements.logbook,
-      documentRequirements.englishProficiency,
+        documentRequirements.photoId,
+        documentRequirements.pplLicense,
+        documentRequirements.licenseVerification,
+        documentRequirements.logbookPPL,
+        documentRequirements.medicalCertClass2,
+        documentRequirements.englishProficiency,
+        documentRequirements.photos,
+        documentRequirements.airLawExam,
+        documentRequirements.rtLicense,
+        documentRequirements.applicationForm,
     ],
   },
   {
@@ -29,28 +58,40 @@ export const licenseTypes: LicenseType[] = [
     name: 'CPL Conversion',
     description: 'Convert your foreign Commercial Pilot License.',
     documentRequirements: [
-      documentRequirements.photoId,
-      documentRequirements.pilotLicense,
-      documentRequirements.medicalCert,
-      documentRequirements.logbook,
+        documentRequirements.photoId,
+        documentRequirements.cplLicense,
+        documentRequirements.licenseVerification,
+        documentRequirements.logbookCPL,
+        documentRequirements.medicalCertClass1,
+        documentRequirements.instrumentRating,
+        documentRequirements.multiEngineRating,
+        documentRequirements.atplTheory,
+        documentRequirements.englishProficiency,
+        documentRequirements.photos,
+        documentRequirements.applicationForm,
     ],
   },
   {
-    id: 'ppl',
-    name: 'PPL Validation',
-    description: 'Validate your foreign Private Pilot License for local use.',
+    id: 'atpl',
+    name: 'ATPL Conversion',
+    description: 'Convert your foreign Airline Transport Pilot License.',
     documentRequirements: [
-      documentRequirements.photoId,
-      documentRequirements.pilotLicense,
-      documentRequirements.medicalCert,
+        documentRequirements.photoId,
+        documentRequirements.atplLicense,
+        documentRequirements.licenseVerification,
+        documentRequirements.logbookATPL,
+        documentRequirements.medicalCertClass1,
+        documentRequirements.typeRating,
+        documentRequirements.simRecords,
+        documentRequirements.operatorExperience,
+        documentRequirements.advancedTheory,
+        documentRequirements.englishProficiency,
+        documentRequirements.photos,
+        documentRequirements.applicationForm,
     ],
   },
 ];
 
-const tomorrow = new Date();
-tomorrow.setDate(tomorrow.getDate() + 1);
-const nextMonth = new Date();
-nextMonth.setMonth(nextMonth.getMonth() + 1);
 const nextYear = new Date();
 nextYear.setFullYear(nextYear.getFullYear() + 1);
 
@@ -64,84 +105,20 @@ export const applications: Application[] = [
     updatedAt: new Date().toISOString(),
     feedback: "Please double-check the expiry date on your medical certificate.",
     documents: [
-      { id: 'appdoc1', docRequirementId: 'doc1', name: 'Photo ID', description: 'Government-issued photo ID (e.g., Passport, Driver\'s License)', status: 'uploaded', requiresExpiry: true, fileName: 'passport.pdf', uploadedAt: new Date().toISOString(), expiryDate: nextYear.toISOString().split('T')[0] },
-      { id: 'appdoc2', docRequirementId: 'doc2', name: 'Pilot License', description: 'Your current pilot license certificate', status: 'missing', requiresExpiry: true },
-      { id: 'appdoc3', docRequirementId: 'doc3', name: 'Medical Certificate', description: 'Valid aviation medical certificate', status: 'needs_attention', requiresExpiry: true, fileName: 'medical.jpg', uploadedAt: new Date().toISOString(), expiryDate: tomorrow.toISOString().split('T')[0] },
-      { id: 'appdoc4', docRequirementId: 'doc4', name: 'Logbook Summary', description: 'Last 5 pages of your pilot logbook', status: 'missing', requiresExpiry: false },
-      { id: 'appdoc5', docRequirementId: 'doc5', name: 'English Proficiency', description: 'English language proficiency test results (Level 4 or higher)', status: 'uploaded', requiresExpiry: true, fileName: 'ielts.pdf', uploadedAt: new Date().toISOString(), expiryDate: nextMonth.toISOString().split('T')[0] },
+      { id: 'appdoc1', docRequirementId: 'doc1', name: 'Passport or National ID', description: 'A clear, valid copy of your passport or national ID.', status: 'uploaded', requiresExpiry: true, fileName: 'passport.pdf', uploadedAt: new Date().toISOString(), expiryDate: nextYear.toISOString().split('T')[0] },
+      { id: 'appdoc2', docRequirementId: 'doc17', name: 'Existing ATPL License', description: 'A copy of your current ATPL or "Frozen" ATPL.', status: 'missing', requiresExpiry: true },
+      { id: 'appdoc3', docRequirementId: 'doc4', name: 'License Verification Letter', description: 'An official verification letter from the license-issuing authority.', status: 'missing', requiresExpiry: false },
+      { id: 'appdoc4', docRequirementId: 'doc18', name: 'Flight Time Breakdown', description: 'A complete, certified breakdown of your flight time (e.g., from your airline).', status: 'missing', requiresExpiry: false },
+      { id: 'appdoc5', docRequirementId: 'doc13', name: 'Class 1 Medical Certificate', description: 'A valid Class 1 medical certificate.', status: 'uploaded', requiresExpiry: true, fileName: 'medical.pdf', uploadedAt: new Date().toISOString(), expiryDate: nextYear.toISOString().split('T')[0] },
+      { id: 'appdoc6', docRequirementId: 'doc19', name: 'Type Rating Certificates', description: 'Copies of all current type rating certificates.', status: 'missing', requiresExpiry: true },
+      { id: 'appdoc7', docRequirementId: 'doc20', name: 'Simulator Training Records', description: 'Recent simulator proficiency or recurrent training records.', status: 'missing', requiresExpiry: false },
+      { id: 'appdoc8', docRequirementId: 'doc21', name: 'Operator Experience Letters', description: 'Letters of employment or records from previous operators.', status: 'missing', requiresExpiry: false },
+      { id: 'appdoc9', docRequirementId: 'doc22', name: 'Advanced Theory Exam Results', description: 'Results from any required advanced theory conversion exams.', status: 'missing', requiresExpiry: false },
+      { id: 'appdoc10', docRequirementId: 'doc5', name: 'English Proficiency Certificate', description: 'Proof of English proficiency, ICAO Level 4 or higher.', status: 'uploaded', requiresExpiry: true, fileName: 'english_test.pdf', uploadedAt: new Date().toISOString(), expiryDate: nextYear.toISOString().split('T')[0] },
+      { id: 'appdoc11', docRequirementId: 'doc3', name: 'Passport-Style Photos', description: 'Two recent, identical passport-style photographs.', status: 'missing', requiresExpiry: false },
+      { id: 'appdoc12', docRequirementId: 'doc2', name: 'Application Form & Payment', description: 'Completed application form and proof of payment.', status: 'missing', requiresExpiry: false },
     ],
   },
-    {
-    id: 'app2',
-    userId: 'user1',
-    licenseType: 'PPL Validation',
-    status: 'submitted',
-    submittedAt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(),
-    updatedAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
-    documents: [
-      { id: 'appdoc6', docRequirementId: 'doc1', name: 'Photo ID', description: 'Government-issued photo ID', status: 'uploaded', requiresExpiry: true, fileName: 'id.pdf', uploadedAt: new Date().toISOString(), expiryDate: nextYear.toISOString().split('T')[0] },
-      { id: 'appdoc7', docRequirementId: 'doc2', name: 'Pilot License', description: 'Your current pilot license', status: 'uploaded', requiresExpiry: true, fileName: 'license.pdf', uploadedAt: new Date().toISOString(), expiryDate: nextYear.toISOString().split('T')[0] },
-      { id: 'appdoc8', docRequirementId: 'doc3', name: 'Medical Certificate', description: 'Valid aviation medical certificate', status: 'uploaded', requiresExpiry: true, fileName: 'medical.pdf', uploadedAt: new Date().toISOString(), expiryDate: nextYear.toISOString().split('T')[0] },
-    ],
-  },
-  {
-    id: 'app3',
-    userId: 'user1', // A different user
-    licenseType: 'CPL Conversion',
-    status: 'in_review',
-    submittedAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(),
-    updatedAt: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(),
-    documents: [
-      { id: 'appdoc9', docRequirementId: 'doc1', name: 'Photo ID', description: 'Government-issued photo ID', status: 'uploaded', requiresExpiry: true, fileName: 'id.pdf', uploadedAt: new Date().toISOString(), expiryDate: nextYear.toISOString().split('T')[0] },
-      { id: 'appdoc10', docRequirementId: 'doc2', name: 'Pilot License', description: 'Your current pilot license', status: 'uploaded', requiresExpiry: true, fileName: 'license.pdf', uploadedAt: new Date().toISOString(), expiryDate: nextYear.toISOString().split('T')[0] },
-      { id: 'appdoc11', docRequirementId: 'doc3', name: 'Medical Certificate', description: 'Valid aviation medical certificate', status: 'uploaded', requiresExpiry: true, fileName: 'med_cert.pdf', uploadedAt: new Date().toISOString(), expiryDate: nextMonth.toISOString().split('T')[0] },
-      { id: 'appdoc12', docRequirementId: 'doc4', name: 'Logbook Summary', description: 'Last 5 pages of your pilot logbook', status: 'uploaded', requiresExpiry: false, fileName: 'logbook.pdf', uploadedAt: new Date().toISOString() },
-    ],
-  },
-  {
-    id: 'app4',
-    userId: 'user1',
-    licenseType: 'CPL Conversion',
-    status: 'approved',
-    submittedAt: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString(),
-    updatedAt: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString(),
-    documents: [
-        { id: 'appdoc13', docRequirementId: 'doc1', name: 'Photo ID', description: 'Government-issued photo ID', status: 'approved', requiresExpiry: true, fileName: 'id.pdf', uploadedAt: new Date().toISOString(), expiryDate: nextYear.toISOString().split('T')[0] },
-        { id: 'appdoc14', docRequirementId: 'doc2', name: 'Pilot License', description: 'Your current pilot license', status: 'approved', requiresExpiry: true, fileName: 'license.pdf', uploadedAt: new Date().toISOString(), expiryDate: nextYear.toISOString().split('T')[0] },
-        { id: 'appdoc15', docRequirementId: 'doc3', name: 'Medical Certificate', description: 'Valid aviation medical certificate', status: 'approved', requiresExpiry: true, fileName: 'med_cert.pdf', uploadedAt: new Date().toISOString(), expiryDate: nextMonth.toISOString().split('T')[0] },
-        { id: 'appdoc16', docRequirementId: 'doc4', name: 'Logbook Summary', description: 'Last 5 pages of your pilot logbook', status: 'approved', requiresExpiry: false, fileName: 'logbook.pdf', uploadedAt: new Date().toISOString() },
-    ],
-  },
-  {
-    id: 'app5',
-    userId: 'user1',
-    licenseType: 'ATPL Conversion',
-    status: 'rejected',
-    submittedAt: new Date(Date.now() - 20 * 24 * 60 * 60 * 1000).toISOString(),
-    updatedAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(),
-    feedback: "The provided pilot license appears to be from an un-recognized authority. Please provide a valid ICAO-compliant license.",
-    documents: [
-      { id: 'appdoc17', docRequirementId: 'doc1', name: 'Photo ID', status: 'approved', requiresExpiry: true, description: 'Government-issued photo ID', fileName: 'id.pdf', uploadedAt: new Date().toISOString(), expiryDate: nextYear.toISOString().split('T')[0] },
-      { id: 'appdoc18', docRequirementId: 'doc2', name: 'Pilot License', status: 'rejected', requiresExpiry: true, description: 'Your current pilot license certificate', fileName: 'license_invalid.pdf', uploadedAt: new Date().toISOString(), expiryDate: nextYear.toISOString().split('T')[0] },
-      { id: 'appdoc19', docRequirementId: 'doc3', name: 'Medical Certificate', status: 'approved', requiresExpiry: true, description: 'Valid aviation medical certificate', fileName: 'med_cert.pdf', uploadedAt: new Date().toISOString(), expiryDate: nextMonth.toISOString().split('T')[0] },
-      { id: 'appdoc20', docRequirementId: 'doc4', name: 'Logbook Summary', status: 'approved', requiresExpiry: false, description: 'Last 5 pages of your pilot logbook', fileName: 'logbook.pdf', uploadedAt: new Date().toISOString() },
-      { id: 'appdoc21', docRequirementId: 'doc5', name: 'English Proficiency', status: 'approved', requiresExpiry: true, description: 'English language proficiency test results', fileName: 'english.pdf', uploadedAt: new Date().toISOString(), expiryDate: nextYear.toISOString().split('T')[0] },
-    ],
-  },
-  {
-    id: 'app6',
-    userId: 'user1',
-    licenseType: 'PPL Validation',
-    status: 'needs_attention',
-    submittedAt: new Date(Date.now() - 15 * 24 * 60 * 60 * 1000).toISOString(),
-    updatedAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(),
-    feedback: "Your Photo ID is expiring in less than 30 days. Please upload a renewed ID.",
-    documents: [
-      { id: 'appdoc22', docRequirementId: 'doc1', name: 'Photo ID', description: 'Government-issued photo ID', status: 'needs_attention', requiresExpiry: true, fileName: 'passport_expiring.pdf', uploadedAt: new Date().toISOString(), expiryDate: tomorrow.toISOString().split('T')[0] },
-      { id: 'appdoc23', docRequirementId: 'doc2', name: 'Pilot License', description: 'Your current pilot license', status: 'uploaded', requiresExpiry: true, fileName: 'license.pdf', uploadedAt: new Date().toISOString(), expiryDate: nextYear.toISOString().split('T')[0] },
-      { id: 'appdoc24', docRequirementId: 'doc3', name: 'Medical Certificate', description: 'Valid aviation medical certificate', status: 'uploaded', requiresExpiry: true, fileName: 'medical.pdf', uploadedAt: new Date().toISOString(), expiryDate: nextYear.toISOString().split('T')[0] },
-    ],
-  }
 ];
 
 export const mockUsers: (UserProfile & { id: string, photoURL?: string })[] = [];
