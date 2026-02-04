@@ -10,18 +10,18 @@ const statusConfig: Record<
   { label: string; className: string; icon: React.ElementType }
 > = {
   // Application Statuses
-  draft: { label: "Draft", className: "bg-slate-200 text-slate-700 border-slate-300", icon: File },
-  submitted: { label: "Submitted", className: "bg-blue-100 text-blue-700 border-blue-200", icon: Clock },
-  in_review: { label: "In Review", className: "bg-yellow-100 text-yellow-800 border-yellow-200", icon: Clock },
-  approved: { label: "Approved", className: "bg-green-100 text-green-800 border-green-200", icon: CheckCircle2 },
-  rejected: { label: "Rejected", className: "bg-red-100 text-red-800 border-red-200", icon: XCircle },
+  draft: { label: "Draft", className: "bg-gray-500 text-white border-transparent", icon: File },
+  submitted: { label: "Submitted", className: "bg-blue-500 text-white border-transparent", icon: Clock },
+  in_review: { label: "In Review", className: "bg-yellow-500 text-black border-transparent", icon: Clock },
+  approved: { label: "Approved", className: "bg-green-600 text-white border-transparent", icon: CheckCircle2 },
+  rejected: { label: "Rejected", className: "bg-red-600 text-white border-transparent", icon: XCircle },
   
   // Universal Status
-  needs_attention: { label: "Needs Attention", className: "bg-accent text-accent-foreground border-orange-400", icon: AlertCircle },
+  needs_attention: { label: "Needs Attention", className: "bg-orange-500 text-white border-transparent", icon: AlertCircle },
   
   // Document Statuses
-  missing: { label: "Missing", className: "bg-gray-200 text-gray-700 border-gray-300", icon: XCircle },
-  uploaded: { label: "Uploaded", className: "bg-indigo-100 text-indigo-700 border-indigo-200", icon: CircleDot },
+  missing: { label: "Missing", className: "bg-gray-500 text-white border-transparent", icon: XCircle },
+  uploaded: { label: "Uploaded", className: "bg-indigo-500 text-white border-transparent", icon: CircleDot },
 };
 
 
