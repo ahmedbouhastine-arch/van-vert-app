@@ -10,18 +10,18 @@ export const statusConfig: Record<
   { label: string; className: string; icon: React.ElementType }
 > = {
   // Application Statuses
-  draft: { label: "Draft", className: "bg-gray-500 text-white border-transparent", icon: File },
-  submitted: { label: "Submitted", className: "bg-blue-500 text-white border-transparent", icon: Clock },
-  in_review: { label: "In Review", className: "bg-yellow-500 text-black border-transparent", icon: Clock },
-  approved: { label: "Approved", className: "bg-green-600 text-white border-transparent", icon: CheckCircle2 },
-  rejected: { label: "Rejected", className: "bg-red-600 text-white border-transparent", icon: XCircle },
+  draft: { label: "Draft", className: "border-transparent bg-gray-500/20 text-gray-800 dark:text-gray-300", icon: File },
+  submitted: { label: "Submitted", className: "border-transparent bg-blue-500/20 text-blue-800 dark:text-blue-300", icon: Clock },
+  in_review: { label: "In Review", className: "border-transparent bg-yellow-500/20 text-yellow-900 dark:text-yellow-300", icon: Clock },
+  approved: { label: "Approved", className: "border-transparent bg-green-600/20 text-green-800 dark:text-green-300", icon: CheckCircle2 },
+  rejected: { label: "Rejected", className: "border-transparent bg-red-600/20 text-red-800 dark:text-red-300", icon: XCircle },
   
   // Universal Status
-  needs_attention: { label: "Needs Attention", className: "bg-orange-500 text-white border-transparent", icon: AlertCircle },
+  needs_attention: { label: "Needs Attention", className: "border-transparent bg-orange-500/20 text-orange-800 dark:text-orange-300", icon: AlertCircle },
   
   // Document Statuses
-  missing: { label: "Missing", className: "bg-gray-500 text-white border-transparent", icon: XCircle },
-  uploaded: { label: "Uploaded", className: "bg-indigo-500 text-white border-transparent", icon: CircleDot },
+  missing: { label: "Missing", className: "border-transparent bg-gray-500/20 text-gray-800 dark:text-gray-300", icon: XCircle },
+  uploaded: { label: "Uploaded", className: "border-transparent bg-indigo-500/20 text-indigo-800 dark:text-indigo-300", icon: CircleDot },
 };
 
 
