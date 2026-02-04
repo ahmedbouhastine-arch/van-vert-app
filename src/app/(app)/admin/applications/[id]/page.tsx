@@ -2,18 +2,15 @@
 'use client';
 
 import { applications } from "@/lib/data";
-import { notFound } from "next/navigation";
+import { notFound, useParams } from "next/navigation";
 import { AdminApplicationClient } from "./_components/AdminApplicationClient";
 import { useFirestore, useDoc, useUser } from "@/firebase";
 import { doc } from "firebase/firestore";
 import { LoadingScreen } from "@/components/LoadingScreen";
 import { useMemo } from "react";
 
-export default function AdminApplicationDetailPage({
-  params,
-}: {
-  params: { id: string };
-}) {
+export default function AdminApplicationDetailPage() {
+  const params = useParams<{ id: string }>();
   const application = applications.find((app) => app.id === params.id);
   
   if (!application) {
