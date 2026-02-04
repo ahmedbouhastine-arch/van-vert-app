@@ -92,15 +92,30 @@ function DocumentReviewCard({
               >
                 <div className="flex items-center gap-1.5 w-full">
                   <Icon className="h-3.5 w-3.5" />
-                  <SelectValue placeholder="Set status..." />
+                  <span className="truncate">{currentStatusConfig.label}</span>
                 </div>
               </SelectTrigger>
               <SelectContent>
-                {documentStatuses.map((s) => (
-                  <SelectItem key={s} value={s} className="capitalize">
-                    {s.replace(/_/g, " ")}
-                  </SelectItem>
-                ))}
+                {documentStatuses.map((s) => {
+                  const itemConfig = statusConfig[s];
+                  const ItemIcon = itemConfig.icon;
+                  return (
+                    <SelectItem 
+                      key={s} 
+                      value={s} 
+                      className={cn(
+                        "capitalize", 
+                        itemConfig.className, 
+                        "border-transparent focus:bg-accent focus:text-accent-foreground"
+                      )}
+                    >
+                      <div className="flex items-center gap-2">
+                        <ItemIcon className="h-3.5 w-3.5" />
+                        <span>{itemConfig.label}</span>
+                      </div>
+                    </SelectItem>
+                  )
+                })}
               </SelectContent>
             </Select>
           ) : (
