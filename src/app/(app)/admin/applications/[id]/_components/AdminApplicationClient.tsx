@@ -11,7 +11,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { StatusBadge } from "@/components/StatusBadge";
+import { StatusBadge, statusConfig } from "@/components/StatusBadge";
 import {
   AlertCircle,
   Bot,
@@ -31,6 +31,7 @@ import { Label } from "@/components/ui/label";
 import { flagExpiringDocuments } from "@/ai/flows/flag-expiring-documents";
 import { checkRecency } from "@/ai/flows/check-recency";
 import type { CheckRecencyOutput } from "@/ai/flows/check-recency";
+import { cn } from "@/lib/utils";
 
 async function checkExpiryAction(documents: ApplicationDocument[]) {
     const docsToCheck = documents
@@ -67,6 +68,9 @@ function DocumentReviewCard({
     "rejected",
   ];
 
+  const currentStatusConfig = statusConfig[doc.status];
+  const Icon = currentStatusConfig.icon;
+
   return (
     <Card className="overflow-hidden">
       <CardHeader className="flex flex-row items-center justify-between gap-4 bg-muted/50 p-4">
@@ -80,8 +84,16 @@ function DocumentReviewCard({
               onValueChange={(val) => onStatusChange(doc.id, val as DocumentStatus)}
               disabled={isReviewer}
             >
-              <SelectTrigger className="h-9 capitalize">
-                <SelectValue placeholder="Set status..." />
+              <SelectTrigger
+                className={cn(
+                  "h-9 capitalize text-xs font-medium border-0",
+                  currentStatusConfig.className
+                )}
+              >
+                <div className="flex items-center gap-1.5 w-full">
+                  <Icon className="h-3.5 w-3.5" />
+                  <SelectValue placeholder="Set status..." />
+                </div>
               </SelectTrigger>
               <SelectContent>
                 {documentStatuses.map((s) => (
