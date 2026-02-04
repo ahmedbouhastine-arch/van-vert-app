@@ -5,7 +5,7 @@ import { CheckCircle2, XCircle, AlertCircle, Clock, File, CircleDot } from "luci
 
 type Status = ApplicationStatus | DocumentStatus;
 
-const statusConfig: Record<
+export const statusConfig: Record<
   Status,
   { label: string; className: string; icon: React.ElementType }
 > = {
