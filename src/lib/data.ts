@@ -1,12 +1,12 @@
 
-import type { UserProfile, LicenseType, Application, AnalyticsDataPoint, AuditLogEntry } from '@/types';
+import type { UserProfile, LicenseType, Application, AnalyticsDataPoint, AuditLogEntry, FlightLog, DocumentRequirement } from '@/types';
 
 // This file contains mock data. In a real application, this would come from a database.
 
-export const documentRequirements = {
+export const documentRequirements: Record<string, DocumentRequirement> = {
     // Common
     photoId: { id: 'doc1', name: 'Passport or National ID', description: 'A clear, valid copy of your passport or national ID.', requiresExpiry: true },
-    applicationForm: { id: 'doc2', name: 'Application Form & Payment', description: 'Completed application form and proof of payment.', requiresExpiry: false },
+    applicationForm: { id: 'doc2', name: 'Application Form & Payment Receipt', description: 'Completed application form and proof of payment.', requiresExpiry: false },
     photos: { id: 'doc3', name: 'Passport-Style Photos', description: 'Two recent, identical passport-style photographs.', requiresExpiry: false },
     licenseVerification: { id: 'doc4', name: 'License Verification Letter', description: 'An official verification letter from the license-issuing authority.', requiresExpiry: false },
     englishProficiency: { id: 'doc5', name: 'English Proficiency Certificate', description: 'Proof of English proficiency, ICAO Level 4 or higher.', requiresExpiry: true },
@@ -15,7 +15,7 @@ export const documentRequirements = {
     pplLicense: { id: 'doc6', name: 'Existing PPL License', description: 'A copy of your current Private Pilot License.', requiresExpiry: true },
     logbookPPL: { id: 'doc7', name: 'Pilot Logbook', description: 'Copies showing total hours and recent flights.', requiresExpiry: false },
     medicalCertClass2: { id: 'doc8', name: 'Class 2 Medical Certificate', description: 'A valid Class 2 or higher medical certificate.', requiresExpiry: true },
-    airLawExam: { id: 'doc9', name: 'Air Law Exam Proof', description: 'Proof of passing the local air law or regulations exam.', requiresExpiry: false },
+    airLawExam: { id: 'doc9', name: 'Air Law or Local Regulation Exam Proof', description: 'Proof of passing the local air law or regulations exam.', requiresExpiry: false },
     rtLicense: { id: 'doc10', name: 'Radio Telephony (RT) License', description: 'Your current Radio Telephony license or certificate, if applicable.', requiresExpiry: true },
     
     // CPL
@@ -24,15 +24,15 @@ export const documentRequirements = {
     medicalCertClass1: { id: 'doc13', name: 'Class 1 Medical Certificate', description: 'A valid Class 1 medical certificate.', requiresExpiry: true },
     instrumentRating: { id: 'doc14', name: 'Instrument Rating Certificate', description: 'Your current Instrument Rating certificate, if held.', requiresExpiry: true },
     multiEngineRating: { id: 'doc15', name: 'Multi-Engine Rating Certificate', description: 'Your current Multi-Engine rating certificate, if held.', requiresExpiry: true },
-    atplTheory: { id: 'doc16', name: 'ATPL Theory Credits', description: 'Exam results for ATPL theory credits or conversion exams.', requiresExpiry: false },
+    atplTheoryCPL: { id: 'doc16', name: 'ATPL Theory Credits or Conversion Exam Results', description: 'Exam results for ATPL theory credits or conversion exams.', requiresExpiry: false },
   
     // ATPL
-    atplLicense: { id: 'doc17', name: 'Existing ATPL License', description: 'A copy of your current ATPL or "Frozen" ATPL.', requiresExpiry: true },
-    logbookATPL: { id: 'doc18', name: 'Flight Time Breakdown', description: 'A complete, certified breakdown of your flight time (e.g., from your airline).', requiresExpiry: false },
+    atplLicense: { id: 'doc17', name: 'Existing ATPL or "Frozen" ATPL License', description: 'A copy of your current ATPL or "Frozen" ATPL.', requiresExpiry: true },
+    logbookATPL: { id: 'doc18', name: 'Complete Flight Time Breakdown', description: 'A complete, certified breakdown of your flight time (e.g., from your airline).', requiresExpiry: false },
     typeRating: { id: 'doc19', name: 'Type Rating Certificates', description: 'Copies of all current type rating certificates.', requiresExpiry: true },
-    simRecords: { id: 'doc20', name: 'Simulator Training Records', description: 'Recent simulator proficiency or recurrent training records.', requiresExpiry: false },
+    simRecords: { id: 'doc20', name: 'Simulator Proficiency or Recurrent Training Records', description: 'Recent simulator proficiency or recurrent training records.', requiresExpiry: false },
     operatorExperience: { id: 'doc21', name: 'Operator Experience Letters', description: 'Letters of employment or records from previous operators.', requiresExpiry: false },
-    advancedTheory: { id: 'doc22', name: 'Advanced Theory Exam Results', description: 'Results from any required advanced theory conversion exams.', requiresExpiry: false },
+    advancedTheoryATPL: { id: 'doc22', name: 'Advanced Theory Conversion Exam Results', description: 'Results from any required advanced theory conversion exams.', requiresExpiry: false },
   };
 
 export const licenseTypes: LicenseType[] = [
@@ -65,7 +65,7 @@ export const licenseTypes: LicenseType[] = [
         documentRequirements.medicalCertClass1,
         documentRequirements.instrumentRating,
         documentRequirements.multiEngineRating,
-        documentRequirements.atplTheory,
+        documentRequirements.atplTheoryCPL,
         documentRequirements.englishProficiency,
         documentRequirements.photos,
         documentRequirements.applicationForm,
@@ -84,7 +84,7 @@ export const licenseTypes: LicenseType[] = [
         documentRequirements.typeRating,
         documentRequirements.simRecords,
         documentRequirements.operatorExperience,
-        documentRequirements.advancedTheory,
+        documentRequirements.advancedTheoryATPL,
         documentRequirements.englishProficiency,
         documentRequirements.photos,
         documentRequirements.applicationForm,
@@ -94,6 +94,20 @@ export const licenseTypes: LicenseType[] = [
 
 const nextYear = new Date();
 nextYear.setFullYear(nextYear.getFullYear() + 1);
+
+const mockFlightLogs: FlightLog[] = [
+    { id: 'fl1', date: new Date().toISOString().split('T')[0], duration: 1.5, aircraft: 'Cessna 172', remarks: 'Local flight' },
+    { id: 'fl2', date: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], duration: 2.1, aircraft: 'Piper PA-28', remarks: 'Cross-country' },
+    { id: 'fl3', date: new Date(Date.now() - 25 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], duration: 3.0, aircraft: 'Cessna 172', remarks: 'Instrument practice' },
+    { id: 'fl4', date: new Date(Date.now() - 40 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], duration: 2.5, aircraft: 'Cessna 172', remarks: 'Night flight' },
+    { id: 'fl5', date: new Date(Date.now() - 60 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], duration: 4.2, aircraft: 'Diamond DA40', remarks: 'Cross-country to airport XYZ' },
+    { id: 'fl6', date: new Date(Date.now() - 80 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], duration: 2.0, aircraft: 'Cessna 172', remarks: 'Local flight' },
+    // This flight makes the total > 15 hours
+    { id: 'fl7', date: new Date(Date.now() - 95 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], duration: 1.0, aircraft: 'Cessna 172', remarks: 'Local flight' },
+    // A flight from 7 months ago to test the filter
+    { id: 'fl8', date: new Date(new Date().setMonth(new Date().getMonth() - 7)).toISOString().split('T')[0], duration: 5.0, aircraft: 'Cessna 172', remarks: 'Old flight' },
+];
+
 
 export const applications: Application[] = [
   {
@@ -105,19 +119,20 @@ export const applications: Application[] = [
     updatedAt: new Date().toISOString(),
     feedback: "Please double-check the expiry date on your medical certificate.",
     documents: [
-      { id: 'appdoc1', docRequirementId: 'doc1', name: 'Passport or National ID', description: 'A clear, valid copy of your passport or national ID.', status: 'uploaded', requiresExpiry: true, fileName: 'passport.pdf', uploadedAt: new Date().toISOString(), expiryDate: nextYear.toISOString().split('T')[0] },
-      { id: 'appdoc2', docRequirementId: 'doc17', name: 'Existing ATPL License', description: 'A copy of your current ATPL or "Frozen" ATPL.', status: 'missing', requiresExpiry: true },
-      { id: 'appdoc3', docRequirementId: 'doc4', name: 'License Verification Letter', description: 'An official verification letter from the license-issuing authority.', status: 'missing', requiresExpiry: false },
-      { id: 'appdoc4', docRequirementId: 'doc18', name: 'Flight Time Breakdown', description: 'A complete, certified breakdown of your flight time (e.g., from your airline).', status: 'missing', requiresExpiry: false },
-      { id: 'appdoc5', docRequirementId: 'doc13', name: 'Class 1 Medical Certificate', description: 'A valid Class 1 medical certificate.', status: 'uploaded', requiresExpiry: true, fileName: 'medical.pdf', uploadedAt: new Date().toISOString(), expiryDate: nextYear.toISOString().split('T')[0] },
-      { id: 'appdoc6', docRequirementId: 'doc19', name: 'Type Rating Certificates', description: 'Copies of all current type rating certificates.', status: 'missing', requiresExpiry: true },
-      { id: 'appdoc7', docRequirementId: 'doc20', name: 'Simulator Training Records', description: 'Recent simulator proficiency or recurrent training records.', status: 'missing', requiresExpiry: false },
-      { id: 'appdoc8', docRequirementId: 'doc21', name: 'Operator Experience Letters', description: 'Letters of employment or records from previous operators.', status: 'missing', requiresExpiry: false },
-      { id: 'appdoc9', docRequirementId: 'doc22', name: 'Advanced Theory Exam Results', description: 'Results from any required advanced theory conversion exams.', status: 'missing', requiresExpiry: false },
-      { id: 'appdoc10', docRequirementId: 'doc5', name: 'English Proficiency Certificate', description: 'Proof of English proficiency, ICAO Level 4 or higher.', status: 'uploaded', requiresExpiry: true, fileName: 'english_test.pdf', uploadedAt: new Date().toISOString(), expiryDate: nextYear.toISOString().split('T')[0] },
-      { id: 'appdoc11', docRequirementId: 'doc3', name: 'Passport-Style Photos', description: 'Two recent, identical passport-style photographs.', status: 'missing', requiresExpiry: false },
-      { id: 'appdoc12', docRequirementId: 'doc2', name: 'Application Form & Payment', description: 'Completed application form and proof of payment.', status: 'missing', requiresExpiry: false },
+      { id: 'appdoc1', docRequirementId: 'doc1', name: documentRequirements.photoId.name, description: documentRequirements.photoId.description, status: 'uploaded', requiresExpiry: true, fileName: 'passport.pdf', uploadedAt: new Date().toISOString(), expiryDate: nextYear.toISOString().split('T')[0] },
+      { id: 'appdoc2', docRequirementId: 'doc17', name: documentRequirements.atplLicense.name, description: documentRequirements.atplLicense.description, status: 'missing', requiresExpiry: true },
+      { id: 'appdoc3', docRequirementId: 'doc4', name: documentRequirements.licenseVerification.name, description: documentRequirements.licenseVerification.description, status: 'missing', requiresExpiry: false },
+      { id: 'appdoc4', docRequirementId: 'doc18', name: documentRequirements.logbookATPL.name, description: documentRequirements.logbookATPL.description, status: 'missing', requiresExpiry: false },
+      { id: 'appdoc5', docRequirementId: 'doc13', name: documentRequirements.medicalCertClass1.name, description: documentRequirements.medicalCertClass1.description, status: 'uploaded', requiresExpiry: true, fileName: 'medical.pdf', uploadedAt: new Date().toISOString(), expiryDate: nextYear.toISOString().split('T')[0] },
+      { id: 'appdoc6', docRequirementId: 'doc19', name: documentRequirements.typeRating.name, description: documentRequirements.typeRating.description, status: 'missing', requiresExpiry: true },
+      { id: 'appdoc7', docRequirementId: 'doc20', name: documentRequirements.simRecords.name, description: documentRequirements.simRecords.description, status: 'missing', requiresExpiry: false },
+      { id: 'appdoc8', docRequirementId: 'doc21', name: documentRequirements.operatorExperience.name, description: documentRequirements.operatorExperience.description, status: 'missing', requiresExpiry: false },
+      { id: 'appdoc9', docRequirementId: 'doc22', name: documentRequirements.advancedTheoryATPL.name, description: documentRequirements.advancedTheoryATPL.description, status: 'missing', requiresExpiry: false },
+      { id: 'appdoc10', docRequirementId: 'doc5', name: documentRequirements.englishProficiency.name, description: documentRequirements.englishProficiency.description, status: 'uploaded', requiresExpiry: true, fileName: 'english_test.pdf', uploadedAt: new Date().toISOString(), expiryDate: nextYear.toISOString().split('T')[0] },
+      { id: 'appdoc11', docRequirementId: 'doc3', name: documentRequirements.photos.name, description: documentRequirements.photos.description, status: 'missing', requiresExpiry: false },
+      { id: 'appdoc12', docRequirementId: 'doc2', name: documentRequirements.applicationForm.name, description: documentRequirements.applicationForm.description, status: 'missing', requiresExpiry: false },
     ],
+    flightLogs: mockFlightLogs,
   },
 ];
 
