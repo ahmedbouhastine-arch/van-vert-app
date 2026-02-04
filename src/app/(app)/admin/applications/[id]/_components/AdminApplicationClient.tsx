@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState, useTransition, useEffect } from "react";
 import type { Application, ApplicationDocument, ApplicationStatus, UserProfile, DocumentStatus } from "@/types";
 import {
   Card,
@@ -19,6 +19,8 @@ import {
   File as FileIcon,
   Save,
   Send,
+  Check,
+  X,
 } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { format, parseISO } from "date-fns";
@@ -27,6 +29,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { flagExpiringDocuments } from "@/ai/flows/flag-expiring-documents";
+import { checkRecency } from "@/ai/flows/check-recency";
+import type { CheckRecencyOutput } from "@/ai/flows/check-recency";
 
 async function checkExpiryAction(documents: ApplicationDocument[]) {
     const docsToCheck = documents
@@ -144,8 +148,36 @@ export function AdminApplicationClient({
   const [feedback, setFeedback] = useState(initialApplication.feedback || "");
   const [status, setStatus] = useState<ApplicationStatus>(initialApplication.status);
   const [isPending, startTransition] = useTransition();
+  const [recencyResult, setRecencyResult] = useState<CheckRecencyOutput | null>(null);
+  const [isRecencyChecking, setIsRecencyChecking] = useState(true);
   const { toast } = useToast();
   const isReviewer = claims?.role === 'reviewer';
+
+  useEffect(() => {
+    const handleRecencyCheck = async () => {
+        if (!appState.flightLogs || appState.flightLogs.length === 0) {
+            setIsRecencyChecking(false);
+            return;
+        }
+        try {
+            const result = await checkRecency({
+                flights: appState.flightLogs.map(f => ({ date: f.date, duration: f.duration }))
+            });
+            setRecencyResult(result);
+        } catch (error) {
+            console.error("Recency check failed:", error);
+            toast({
+                variant: "destructive",
+                title: "AI Check Failed",
+                description: "Could not perform pilot recency check.",
+            });
+        } finally {
+            setIsRecencyChecking(false);
+        }
+    };
+
+    handleRecencyCheck();
+  }, [appState.flightLogs, toast]);
   
   const handleCheckExpiry = () => {
     startTransition(async () => {
@@ -219,6 +251,36 @@ export function AdminApplicationClient({
             ))}
         </div>
         <div className="grid gap-6">
+            <Card>
+                <CardHeader>
+                    <CardTitle>AI Pilot Recency Check</CardTitle>
+                    <CardDescription>
+                        Verifies if the pilot has at least 15 hours of flight time in the last 6 months.
+                    </CardDescription>
+                </CardHeader>
+                <CardContent>
+                    {isRecencyChecking ? (
+                         <div className="flex items-center gap-2 text-muted-foreground">
+                            <Bot className="h-5 w-5 animate-spin" />
+                            <span>AI is analyzing flight logs...</span>
+                         </div>
+                    ) : recencyResult ? (
+                        <div className={`p-4 rounded-md flex items-start gap-4 ${recencyResult.hasRecency ? 'bg-green-50 border-green-200 text-green-800' : 'bg-red-50 border-red-200 text-red-800'}`}>
+                            {recencyResult.hasRecency ? <Check className="h-5 w-5 flex-shrink-0" /> : <X className="h-5 w-5 flex-shrink-0" />}
+                            <div>
+                                <h4 className="font-semibold">
+                                    {recencyResult.hasRecency ? 'Recency Requirement Met' : 'Recency Requirement Not Met'}
+                                </h4>
+                                <p className="text-sm">
+                                    Pilot has logged <strong>{recencyResult.totalHours} hours</strong> in the last 6 months.
+                                </p>
+                            </div>
+                        </div>
+                    ) : (
+                        <p className="text-sm text-muted-foreground">No flight logs available for this application to perform a recency check.</p>
+                    )}
+                </CardContent>
+            </Card>
             <Card>
                 <CardHeader>
                     <CardTitle>Admin Actions</CardTitle>

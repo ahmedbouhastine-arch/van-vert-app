@@ -30,12 +30,21 @@ export type ApplicationDocument = {
 
 export type ApplicationStatus = 'draft' | 'submitted' | 'in_review' | 'needs_attention' | 'approved' | 'rejected';
 
+export type FlightLog = {
+  id: string;
+  date: string; // YYYY-MM-DD
+  duration: number; // in hours
+  aircraft: string;
+  remarks: string;
+};
+
 export type Application = {
   id: string;
   userId: string;
   licenseType: string;
   status: ApplicationStatus;
   documents: ApplicationDocument[];
+  flightLogs?: FlightLog[];
   submittedAt?: string;
   updatedAt: string;
   feedback?: string;
