@@ -11,13 +11,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
 import { type User } from "firebase/auth";
-import { mockUsers as mockUserExamples } from "@/lib/data";
 
 type UserWithProfile = UserProfile & { id: string; photoURL?: string; };
 
 function UserRow({ user, currentUser, onRoleChange }: { user: UserWithProfile, currentUser: User, onRoleChange: (userId: string, role: 'applicant' | 'admin' | 'head-admin' | 'reviewer') => void }) {
     const [selectedRole, setSelectedRole] = useState(user.role);
-    const { toast } = useToast();
 
     const handleUpdate = () => {
         onRoleChange(user.id, selectedRole);
@@ -72,30 +70,8 @@ function UserRow({ user, currentUser, onRoleChange }: { user: UserWithProfile, c
 export function UserManagementClient({ currentUser }: { currentUser: User }) {
     const firestore = useFirestore();
     const usersQuery = useMemo(() => firestore ? query(collection(firestore, "users")) : null, [firestore]);
-    const { data: firestoreUsers, loading } = useCollection<UserWithProfile>(usersQuery);
+    const { data: users, loading } = useCollection<UserWithProfile>(usersQuery);
     const { toast } = useToast();
-
-    const users = useMemo(() => {
-        const realUsers = firestoreUsers ?? [];
-        const allUsers = [...realUsers];
-        const realUserIds = new Set(realUsers.map(u => u.id));
-
-        for (const mockUser of mockUserExamples) {
-            if (!realUserIds.has(mockUser.id)) {
-                allUsers.push(mockUser as UserWithProfile);
-            }
-        }
-        
-        // Deduplicate users by email to prevent duplicates from showing up in the UI
-        const seenEmails = new Set();
-        return allUsers.filter(user => {
-            if (!user.email || seenEmails.has(user.email)) {
-                return false;
-            }
-            seenEmails.add(user.email);
-            return true;
-        });
-    }, [firestoreUsers]);
 
     const handleRoleChange = async (userId: string, newRole: 'applicant' | 'admin' | 'head-admin' | 'reviewer') => {
         if (!firestore) return;
@@ -110,7 +86,7 @@ export function UserManagementClient({ currentUser }: { currentUser: User }) {
             toast({
                 variant: 'destructive',
                 title: 'Update failed',
-                description: `Could not update role. This might be a mock user. Error: ${error.message}`,
+                description: `Could not update role. Error: ${error.message}`,
             });
         }
     };
@@ -133,6 +109,7 @@ export function UserManagementClient({ currentUser }: { currentUser: User }) {
                     </TableHeader>
                     <TableBody>
                         {loading && <TableRow><TableCell colSpan={4} className="text-center">Loading users...</TableCell></TableRow>}
+                        {!loading && users?.length === 0 && <TableRow><TableCell colSpan={4} className="text-center h-24">No users found.</TableCell></TableRow>}
                         {users?.sort((a, b) => (a.displayName || '').localeCompare(b.displayName || '')).map(user => (
                             <UserRow key={user.id} user={user} currentUser={currentUser} onRoleChange={handleRoleChange} />
                         ))}
