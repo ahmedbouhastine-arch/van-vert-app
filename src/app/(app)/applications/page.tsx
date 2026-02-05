@@ -2,7 +2,7 @@
 'use client';
 
 import Link from "next/link";
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { PlusCircle, MoreHorizontal } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -36,18 +36,25 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { applications } from "@/lib/data";
 import { StatusBadge } from "@/components/StatusBadge";
 import { format, parseISO } from "date-fns";
-import { useUser } from "@/firebase";
+import { useUser, useFirestore, useCollection } from "@/firebase";
+import { collection, query, where } from "firebase/firestore";
+import type { Application } from "@/types";
 
 export default function MyApplicationsPage() {
-  const { user } = useUser();
+  const { user, loading: userLoading } = useUser();
   const [selectedFeedback, setSelectedFeedback] = useState<string | null>(null);
-  if (!user) return null;
+  const firestore = useFirestore();
 
-  // Only show applications belonging to the logged-in user.
-  const userApplications = applications.filter(app => app.userId === user.uid);
+  const appsQuery = useMemo(() => {
+    if (!firestore || !user) return null;
+    return query(collection(firestore, "applications"), where("userId", "==", user.uid));
+  }, [firestore, user]);
+
+  const { data: userApplications, loading: appsLoading } = useCollection<Application>(appsQuery);
+
+  const isLoading = userLoading || appsLoading;
 
   return (
     <div className="flex flex-col gap-4">
@@ -89,51 +96,69 @@ export default function MyApplicationsPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {userApplications.map((app) => (
-                <TableRow key={app.id}>
-                  <TableCell className="font-medium">
-                    <Link href={`/applications/${app.id}`} className="hover:underline">
-                      {app.licenseType}
-                    </Link>
-                  </TableCell>
-                  <TableCell>
-                    <StatusBadge status={app.status} />
-                  </TableCell>
-                  <TableCell className="hidden md:table-cell">
-                    {format(parseISO(app.updatedAt), "MMMM d, yyyy")}
-                  </TableCell>
-                  <TableCell>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button
-                          aria-haspopup="true"
-                          size="icon"
-                          variant="ghost"
-                        >
-                          <MoreHorizontal className="h-4 w-4" />
-                          <span className="sr-only">Toggle menu</span>
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                        <DropdownMenuItem asChild>
-                            <Link href={`/applications/${app.id}`}>View Details</Link>
-                        </DropdownMenuItem>
-                        {app.feedback && <DropdownMenuItem onSelect={() => setSelectedFeedback(app.feedback || null)}>View Feedback</DropdownMenuItem>}
-                      </DropdownMenuContent>
-                    </DropdownMenu>
+              {isLoading ? (
+                <TableRow>
+                  <TableCell colSpan={4} className="h-24 text-center">Loading your applications...</TableCell>
+                </TableRow>
+              ) : userApplications && userApplications.length > 0 ? (
+                userApplications.map((app) => (
+                  <TableRow key={app.id}>
+                    <TableCell className="font-medium">
+                      <Link href={`/applications/${app.id}`} className="hover:underline">
+                        {app.licenseType}
+                      </Link>
+                    </TableCell>
+                    <TableCell>
+                      <StatusBadge status={app.status} />
+                    </TableCell>
+                    <TableCell className="hidden md:table-cell">
+                      {app.updatedAt ? format(parseISO(app.updatedAt.toString()), "MMMM d, yyyy") : 'N/A'}
+                    </TableCell>
+                    <TableCell>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button
+                            aria-haspopup="true"
+                            size="icon"
+                            variant="ghost"
+                          >
+                            <MoreHorizontal className="h-4 w-4" />
+                            <span className="sr-only">Toggle menu</span>
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                          <DropdownMenuItem asChild>
+                              <Link href={`/applications/${app.id}`}>View Details</Link>
+                          </DropdownMenuItem>
+                          {app.feedback && <DropdownMenuItem onSelect={() => setSelectedFeedback(app.feedback || null)}>View Feedback</DropdownMenuItem>}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </TableCell>
+                  </TableRow>
+                ))
+              ) : (
+                <TableRow>
+                  <TableCell colSpan={4} className="h-24 text-center">
+                    <h3 className="font-semibold">No applications found.</h3>
+                    <p className="text-sm text-muted-foreground">Get started by creating a new application.</p>
+                    <Button asChild size="sm" className="mt-4">
+                        <Link href="/applications/new">New Application</Link>
+                    </Button>
                   </TableCell>
                 </TableRow>
-              ))}
+              )}
             </TableBody>
           </Table>
         </CardContent>
-        <CardFooter>
-          <div className="text-xs text-muted-foreground">
-            Showing <strong>1-{userApplications.length}</strong> of <strong>{userApplications.length}</strong>{" "}
-            applications
-          </div>
-        </CardFooter>
+        {!isLoading && userApplications && (
+            <CardFooter>
+            <div className="text-xs text-muted-foreground">
+                Showing <strong>{userApplications.length}</strong> of <strong>{userApplications.length}</strong>{" "}
+                applications
+            </div>
+            </CardFooter>
+        )}
       </Card>
       <Dialog open={!!selectedFeedback} onOpenChange={(isOpen) => !isOpen && setSelectedFeedback(null)}>
         <DialogContent className="sm:max-w-md">

@@ -1,7 +1,6 @@
 
 'use client';
 
-import { analyticsData } from "@/lib/data";
 import { AnalyticsClient } from "./_components/AnalyticsClient";
 import { useUser } from "@/firebase";
 import { useRouter } from "next/navigation";
@@ -18,13 +17,15 @@ export default function AnalyticsPage() {
         }
     }, [user, loading, claims, router]);
 
-    // In a real app, you'd fetch this data.
+    // In a real app, you'd fetch this data from a collection aggregated for analytics.
     const kpiData = {
-        totalApplications: 153,
-        avgProcessingTime: 5.2, // days
-        approvalRate: 85.6, // percentage
-        pendingReview: 12,
+        totalApplications: 0,
+        avgProcessingTime: 0, 
+        approvalRate: 0,
+        pendingReview: 0,
     };
+    
+    const chartData = [];
 
     if (loading || !user || (claims?.role !== 'admin' && claims?.role !== 'head-admin')) {
         return <LoadingScreen text="Verifying Access..." />;
@@ -36,7 +37,7 @@ export default function AnalyticsPage() {
                 <h1 className="text-3xl font-bold font-headline tracking-tight">Analytics Dashboard</h1>
                 <p className="text-muted-foreground">Insights into application trends and processing times.</p>
             </div>
-            <AnalyticsClient kpiData={kpiData} chartData={analyticsData} />
+            <AnalyticsClient kpiData={kpiData} chartData={chartData} />
         </div>
     );
 }

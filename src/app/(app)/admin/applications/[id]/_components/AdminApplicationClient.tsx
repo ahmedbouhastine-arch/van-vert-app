@@ -18,9 +18,9 @@ import {
   Download,
   File as FileIcon,
   Save,
-  Send,
   Check,
   X,
+  Loader2,
 } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { format, parseISO } from "date-fns";
@@ -32,6 +32,8 @@ import { flagExpiringDocuments } from "@/ai/flows/flag-expiring-documents";
 import { checkRecency } from "@/ai/flows/check-recency";
 import type { CheckRecencyOutput } from "@/ai/flows/check-recency";
 import { cn } from "@/lib/utils";
+import { useFirestore } from "@/firebase";
+import { doc, serverTimestamp, updateDoc } from "firebase/firestore";
 
 async function checkExpiryAction(documents: ApplicationDocument[]) {
     const docsToCheck = documents
@@ -179,6 +181,7 @@ export function AdminApplicationClient({
   const [isRecencyChecking, setIsRecencyChecking] = useState(true);
   const { toast } = useToast();
   const isReviewer = claims?.role === 'reviewer';
+  const firestore = useFirestore();
 
   useEffect(() => {
     const handleRecencyCheck = async () => {
@@ -245,12 +248,28 @@ export function AdminApplicationClient({
   };
 
   const handleSaveChanges = () => {
-    startTransition(() => {
-        setAppState(prev => ({ ...prev, status, feedback }));
-        toast({
-            title: "Changes Saved",
-            description: "Application status and document statuses have been updated.",
-          });
+    startTransition(async () => {
+        if (!firestore) return;
+        const appRef = doc(firestore, 'applications', appState.id);
+        try {
+            await updateDoc(appRef, {
+                status: status,
+                feedback: feedback,
+                documents: appState.documents,
+                updatedAt: serverTimestamp()
+            });
+            setAppState(prev => ({ ...prev, status, feedback }));
+            toast({
+                title: "Changes Saved",
+                description: "Application status and document statuses have been updated.",
+            });
+        } catch(e: any) {
+            toast({
+                variant: 'destructive',
+                title: "Save Failed",
+                description: e.message,
+            });
+        }
     });
   }
 
@@ -265,7 +284,7 @@ export function AdminApplicationClient({
             <StatusBadge status={appState.status} />
           </div>
           <CardDescription>
-            Applicant: {user?.displayName} ({user?.email}) | Last updated on {format(parseISO(appState.updatedAt), "PPP")}
+            Applicant: {user?.displayName} ({user?.email}) | Last updated on {appState.updatedAt ? format(parseISO(appState.updatedAt.toString()), "PPP") : 'N/A'}
           </CardDescription>
         </CardHeader>
       </Card>
@@ -288,7 +307,7 @@ export function AdminApplicationClient({
                 <CardContent>
                     {isRecencyChecking ? (
                          <div className="flex items-center gap-2 text-muted-foreground">
-                            <Bot className="h-5 w-5 animate-spin" />
+                            <Loader2 className="h-5 w-5 animate-spin" />
                             <span>AI is analyzing flight logs...</span>
                          </div>
                     ) : recencyResult ? (
@@ -336,10 +355,12 @@ export function AdminApplicationClient({
                         />
                     </div>
                     <Button onClick={handleCheckExpiry} disabled={isPending} variant="secondary" className="w-full">
-                        <Bot className="mr-2 h-4 w-4" /> {isPending ? 'Checking...' : 'AI Check Document Expiry'}
+                        {isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Bot className="mr-2 h-4 w-4" />}
+                        AI Check Document Expiry
                     </Button>
                     <Button onClick={handleSaveChanges} disabled={isPending || isReviewer} className="w-full">
-                        <Save className="mr-2 h-4 w-4" /> {isPending ? 'Saving...' : 'Save Changes'}
+                        {isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+                        Save Changes
                     </Button>
                 </CardContent>
             </Card>

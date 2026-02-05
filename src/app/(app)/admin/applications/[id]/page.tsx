@@ -1,33 +1,37 @@
 
 'use client';
 
-import { applications } from "@/lib/data";
 import { notFound, useParams } from "next/navigation";
 import { AdminApplicationClient } from "./_components/AdminApplicationClient";
 import { useFirestore, useDoc, useUser } from "@/firebase";
 import { doc } from "firebase/firestore";
 import { LoadingScreen } from "@/components/LoadingScreen";
 import { useMemo } from "react";
+import type { Application, UserProfile } from "@/types";
 
 export default function AdminApplicationDetailPage() {
   const params = useParams<{ id: string }>();
-  const application = applications.find((app) => app.id === params.id);
-  
-  if (!application) {
-    notFound();
-  }
-
   const firestore = useFirestore();
   const { claims, loading: claimsLoading } = useUser();
 
-  const userRef = useMemo(() => 
-    firestore ? doc(firestore, 'users', application.userId) : null,
-    [firestore, application.userId]
+  const appRef = useMemo(() => 
+    firestore && params.id ? doc(firestore, 'applications', params.id) as any : null,
+    [firestore, params.id]
   );
-  const { data: user, loading: userLoading } = useDoc(userRef);
+  const { data: application, loading: appLoading } = useDoc<Application>(appRef);
 
-  if (userLoading || claimsLoading) {
+  const userRef = useMemo(() => 
+    firestore && application?.userId ? doc(firestore, 'users', application.userId) as any : null,
+    [firestore, application]
+  );
+  const { data: user, loading: userLoading } = useDoc<UserProfile>(userRef);
+
+  if (appLoading || userLoading || claimsLoading) {
     return <LoadingScreen text="Loading application data..." />
+  }
+
+  if (!application) {
+    notFound();
   }
 
   return (

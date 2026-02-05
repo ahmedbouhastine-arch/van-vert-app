@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import Link from "next/link";
@@ -13,29 +12,55 @@ import {
   CardTitle,
   CardFooter,
 } from "@/components/ui/card";
-import { applications } from "@/lib/data";
 import { StatusBadge } from "@/components/StatusBadge";
 import { format, parseISO } from "date-fns";
-import { useUser } from "@/firebase";
+import { useUser, useFirestore, useCollection } from "@/firebase";
+import { collection, query, where, orderBy, limit } from "firebase/firestore";
+import { useMemo } from "react";
+import { Skeleton } from "@/components/ui/skeleton";
+import type { Application } from "@/types";
+
+function ApplicationCardSkeleton() {
+    return (
+        <Card>
+            <CardHeader>
+                <Skeleton className="h-6 w-3/4" />
+            </CardHeader>
+            <CardContent>
+                <Skeleton className="h-4 w-1/2" />
+            </CardContent>
+            <CardFooter>
+                <Skeleton className="h-10 w-full" />
+            </CardFooter>
+        </Card>
+    )
+}
+
 
 export default function DashboardPage() {
   const { user } = useUser();
-  
-  if (!user) return null;
+  const firestore = useFirestore();
 
-  // Get the 3 most recently updated applications for the preview
-  const recentApplications = applications
-    .filter(app => app.userId === user.uid)
-    .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
-    .slice(0, 3);
+  const appsQuery = useMemo(() => {
+    if (!firestore || !user) return null;
+    return query(
+        collection(firestore, "applications"), 
+        where("userId", "==", user.uid),
+        orderBy("updatedAt", "desc"),
+        limit(3)
+    );
+  }, [firestore, user]);
 
-  const totalApplications = applications.filter(app => app.userId === user.uid).length;
+  const { data: recentApplications, loading: appsLoading } = useCollection<Application>(appsQuery);
+
+  // Note: We don't have total count without another query.
+  // For a production app, you might store this in the user's profile document.
 
   return (
     <div className="flex flex-col gap-8">
       <div className="flex items-center justify-between">
         <div className="flex flex-col gap-1">
-            <h1 className="text-3xl font-bold font-headline tracking-tight">Welcome, {user.displayName || 'User'}!</h1>
+            <h1 className="text-3xl font-bold font-headline tracking-tight">Welcome, {user?.displayName || 'User'}!</h1>
             <p className="text-muted-foreground">Here's a quick look at your recent activity.</p>
         </div>
         <Link href="/applications/new">
@@ -54,7 +79,14 @@ export default function DashboardPage() {
           </CardDescription>
         </CardHeader>
         <CardContent className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {recentApplications.length === 0 && (
+            {appsLoading && (
+                <>
+                    <ApplicationCardSkeleton />
+                    <ApplicationCardSkeleton />
+                    <ApplicationCardSkeleton />
+                </>
+            )}
+            {!appsLoading && (!recentApplications || recentApplications.length === 0) && (
                 <div className="text-center text-muted-foreground py-8 col-span-full">
                     <p className="mb-2">You have no applications yet.</p>
                     <Link href="/applications/new">
@@ -62,7 +94,7 @@ export default function DashboardPage() {
                     </Link>
                 </div>
             )}
-             {recentApplications.map((app) => (
+             {!appsLoading && recentApplications && recentApplications.map((app) => (
                  <Card key={app.id}>
                      <CardHeader>
                          <div className="flex items-center justify-between">
@@ -72,7 +104,7 @@ export default function DashboardPage() {
                      </CardHeader>
                      <CardContent>
                          <p className="text-sm text-muted-foreground">
-                             Last updated on {format(parseISO(app.updatedAt), "PPP")}
+                             Last updated on {app.updatedAt ? format(parseISO(app.updatedAt.toString()), "PPP") : 'N/A'}
                          </p>
                      </CardContent>
                      <CardFooter>
@@ -85,15 +117,14 @@ export default function DashboardPage() {
                  </Card>
             ))}
         </CardContent>
-        {totalApplications > recentApplications.length && (
+        {!appsLoading && recentApplications && recentApplications.length > 0 && (
             <CardFooter className="border-t pt-6">
                 <Link href="/applications" className="w-full">
-                    <Button variant="secondary" className="w-full">View All My Applications ({totalApplications})</Button>
+                    <Button variant="secondary" className="w-full">View All My Applications</Button>
                 </Link>
             </CardFooter>
         )}
       </Card>
-
     </div>
   );
 }

@@ -26,39 +26,32 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { applications, mockUsers } from "@/lib/data";
 import { StatusBadge } from "@/components/StatusBadge";
 import { format, parseISO } from "date-fns";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { useCollection } from "@/firebase";
-import { collection, query } from "firebase/firestore";
-import { useFirestore } from "@/firebase";
+import { useCollection, useFirestore } from "@/firebase";
+import { collection, query, where } from "firebase/firestore";
 import { useMemo } from "react";
+import type { Application, UserProfile } from "@/types";
 
 export default function AdminApplicationsPage() {
   const firestore = useFirestore();
+  
   const usersQuery = useMemo(() => firestore ? query(collection(firestore, "users")) : null, [firestore]);
-  const { data: firestoreUsers, loading: usersLoading } = useCollection(usersQuery);
+  const { data: users, loading: usersLoading } = useCollection<UserProfile>(usersQuery);
 
-  const users = useMemo(() => {
-    const realUsers = (firestoreUsers as any[]) ?? [];
-    const allUsers = [...realUsers];
-    const realUserIds = new Set(realUsers.map((u: any) => u.id));
+  const appsQuery = useMemo(() => firestore ? query(collection(firestore, "applications"), where("status", "!=", "draft")) : null, [firestore]);
+  const { data: applications, loading: appsLoading } = useCollection<Application>(appsQuery);
 
-    for (const mockUser of mockUsers) {
-      if (!realUserIds.has(mockUser.id)) {
-        allUsers.push(mockUser);
-      }
-    }
-    return allUsers;
-  }, [firestoreUsers]);
-
-  const allApplications = applications
-    .filter((app) => app.status !== "draft")
-    .map(app => {
-      const user = users?.find((u: any) => u.id === app.userId);
+  const allApplications = useMemo(() => {
+    if (!applications || !users) return [];
+    return applications.map(app => {
+      const user = users.find((u) => u.id === app.userId);
       return { ...app, user };
     });
+  }, [applications, users]);
+
+  const isLoading = usersLoading || appsLoading;
 
   return (
     <div className="flex flex-col gap-4">
@@ -89,11 +82,16 @@ export default function AdminApplicationsPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {usersLoading ? (
+              {isLoading ? (
                 <TableRow>
                   <TableCell colSpan={5} className="text-center">Loading applications...</TableCell>
                 </TableRow>
-              ) : allApplications.map((app) => (
+              ) : allApplications.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={5} className="text-center h-24">No submitted applications found.</TableCell>
+                </TableRow>
+              ) : (
+                allApplications.map((app) => (
                 <TableRow key={app.id}>
                   <TableCell className="hidden sm:table-cell">
                     <div className="flex items-center gap-2">
@@ -140,16 +138,18 @@ export default function AdminApplicationsPage() {
                     </DropdownMenu>
                   </TableCell>
                 </TableRow>
-              ))}
+              )))}
             </TableBody>
           </Table>
         </CardContent>
-        <CardFooter>
-          <div className="text-xs text-muted-foreground">
-            Showing <strong>1-{allApplications.length}</strong> of <strong>{allApplications.length}</strong>{" "}
-            applications
-          </div>
-        </CardFooter>
+        {!isLoading && (
+            <CardFooter>
+            <div className="text-xs text-muted-foreground">
+                Showing <strong>1-{allApplications.length}</strong> of <strong>{allApplications.length}</strong>{" "}
+                applications
+            </div>
+            </CardFooter>
+        )}
       </Card>
     </div>
   );

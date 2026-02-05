@@ -5,7 +5,6 @@ import { useUser } from "@/firebase";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 import { LoadingScreen } from "@/components/LoadingScreen";
-import { auditLogs } from "@/lib/data";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { format, parseISO } from "date-fns";
@@ -20,6 +19,9 @@ export default function AuditLogPage() {
             router.push('/admin');
         }
     }, [user, loading, claims, router]);
+
+    // In a real app, this data would be fetched from a Firestore collection.
+    const auditLogs: AuditLogEntry[] = [];
 
     if (loading || !user || claims?.role !== 'head-admin') {
         return <LoadingScreen text="Verifying Access..." />;
@@ -47,17 +49,25 @@ export default function AuditLogPage() {
                             </TableRow>
                         </TableHeader>
                         <TableBody>
-                            {auditLogs.map((log: AuditLogEntry) => (
-                                <TableRow key={log.id}>
-                                    <TableCell>
-                                        <div className="font-medium">{log.adminName}</div>
-                                        <div className="text-xs text-muted-foreground">{log.adminEmail}</div>
+                            {auditLogs.length === 0 ? (
+                                <TableRow>
+                                    <TableCell colSpan={4} className="h-24 text-center">
+                                        No audit logs found.
                                     </TableCell>
-                                    <TableCell>{log.action}</TableCell>
-                                    <TableCell className="text-muted-foreground">{log.details || 'N/A'}</TableCell>
-                                    <TableCell className="text-right">{format(parseISO(log.timestamp), 'PPpp')}</TableCell>
                                 </TableRow>
-                            ))}
+                            ) : (
+                                auditLogs.map((log: AuditLogEntry) => (
+                                    <TableRow key={log.id}>
+                                        <TableCell>
+                                            <div className="font-medium">{log.adminName}</div>
+                                            <div className="text-xs text-muted-foreground">{log.adminEmail}</div>
+                                        </TableCell>
+                                        <TableCell>{log.action}</TableCell>
+                                        <TableCell className="text-muted-foreground">{log.details || 'N/A'}</TableCell>
+                                        <TableCell className="text-right">{format(parseISO(log.timestamp), 'PPpp')}</TableCell>
+                                    </TableRow>
+                                ))
+                            )}
                         </TableBody>
                     </Table>
                 </CardContent>

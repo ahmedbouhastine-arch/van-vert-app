@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useTransition } from "react";
@@ -18,6 +19,8 @@ import {
   Check,
   File as FileIcon,
   UploadCloud,
+  Save,
+  Loader2
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -25,6 +28,8 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { format, parseISO } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
 import { flagExpiringDocuments } from "@/ai/flows/flag-expiring-documents";
+import { useFirestore } from "@/firebase";
+import { doc, serverTimestamp, updateDoc } from "firebase/firestore";
 
 async function checkExpiryAction(documents: ApplicationDocument[]) {
     const docsToCheck = documents
@@ -49,10 +54,12 @@ function DocumentCard({
   doc,
   onUpload,
   onDateChange,
+  isSubmitted,
 }: {
   doc: ApplicationDocument;
   onUpload: (docId: string) => void;
   onDateChange: (docId: string, date: string) => void;
+  isSubmitted: boolean;
 }) {
   return (
     <Card className="overflow-hidden">
@@ -67,7 +74,7 @@ function DocumentCard({
       </CardHeader>
       <CardContent className="p-4 text-sm">
         {doc.status === "missing" && (
-          <Button variant="outline" onClick={() => onUpload(doc.id)}>
+          <Button variant="outline" onClick={() => onUpload(doc.id)} disabled={isSubmitted}>
             <UploadCloud className="mr-2 h-4 w-4" /> Upload Document
           </Button>
         )}
@@ -75,7 +82,7 @@ function DocumentCard({
           <div className="flex items-center gap-4 text-muted-foreground">
             <FileIcon className="h-5 w-5" />
             <span className="font-medium text-foreground">{doc.fileName}</span>
-            <Button variant="link" size="sm" onClick={() => onUpload(doc.id)}>
+            <Button variant="link" size="sm" onClick={() => onUpload(doc.id)} disabled={isSubmitted}>
               Replace
             </Button>
           </div>
@@ -88,9 +95,9 @@ function DocumentCard({
             <Input
               id={`expiry-${doc.id}`}
               type="date"
-              value={doc.expiryDate}
+              value={doc.expiryDate || ''}
               onChange={(e) => onDateChange(doc.id, e.target.value)}
-              disabled={doc.status === "missing"}
+              disabled={doc.status === "missing" || isSubmitted}
             />
           </div>
         )}
@@ -116,6 +123,7 @@ export function ApplicationClient({
   const [appState, setAppState] = useState<Application>(initialApplication);
   const [isPending, startTransition] = useTransition();
   const { toast } = useToast();
+  const firestore = useFirestore();
 
   const handleUpload = (docId: string) => {
     setAppState((prev) => ({
@@ -152,16 +160,15 @@ export function ApplicationClient({
             return;
         }
 
-        setAppState(prev => ({
-            ...prev,
-            documents: prev.documents.map(doc => {
-                const checkResult = results.find(r => r.name === doc.name);
-                if (checkResult?.isExpiringSoon) {
-                    return { ...doc, isExpiringSoon: true, status: 'needs_attention' };
-                }
-                return doc;
-            })
-        }));
+        const updatedDocs = appState.documents.map(doc => {
+            const checkResult = results.find(r => r.name === doc.name);
+            if (checkResult?.isExpiringSoon) {
+                return { ...doc, isExpiringSoon: true, status: 'needs_attention' as const };
+            }
+            return doc;
+        });
+
+        setAppState(prev => ({ ...prev, documents: updatedDocs }));
 
         toast({
             variant: 'destructive',
@@ -171,17 +178,51 @@ export function ApplicationClient({
     });
   };
 
+  const handlePersistChanges = async (updates: Partial<Application>) => {
+    if (!firestore) return;
+    const appRef = doc(firestore, 'applications', appState.id);
+    await updateDoc(appRef, {
+        ...updates,
+        updatedAt: serverTimestamp(),
+    });
+  };
+
+  const handleSaveDraft = () => {
+    startTransition(async () => {
+        try {
+            await handlePersistChanges({ documents: appState.documents });
+            toast({
+                title: "Draft Saved!",
+                description: "Your changes have been saved.",
+            });
+        } catch (e: any) {
+            toast({ variant: 'destructive', title: "Save failed", description: e.message });
+        }
+    });
+  }
+
   const handleSubmit = () => {
-    startTransition(() => {
-        setAppState(prev => ({ ...prev, status: 'submitted', submittedAt: new Date().toISOString() }));
-        toast({
-            title: "Application Submitted!",
-            description: "Your application has been submitted for review.",
-          });
+    startTransition(async () => {
+        try {
+            const finalState = {
+                ...appState,
+                status: 'submitted' as const,
+                submittedAt: new Date().toISOString(),
+            };
+            await handlePersistChanges(finalState);
+            setAppState(finalState);
+            toast({
+                title: "Application Submitted!",
+                description: "Your application has been submitted for review.",
+            });
+        } catch (e: any) {
+            toast({ variant: 'destructive', title: "Submission failed", description: e.message });
+        }
     });
   }
 
   const allDocsUploaded = appState.documents.every(doc => doc.status !== 'missing');
+  const isSubmitted = appState.status !== 'draft';
 
   return (
     <div className="grid gap-8">
@@ -192,7 +233,7 @@ export function ApplicationClient({
             <StatusBadge status={appState.status} />
           </div>
           <CardDescription>
-            Last updated on {format(parseISO(appState.updatedAt), "MMMM d, yyyy")}
+            Last updated on {appState.updatedAt ? format(parseISO(appState.updatedAt.toString()), "MMMM d, yyyy") : 'N/A'}
             {appState.submittedAt && ` | Submitted on ${format(parseISO(appState.submittedAt), "MMMM d, yyyy")}`}
           </CardDescription>
         </CardHeader>
@@ -206,6 +247,7 @@ export function ApplicationClient({
             doc={doc}
             onUpload={handleUpload}
             onDateChange={handleDateChange}
+            isSubmitted={isSubmitted}
           />
         ))}
       </div>
@@ -222,16 +264,21 @@ export function ApplicationClient({
         <CardHeader>
             <CardTitle>Next Steps</CardTitle>
         </CardHeader>
-        <CardContent className="grid sm:grid-cols-2 gap-4">
-             <Button onClick={handleCheckExpiry} disabled={isPending} variant="secondary">
-                <Bot className="mr-2 h-4 w-4" /> {isPending ? 'Checking...' : 'AI Check Document Expiry'}
+        <CardContent className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            <Button onClick={handleCheckExpiry} disabled={isPending || isSubmitted} variant="secondary">
+                {isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Bot className="mr-2 h-4 w-4" />}
+                AI Check Document Expiry
             </Button>
-
-            <Button onClick={handleSubmit} disabled={!allDocsUploaded || appState.status !== 'draft' || isPending}>
-                <Check className="mr-2 h-4 w-4" /> {appState.status === 'draft' ? 'Submit Application' : 'Submitted'}
+            <Button onClick={handleSaveDraft} disabled={isPending || isSubmitted} variant="outline">
+                {isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+                Save Draft
+            </Button>
+            <Button onClick={handleSubmit} disabled={!allDocsUploaded || isSubmitted || isPending}>
+                <Check className="mr-2 h-4 w-4" /> 
+                {isSubmitted ? 'Submitted' : 'Submit Application'}
             </Button>
         </CardContent>
-        {!allDocsUploaded && appState.status === 'draft' && (
+        {!allDocsUploaded && !isSubmitted && (
              <CardFooter>
                  <p className="text-sm text-muted-foreground">You must upload all required documents before submitting.</p>
             </CardFooter>
