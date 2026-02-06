@@ -1,0 +1,195 @@
+{
+  "entities": {
+    "User": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "User",
+      "type": "object",
+      "description": "Represents a user of the PilotPack application.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the user entity."
+        },
+        "email": {
+          "type": "string",
+          "description": "User's email address.",
+          "format": "email"
+        },
+        "role": {
+          "type": "string",
+          "description": "User's role (e.g., applicant, admin)."
+        }
+      },
+      "required": [
+        "id",
+        "email",
+        "role"
+      ]
+    },
+    "Application": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Application",
+      "type": "object",
+      "description": "Represents a pilot license application.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the application entity."
+        },
+        "userId": {
+          "type": "string",
+          "description": "Reference to User. (Relationship: User 1:N Application)"
+        },
+        "licenseType": {
+          "type": "string",
+          "description": "The type of license being applied for."
+        },
+        "status": {
+          "type": "string",
+          "description": "Application status (e.g., draft, submitted, ready)."
+        },
+        "submittedAt": {
+          "type": "string",
+          "description": "Timestamp when the application was submitted.",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "Timestamp when the application was last updated.",
+          "format": "date-time"
+        },
+        "adminNotes": {
+          "type": "string",
+          "description": "Internal notes from admins, visible to the user."
+        }
+      },
+      "required": [
+        "id",
+        "userId",
+        "licenseType",
+        "status"
+      ]
+    },
+    "Document": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Document",
+      "type": "object",
+      "description": "Represents a document uploaded for an application.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the document entity."
+        },
+        "applicationId": {
+          "type": "string",
+          "description": "Reference to Application. (Relationship: Application 1:N Document)"
+        },
+        "filename": {
+          "type": "string",
+          "description": "Name of the uploaded file."
+        },
+        "fileType": {
+          "type": "string",
+          "description": "Type of the uploaded file (e.g., PDF, JPG, PNG)."
+        },
+        "fileSize": {
+          "type": "number",
+          "description": "Size of the uploaded file in bytes."
+        },
+        "storagePath": {
+          "type": "string",
+          "description": "Path to the file in Firebase Storage."
+        },
+        "expiryDate": {
+          "type": "string",
+          "description": "Expiry date of the document, if applicable.",
+          "format": "date-time"
+        },
+        "status": {
+          "type": "string",
+          "description": "Document status (e.g., missing, uploaded, needs attention)."
+        }
+      },
+      "required": [
+        "id",
+        "applicationId",
+        "filename",
+        "fileType",
+        "fileSize",
+        "storagePath",
+        "status"
+      ]
+    }
+  },
+  "auth": {
+    "providers": [
+      "password",
+      "anonymous"
+    ]
+  },
+  "firestore": {
+    "structure": [
+      {
+        "path": "/users/{userId}",
+        "definition": {
+          "entityName": "User",
+          "schema": {
+            "$ref": "#/backend/entities/User"
+          },
+          "description": "Stores user profiles. Path-based ownership ensures that only the user can access their profile data.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier for the user."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/users/{userId}/applications/{applicationId}",
+        "definition": {
+          "entityName": "Application",
+          "schema": {
+            "$ref": "#/backend/entities/Application"
+          },
+          "description": "Each user has a collection of applications. Path-based ownership ensures that only the user can access their applications.  The `userId` is part of the document path, thus enforcing path-based ownership.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier for the user."
+            },
+            {
+              "name": "applicationId",
+              "description": "The unique identifier for the application."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/users/{userId}/applications/{applicationId}/documents/{documentId}",
+        "definition": {
+          "entityName": "Document",
+          "schema": {
+            "$ref": "#/backend/entities/Document"
+          },
+          "description": "Each application has a collection of documents. Path-based ownership ensures that only the user can access their documents. Documents inherit the `userId` and `applicationId` in their path, maintaining path-based ownership.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier for the user."
+            },
+            {
+              "name": "applicationId",
+              "description": "The unique identifier for the application."
+            },
+            {
+              "name": "documentId",
+              "description": "The unique identifier for the document."
+            }
+          ]
+        }
+      }
+    ],
+    "reasoning": "The Firestore data structure is designed to ensure security, scalability, and ease of debugging, following the principles of Authorization Independence, Clarity of Intent, DBAC, and QAPs. User roles are stored in the database to avoid custom claims. Data is segregated into collections based on access needs.\n\n*   **Users (Collection: `/users/{userId}`):** Stores user profiles. This collection facilitates user authentication and authorization. Path-based ownership ensures that only the user can access their profile data.\n\n*   **Applications (Collection: `/users/{userId}/applications/{applicationId}`):** Each user has a collection of applications. This parent-child structure enforces that only the user can access their applications. The `userId` is part of the document path, thus enforcing path-based ownership.\n\n*   **Documents (Collection: `/users/{userId}/applications/{applicationId}/documents/{documentId}`):** Each application has a collection of documents. Similar to applications, documents inherit the `userId` and `applicationId` in their path, maintaining path-based ownership and enabling secure `list` operations. This structure ensures that documents can only be accessed in the context of their parent application and owner.\n\nThis structure ensures Authorization Independence by embedding the `userId` in all subcollections (Applications, Documents), eliminating the need for `get()` calls in the security rules. QAPs are satisfied because `list` operations are secured by the path-based ownership model. Admins will require separate logic to elevate access."
+  }
+}
