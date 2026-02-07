@@ -1,4 +1,3 @@
-
 "use client";
 
 import Link from "next/link";
@@ -111,45 +110,33 @@ export default function RegisterPage() {
             const userCredential = await createUserWithEmailAndPassword(auth, email, password);
             const user = userCredential.user;
 
-            // Step 2: Send the verification email immediately. This is the most critical step.
+            // Step 2: Send the verification email immediately.
             await sendEmailVerification(user);
 
-            // Step 3: Asynchronously handle profile picture upload and database writes.
-            // These operations can happen after we've already initiated the email verification.
-            const updateUserProfileAndDb = async () => {
-                try {
-                    let photoURL = "";
-                    if (storage && profilePic) {
-                        const storageRef = ref(storage, `profile-pictures/${user.uid}`);
-                        await uploadBytes(storageRef, profilePic);
-                        photoURL = await getDownloadURL(storageRef);
-                    }
-                    
-                    const profilePromise = updateProfile(user, { displayName: fullName, photoURL });
-
-                    let firestorePromise = Promise.resolve();
-                    if (firestore) {
-                        const userRef = doc(firestore, "users", user.uid);
-                        firestorePromise = setDoc(userRef, {
-                            displayName: fullName,
-                            email: user.email,
-                            role: "applicant",
-                            createdAt: serverTimestamp(),
-                            photoURL: photoURL
-                        });
-                    }
-
-                    await Promise.all([profilePromise, firestorePromise]);
-                } catch (updateError) {
-                    console.error("Non-critical background update failed:", updateError);
-                    // Optionally, you could log this to a monitoring service.
-                }
-            };
+            // Step 3: Upload the profile picture and get its URL.
+            let photoURL = "";
+            if (storage && profilePic) {
+                const storageRef = ref(storage, `profile-pictures/${user.uid}`);
+                await uploadBytes(storageRef, profilePic);
+                photoURL = await getDownloadURL(storageRef);
+            }
             
-            // Start the background updates but don't block the user flow.
-            updateUserProfileAndDb();
-            
-            // Step 4: Immediately notify the user and redirect them.
+            // Step 4: Update the user's Auth profile with their name and photo.
+            await updateProfile(user, { displayName: fullName, photoURL });
+
+            // Step 5: Create the user's document in Firestore.
+            if (firestore) {
+                const userRef = doc(firestore, "users", user.uid);
+                await setDoc(userRef, {
+                    displayName: fullName,
+                    email: user.email,
+                    role: "applicant",
+                    createdAt: serverTimestamp(),
+                    photoURL: photoURL
+                });
+            }
+
+            // Step 6: All steps succeeded. Notify the user and redirect.
             toast({
                 title: "Registration successful!",
                 description: "We've sent a verification link to your email address.",
