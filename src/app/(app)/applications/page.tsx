@@ -37,10 +37,24 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { StatusBadge } from "@/components/StatusBadge";
-import { format, parseISO } from "date-fns";
+import { format } from "date-fns";
 import { useUser, useFirestore, useCollection, useMemoFirebase } from "@/firebase";
 import { collection, query, where } from "firebase/firestore";
-import type { Application } from "@/types";
+import type { Application, FirebaseTimestamp } from "@/types";
+
+// Helper function to safely format dates, whether they are Timestamps or strings
+const safeFormatDate = (date: FirebaseTimestamp | Date | string | undefined | null, formatString: string) => {
+  if (!date) return 'N/A';
+  try {
+    if (typeof date === 'object' && date && 'toDate' in date && typeof date.toDate === 'function') {
+      return format(date.toDate(), formatString);
+    }
+    return format(new Date(date as string), formatString);
+  } catch (error) {
+    console.error("Date formatting failed:", error);
+    return "Invalid Date";
+  }
+};
 
 export default function MyApplicationsPage() {
   const { user, loading: userLoading } = useUser();
@@ -112,7 +126,7 @@ export default function MyApplicationsPage() {
                       <StatusBadge status={app.status} />
                     </TableCell>
                     <TableCell className="hidden md:table-cell">
-                      {app.updatedAt ? format(app.updatedAt.toDate ? app.updatedAt.toDate() : new Date(app.updatedAt.seconds * 1000 || app.updatedAt), "MMMM d, yyyy") : 'N/A'}
+                      {safeFormatDate(app.updatedAt, "MMMM d, yyyy")}
                     </TableCell>
                     <TableCell>
                       <DropdownMenu>
@@ -176,7 +190,3 @@ export default function MyApplicationsPage() {
     </div>
   );
 }
-
-    
-
-    

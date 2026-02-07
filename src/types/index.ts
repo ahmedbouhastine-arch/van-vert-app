@@ -1,12 +1,19 @@
 
 import type { User as FirebaseUser } from 'firebase/auth';
 
+// A more specific type for Firestore Timestamps to avoid 'any'.
+export type FirebaseTimestamp = {
+  seconds: number;
+  nanoseconds: number;
+  toDate: () => Date;
+};
+
 export type UserProfile = {
   email: string;
   displayName?: string;
   photoURL?: string;
   role: 'user' | 'admin' | 'head-admin' | 'reviewer';
-  createdAt: any; // Firestore server timestamp
+  createdAt: FirebaseTimestamp;
 };
 
 export type AppUser = FirebaseUser & {
@@ -23,9 +30,9 @@ export type ApplicationDocument = {
   status: DocumentStatus;
   filePath?: string;
   fileName?: string;
-  uploadedAt?: any;
+  uploadedAt?: string; // ISO Date string
   requiresExpiry: boolean;
-  expiryDate?: string;
+  expiryDate?: string; // YYYY-MM-DD
   isExpiringSoon?: boolean;
 };
 
@@ -46,9 +53,9 @@ export type Application = {
   status: ApplicationStatus;
   documents: ApplicationDocument[];
   flightLogs?: FlightLog[];
-  submittedAt?: any;
-  updatedAt: any;
-  createdAt?: any;
+  submittedAt?: FirebaseTimestamp;
+  updatedAt: FirebaseTimestamp;
+  createdAt?: FirebaseTimestamp;
   feedback?: string;
 };
 
@@ -79,8 +86,6 @@ export type AuditLogEntry = {
   adminName: string;
   adminEmail: string;
   action: string;
-  timestamp: any;
+  timestamp: FirebaseTimestamp;
   details?: string;
 };
-
-    

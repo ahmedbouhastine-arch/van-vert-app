@@ -13,11 +13,25 @@ import {
   CardFooter,
 } from "@/components/ui/card";
 import { StatusBadge } from "@/components/StatusBadge";
-import { format, parseISO } from "date-fns";
+import { format } from "date-fns";
 import { useUser, useFirestore, useCollection, useMemoFirebase } from "@/firebase";
 import { collection, query, where, orderBy, limit } from "firebase/firestore";
 import { Skeleton } from "@/components/ui/skeleton";
-import type { Application } from "@/types";
+import type { Application, FirebaseTimestamp } from "@/types";
+
+// Helper function to safely format dates, whether they are Timestamps or strings
+const safeFormatDate = (date: FirebaseTimestamp | Date | string | undefined | null, formatString: string) => {
+  if (!date) return 'N/A';
+  try {
+    if (typeof date === 'object' && date && 'toDate' in date && typeof date.toDate === 'function') {
+      return format(date.toDate(), formatString);
+    }
+    return format(new Date(date as string), formatString);
+  } catch (error) {
+    console.error("Date formatting failed:", error);
+    return "Invalid Date";
+  }
+};
 
 function ApplicationCardSkeleton() {
     return (
@@ -103,7 +117,7 @@ export default function DashboardPage() {
                      </CardHeader>
                      <CardContent>
                          <p className="text-sm text-muted-foreground">
-                             Last updated on {app.updatedAt ? format(app.updatedAt.toDate ? app.updatedAt.toDate() : new Date(app.updatedAt.seconds * 1000 || app.updatedAt), "PPP") : 'N/A'}
+                             Last updated on {safeFormatDate(app.updatedAt, "PPP")}
                          </p>
                      </CardContent>
                      <CardFooter>
@@ -127,7 +141,3 @@ export default function DashboardPage() {
     </div>
   );
 }
-
-    
-
-    

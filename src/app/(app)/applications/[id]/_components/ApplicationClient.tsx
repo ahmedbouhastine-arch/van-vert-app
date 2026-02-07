@@ -2,7 +2,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import type { Application, ApplicationDocument } from "@/types";
+import type { Application, ApplicationDocument, FirebaseTimestamp } from "@/types";
 import {
   Card,
   CardContent,
@@ -25,11 +25,25 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { format, parseISO } from "date-fns";
+import { format } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
 import { flagExpiringDocuments } from "@/ai/flows/flag-expiring-documents";
 import { useFirestore } from "@/firebase";
 import { doc, serverTimestamp, updateDoc } from "firebase/firestore";
+
+// Helper function to safely format dates, whether they are Timestamps or strings
+const safeFormatDate = (date: FirebaseTimestamp | Date | string | undefined | null, formatString: string) => {
+  if (!date) return 'N/A';
+  try {
+    if (typeof date === 'object' && date && 'toDate' in date && typeof date.toDate === 'function') {
+      return format(date.toDate(), formatString);
+    }
+    return format(new Date(date as string), formatString);
+  } catch (error) {
+    console.error("Date formatting failed:", error);
+    return "Invalid Date";
+  }
+};
 
 async function checkExpiryAction(documents: ApplicationDocument[]) {
     const docsToCheck = documents
@@ -233,8 +247,8 @@ export function ApplicationClient({
             <StatusBadge status={appState.status} />
           </div>
           <CardDescription>
-            Last updated on {appState.updatedAt ? format(appState.updatedAt.toDate ? appState.updatedAt.toDate() : new Date(appState.updatedAt.seconds * 1000 || appState.updatedAt), "MMMM d, yyyy") : 'N/A'}
-            {appState.submittedAt && ` | Submitted on ${format(appState.submittedAt.toDate ? appState.submittedAt.toDate() : new Date(appState.submittedAt.seconds * 1000 || appState.submittedAt), "MMMM d, yyyy")}`}
+            Last updated on {safeFormatDate(appState.updatedAt, "MMMM d, yyyy")}
+            {appState.submittedAt && ` | Submitted on ${safeFormatDate(appState.submittedAt, "MMMM d, yyyy")}`}
           </CardDescription>
         </CardHeader>
       </Card>
@@ -287,7 +301,3 @@ export function ApplicationClient({
     </div>
   );
 }
-
-    
-
-    

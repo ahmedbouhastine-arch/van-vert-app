@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useRouter } from 'next/navigation';
@@ -31,7 +32,8 @@ export default function VerifyEmailPage() {
         if (user.emailVerified) {
             const isAdmin = claims?.role === 'admin' || claims?.role === 'head-admin' || claims?.role === 'reviewer';
             const homePath = isAdmin ? '/admin' : '/dashboard';
-            router.push(homePath);
+            // Use a hard redirect to ensure the new session state is fully loaded.
+            window.location.href = homePath;
             return;
         }
 
@@ -41,10 +43,10 @@ export default function VerifyEmailPage() {
                 await currentUser.reload();
                 if (currentUser.emailVerified) {
                     clearInterval(interval);
-                    // Force a full redirect instead of a soft refresh to avoid race conditions.
-                    const isAdmin = claims?.role === 'admin' || claims?.role === 'head-admin' || claims?.role === 'reviewer';
-                    const homePath = isAdmin ? '/admin' : '/dashboard';
-                    router.push(homePath);
+                    // Force a full redirect to the dashboard. The layout will then handle
+                    // redirecting admins to the correct /admin page.
+                    // This is more robust than a soft navigation and prevents race conditions.
+                    window.location.href = '/dashboard';
                 }
             }
         }, 3000); 

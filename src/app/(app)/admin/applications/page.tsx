@@ -1,3 +1,4 @@
+
 'use client';
 import Link from "next/link";
 import { MoreHorizontal } from "lucide-react";
@@ -31,10 +32,24 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useCollection, useFirestore, useMemoFirebase, useUser } from "@/firebase";
 import { collection, query, where } from "firebase/firestore";
 import { useMemo, useEffect } from "react";
-import type { Application, UserProfile } from "@/types";
+import type { Application, UserProfile, FirebaseTimestamp } from "@/types";
 import { useToast } from "@/hooks/use-toast";
 import { useRouter } from "next/navigation";
 import { LoadingScreen } from "@/components/LoadingScreen";
+
+// Helper function to safely format dates, whether they are Timestamps or strings
+const safeFormatDate = (date: FirebaseTimestamp | Date | string | undefined | null, formatString: string) => {
+  if (!date) return 'N/A';
+  try {
+    if (typeof date === 'object' && date && 'toDate' in date && typeof date.toDate === 'function') {
+      return format(date.toDate(), formatString);
+    }
+    return format(new Date(date as string), formatString);
+  } catch (error) {
+    console.error("Date formatting failed:", error);
+    return "Invalid Date";
+  }
+};
 
 export default function AdminApplicationsPage() {
   const firestore = useFirestore();
@@ -141,7 +156,7 @@ export default function AdminApplicationsPage() {
                     <StatusBadge status={app.status} />
                   </TableCell>
                   <TableCell className="hidden md:table-cell">
-                    {app.submittedAt ? format(app.submittedAt.toDate ? app.submittedAt.toDate() : new Date(app.submittedAt.seconds * 1000 || app.submittedAt), "MMMM d, yyyy") : 'N/A'}
+                    {safeFormatDate(app.submittedAt, "MMMM d, yyyy")}
                   </TableCell>
                   <TableCell>
                     <DropdownMenu>
