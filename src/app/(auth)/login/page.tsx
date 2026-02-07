@@ -1,3 +1,4 @@
+
 "use client";
 
 import Link from "next/link";
@@ -16,7 +17,8 @@ import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { getAuth, signInWithEmailAndPassword, GoogleAuthProvider, signInWithPopup } from "firebase/auth";
 import { useToast } from "@/hooks/use-toast";
-import { useFirebaseApp, useUser } from "@/firebase";
+import { useFirebaseApp, useUser, useFirestore } from "@/firebase";
+import { doc, setDoc, serverTimestamp } from "firebase/firestore";
 import { GoogleIcon } from "@/components/GoogleIcon";
 import { LoadingScreen } from "@/components/LoadingScreen";
 import { Eye, EyeOff } from "lucide-react";
@@ -26,6 +28,7 @@ export default function LoginPage() {
     const { toast } = useToast();
     const app = useFirebaseApp();
     const auth = getAuth(app);
+    const firestore = useFirestore();
     const { user, loading, claims } = useUser();
     const [showPassword, setShowPassword] = useState(false);
 
@@ -58,7 +61,18 @@ export default function LoginPage() {
     const handleGoogleLogin = async () => {
         const provider = new GoogleAuthProvider();
         try {
-            await signInWithPopup(auth, provider);
+            const result = await signInWithPopup(auth, provider);
+            const user = result.user;
+
+            if (firestore) {
+                const userRef = doc(firestore, "users", user.uid);
+                await setDoc(userRef, {
+                    displayName: user.displayName,
+                    email: user.email,
+                    role: "applicant",
+                    createdAt: serverTimestamp(),
+                }, { merge: true }); // Use merge to prevent overwriting existing user data/roles
+            }
             // Redirection is handled by the useEffect hook
         } catch (error: any) {
             toast({
