@@ -28,7 +28,7 @@ export type ApplicationDocument = {
   name: string;
   description: string;
   status: DocumentStatus;
-  filePath?: string;
+  storagePath?: string;
   fileName?: string;
   uploadedAt?: string; // ISO Date string
   requiresExpiry: boolean;
@@ -88,4 +88,14 @@ export type AuditLogEntry = {
   action: string;
   timestamp: FirebaseTimestamp;
   details?: string;
+};
+
+export type Notification = {
+  id: string;
+  userId: string;
+  title: string;
+  body: string;
+  href: string;
+  isRead: boolean;
+  createdAt: FirebaseTimestamp;
 };

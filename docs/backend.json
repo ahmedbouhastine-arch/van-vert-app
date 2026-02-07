@@ -120,6 +120,44 @@
         "storagePath",
         "status"
       ]
+    },
+    "Notification": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Notification",
+      "type": "object",
+      "description": "Represents a notification for a user.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique ID for the notification."
+        },
+        "userId": {
+          "type": "string",
+          "description": "The ID of the user who this notification is for."
+        },
+        "title": {
+          "type": "string",
+          "description": "The title of the notification."
+        },
+        "body": {
+          "type": "string",
+          "description": "The main content of the notification."
+        },
+        "href": {
+          "type": "string",
+          "description": "A URL to navigate to when the notification is clicked."
+        },
+        "isRead": {
+          "type": "boolean",
+          "description": "Whether the user has read the notification."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Timestamp when the notification was created."
+        }
+      },
+      "required": ["id", "userId", "title", "body", "isRead", "createdAt"]
     }
   },
   "auth": {
@@ -162,8 +200,26 @@
             }
           ]
         }
+      },
+      {
+        "path": "/users/{userId}/notifications/{notificationId}",
+        "definition": {
+          "entityName": "Notification",
+          "schema": { "$ref": "#/backend/entities/Notification" },
+          "description": "Subcollection storing notifications for a specific user. This ensures notifications are private and queries are efficient.",
+          "params": [
+             {
+              "name": "userId",
+              "description": "The unique identifier for the user."
+            },
+            {
+              "name": "notificationId",
+              "description": "The unique identifier for the notification."
+            }
+          ]
+        }
       }
     ],
-    "reasoning": "The Firestore data structure has been refactored to support administrative roles efficiently. Applications are now in a top-level collection to allow admins to query across all submissions, which is not feasible with a nested structure. Security is maintained through Firestore rules that check user roles and document ownership.\n\n*   **Users (Collection: `/users/{userId}`):** Stores user profiles and roles. This collection is the source of truth for role-based access control (RBAC).\n\n*   **Applications (Collection: `/applications/{applicationId}`):** A flat collection for all applications. A user can only access their own applications (verified via the `userId` field in the document). Admins can list and view all applications. Documents are stored as an array within each application document, simplifying data retrieval."
+    "reasoning": "The Firestore data structure has been refactored to support administrative roles efficiently. Applications are now in a top-level collection to allow admins to query across all submissions, which is not feasible with a nested structure. Security is maintained through Firestore rules that check user roles and document ownership.\n\n*   **Users (Collection: `/users/{userId}`):** Stores user profiles and roles. This collection is the source of truth for role-based access control (RBAC).\n\n*   **Applications (Collection: `/applications/{applicationId}`):** A flat collection for all applications. A user can only access their own applications (verified via the `userId` field in the document). Admins can list and view all applications. Documents are stored as an array within each application document, simplifying data retrieval.\n\n* **Notifications (Subcollection: `/users/{userId}/notifications/{notificationId}`):** A subcollection under each user to store their personal notifications. This is a secure and scalable pattern for user-specific data."
   }
 }

@@ -50,24 +50,6 @@ export default function SettingsPage() {
       // This should be caught by the layout and redirected, but as a fallback:
       return <LoadingScreen text="User not found." />;
     }
-
-    const handleRoleChange = async (newRole: 'user' | 'admin' | 'head-admin' | 'reviewer') => {
-      if (!user || !firestore) return;
-      const userRef = doc(firestore, "users", user.uid);
-      try {
-          await updateDoc(userRef, { role: newRole });
-          toast({
-              title: "Success",
-              description: `Your role has been updated to ${newRole}. The change will be applied on your next login.`,
-          });
-      } catch (error: any) {
-          toast({
-              variant: 'destructive',
-              title: 'Update failed',
-              description: error.message,
-          });
-      }
-    };
     
     const handleProfileSave = () => {
         startTransitionProfile(async () => {
@@ -132,21 +114,6 @@ export default function SettingsPage() {
                 <Label htmlFor="email">Email</Label>
                 <Input id="email" type="email" defaultValue={user.email || ''} readOnly disabled />
                 </div>
-            </div>
-            <div className="grid gap-2">
-                <Label htmlFor="role">Role (for testing)</Label>
-                <Select value={claims.role} onValueChange={(value) => handleRoleChange(value as any)}>
-                    <SelectTrigger id="role" className="w-full max-w-sm">
-                        <SelectValue placeholder="Select a role" />
-                    </SelectTrigger>
-                    <SelectContent>
-                        <SelectItem value="user">User</SelectItem>
-                        <SelectItem value="reviewer">Reviewer</SelectItem>
-                        <SelectItem value="admin">Admin</SelectItem>
-                        <SelectItem value="head-admin">Head Admin</SelectItem>
-                    </SelectContent>
-                </Select>
-                <p className="text-xs text-muted-foreground">This is for testing purposes. Role changes apply on next login.</p>
             </div>
           </form>
         </CardContent>

@@ -55,6 +55,16 @@ service cloud.firestore {
       
       // Only head admins can delete user documents.
       allow delete: if isHeadAdmin();
+
+      // Subcollection: notifications
+      match /notifications/{notificationId} {
+        // A user can read, list, update (mark as read), and delete their own notifications.
+        allow list, get, update, delete: if isOwner(userId);
+        
+        // Only admins can create notifications for users (e.g., when an application status changes).
+        // This prevents users from creating fake notifications for themselves.
+        allow create: if isAdmin();
+      }
     }
 
     //-------------------------------------------------------------------------
