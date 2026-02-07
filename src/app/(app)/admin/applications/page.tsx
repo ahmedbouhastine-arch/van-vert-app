@@ -53,17 +53,23 @@ const safeFormatDate = (date: FirebaseTimestamp | Date | string | undefined | nu
 function AdminApplicationsContent() {
     const firestore = useFirestore();
     const { toast } = useToast();
+    const { claims } = useUser();
     
+    // This query is safe because any signed-in user can view profiles.
     const usersQuery = useMemoFirebase(() => 
         firestore ? query(collection(firestore, "users")) : null, 
         [firestore]
     );
     const { data: users, loading: usersLoading } = useCollection<UserProfile>(usersQuery);
 
-    const appsQuery = useMemoFirebase(() => 
-        firestore ? query(collection(firestore, "applications"), where("status", "!=", "draft")) : null, 
-        [firestore]
-    );
+    // CRITICAL: This query is now conditional on the user's role.
+    // It will only be created if the user is authorized, preventing permission errors.
+    const appsQuery = useMemoFirebase(() => {
+        const isAuthorized = claims?.role && ['reviewer', 'admin', 'head-admin'].includes(claims.role);
+        if (!firestore || !isAuthorized) return null; // Return null to prevent the query
+        return query(collection(firestore, "applications"), where("status", "!=", "draft"));
+    }, [firestore, claims]); 
+
     const { data: applications, loading: appsLoading } = useCollection<Application>(appsQuery);
 
     const allApplications = useMemo(() => {
@@ -74,6 +80,8 @@ function AdminApplicationsContent() {
         });
     }, [applications, users]);
 
+    // If claims are still loading, appsQuery will be null, and appsLoading will be false.
+    // We rely on the parent component's loading screen.
     const isLoading = usersLoading || appsLoading;
 
     const handleSendReminder = (applicantName: string | undefined, licenseType: string) => {

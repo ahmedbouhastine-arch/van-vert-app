@@ -7,16 +7,20 @@ import { useFirestore, useDoc, useUser, useMemoFirebase } from "@/firebase";
 import { doc } from "firebase/firestore";
 import { LoadingScreen } from "@/components/LoadingScreen";
 import type { Application, UserProfile } from "@/types";
+import React from "react";
 
 function AdminApplicationDetailContent() {
     const params = useParams<{ id: string }>();
     const firestore = useFirestore();
     const { claims } = useUser(); // We know claims exist from the parent
 
-    const appRef = useMemoFirebase(() => 
-        firestore && params.id ? doc(firestore, 'applications', params.id) as any : null,
-        [firestore, params.id]
-    );
+    const appRef = useMemoFirebase(() => {
+        // Only create the reference if authorized.
+        const isAuthorized = claims?.role && ['reviewer', 'admin', 'head-admin'].includes(claims.role);
+        if (!firestore || !params.id || !isAuthorized) return null;
+        return doc(firestore, 'applications', params.id) as any;
+    }, [firestore, params.id, claims]);
+    
     const { data: application, loading: appLoading } = useDoc<Application>(appRef);
 
     const userRef = useMemoFirebase(() => 
@@ -30,6 +34,8 @@ function AdminApplicationDetailContent() {
     }
 
     if (!application) {
+        // This can happen if the doc doesn't exist or if the query was not run due to permissions.
+        // The parent component should have already redirected, but this is a safe fallback.
         notFound();
     }
     
@@ -66,7 +72,7 @@ export default function AdminApplicationDetailPage() {
 
   // Render content only if authorized, otherwise redirect. This prevents child components
   // from attempting to fetch data before the authorization check is complete.
-  return (claims?.role && ['reviewer', 'admin', 'head-admin'].includes(claims.role))
-    ? <AdminApplicationDetailContent />
-    : <RedirectToDashboard />;
+  const isAuthorized = claims?.role && ['reviewer', 'admin', 'head-admin'].includes(claims.role);
+  
+  return isAuthorized ? <AdminApplicationDetailContent /> : <RedirectToDashboard />;
 }
