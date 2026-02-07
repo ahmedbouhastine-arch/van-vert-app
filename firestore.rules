@@ -80,13 +80,10 @@ service cloud.firestore {
       // GET: A user can get their own application. Reviewers/Admins can get any application.
       allow get: if isSignedIn() && (isApplicationOwner() || isReviewer());
       
-      // LIST: This is a critical rule.
-      // 1. Reviewers/Admins can perform an unrestricted list query to get all documents.
-      // 2. Regular users CANNOT perform an unrestricted list. A query by a regular user
-      //    will only succeed if it is constrained (e.g., where("userId", "==", auth.uid)),
-      //    because Firestore enforces the 'get' rule on each document in the result set.
-      //    An unconstrained query by a 'user' will correctly fail.
-      allow list: if isSignedIn();
+      // LIST: This is the critical rule.
+      // Admins/Reviewers can perform unrestricted list queries.
+      // Regular users can ONLY list if the query is constrained to their own user ID.
+      allow list: if isReviewer() || (isSignedIn() && request.query.where.userId == request.auth.uid);
       
       // CREATE: Users can create an application for themselves.
       allow create: if isSignedIn() && isCreatingOwnApplication();
