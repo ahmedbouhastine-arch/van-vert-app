@@ -48,7 +48,7 @@ export default function LoginPage() {
         }
     }, [user, loading, claims, router]);
 
-    const handleLogin = async (event: React.FormEvent<HTMLFormElement>) => {
+    const handleLogin = async (event: React.FormEvent<HTMLFormEvent>) => {
         event.preventDefault();
         const formData = new FormData(event.currentTarget);
         const email = formData.get("email") as string;
@@ -126,7 +126,7 @@ export default function LoginPage() {
             <div className="flex items-center">
               <Label htmlFor="password">Password</Label>
               <Link
-                href="#"
+                href="/forgot-password"
                 className="ml-auto inline-block text-sm underline"
               >
                 Forgot your password?
