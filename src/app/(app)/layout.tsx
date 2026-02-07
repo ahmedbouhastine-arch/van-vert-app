@@ -42,7 +42,7 @@ export default function AppLayout({
                 className="group flex h-9 w-9 shrink-0 items-center justify-center gap-2 rounded-full bg-primary text-primary-foreground md:h-8 md:w-8"
               >
                 <Plane className="h-5 w-5 transition-all group-hover:scale-110" />
-                <span className="sr-only">Van-Vert</span>
+                <span className="sr-only">PilotPack</span>
             </Link>
           <MainNavLinks claims={claims} />
         </nav>
@@ -66,7 +66,7 @@ export default function AppLayout({
                   className="flex items-center gap-2 text-lg font-semibold"
                 >
                   <Plane className="h-6 w-6" />
-                  <span>Van-Vert</span>
+                  <span>PilotPack</span>
                 </Link>
                  <MobileNavLinks claims={claims} />
               </nav>

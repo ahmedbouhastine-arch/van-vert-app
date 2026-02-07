@@ -13,7 +13,7 @@ export default function AuthLayout({
                 <Plane className="h-7 w-7" />
             </div>
             <span className="text-2xl font-headline font-bold text-foreground">
-                Van-Vert
+                PilotPack
             </span>
         </div>
         {children}
