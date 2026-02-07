@@ -1,21 +1,22 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { useEffect, useState, useTransition } from 'react';
+import { useEffect, useTransition } from 'react';
 import { useUser, useAuth } from '@/firebase';
-import { sendEmailVerification } from 'firebase/auth';
+import { sendEmailVerification, signOut } from 'firebase/auth';
 import { LoadingScreen } from '@/components/LoadingScreen';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
-import { MailCheck, Loader2 } from 'lucide-react';
+import { MailCheck, Loader2, LogOut } from 'lucide-react';
 
 export default function VerifyEmailPage() {
     const { user, loading, claims } = useUser();
     const auth = useAuth();
     const router = useRouter();
     const { toast } = useToast();
-    const [isPending, startTransition] = useTransition();
+    const [isResending, startResendTransition] = useTransition();
+    const [isSigningOut, startSignOutTransition] = useTransition();
 
     // This effect handles all redirection logic for the page.
     useEffect(() => {
@@ -51,7 +52,7 @@ export default function VerifyEmailPage() {
     }, [user, loading, claims, router]);
 
     const handleResendVerification = () => {
-        startTransition(async () => {
+        startResendTransition(async () => {
             if (user) {
                 try {
                     await sendEmailVerification(user);
@@ -66,6 +67,25 @@ export default function VerifyEmailPage() {
                         description: 'Failed to send verification email. Please try again in a moment.',
                     });
                 }
+            }
+        });
+    };
+
+    const handleSignOut = () => {
+        startSignOutTransition(async () => {
+            try {
+                await signOut(auth);
+                router.push('/login');
+                toast({
+                    title: 'Logged Out',
+                    description: 'You have been successfully logged out.',
+                });
+            } catch (error: any) {
+                toast({
+                    variant: 'destructive',
+                    title: 'Logout Failed',
+                    description: error.message,
+                });
             }
         });
     };
@@ -90,11 +110,22 @@ export default function VerifyEmailPage() {
                 <p className="text-sm text-muted-foreground mb-6">
                     Didn't receive the email? Check your spam folder or click below to resend.
                 </p>
-                <Button onClick={handleResendVerification} disabled={isPending}>
-                    {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                <Button onClick={handleResendVerification} disabled={isResending || isSigningOut}>
+                    {isResending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                     Resend Verification Email
                 </Button>
             </CardContent>
+            <CardFooter className="flex-col gap-2 pt-4 border-t">
+                 <Button onClick={handleSignOut} variant="outline" className="w-full" disabled={isSigningOut || isResending}>
+                    {isSigningOut ? (
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    ) : (
+                        <LogOut className="mr-2 h-4 w-4" />
+                    )}
+                    Sign Out
+                </Button>
+                <p className="text-xs text-muted-foreground">Or, sign out and try logging in again.</p>
+            </CardFooter>
         </Card>
     );
 }
