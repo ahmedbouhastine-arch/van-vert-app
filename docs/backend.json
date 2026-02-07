@@ -137,7 +137,7 @@
           "schema": {
             "$ref": "#/backend/entities/User"
           },
-          "description": "Stores user profiles. Path-based ownership ensures that only the user can access their profile data.",
+          "description": "Stores user profiles and roles. This data is critical for role-based access control.",
           "params": [
             {
               "name": "userId",
@@ -147,50 +147,22 @@
         }
       },
       {
-        "path": "/users/{userId}/applications/{applicationId}",
+        "path": "/applications/{applicationId}",
         "definition": {
           "entityName": "Application",
           "schema": {
             "$ref": "#/backend/entities/Application"
           },
-          "description": "Each user has a collection of applications. Path-based ownership ensures that only the user can access their applications.  The `userId` is part of the document path, thus enforcing path-based ownership.",
+          "description": "Top-level collection for all applications. User-specific access is controlled by security rules based on the 'userId' field in the document. Admins have broader access.",
           "params": [
-            {
-              "name": "userId",
-              "description": "The unique identifier for the user."
-            },
             {
               "name": "applicationId",
               "description": "The unique identifier for the application."
-            }
-          ]
-        }
-      },
-      {
-        "path": "/users/{userId}/applications/{applicationId}/documents/{documentId}",
-        "definition": {
-          "entityName": "Document",
-          "schema": {
-            "$ref": "#/backend/entities/Document"
-          },
-          "description": "Each application has a collection of documents. Path-based ownership ensures that only the user can access their documents. Documents inherit the `userId` and `applicationId` in their path, maintaining path-based ownership.",
-          "params": [
-            {
-              "name": "userId",
-              "description": "The unique identifier for the user."
-            },
-            {
-              "name": "applicationId",
-              "description": "The unique identifier for the application."
-            },
-            {
-              "name": "documentId",
-              "description": "The unique identifier for the document."
             }
           ]
         }
       }
     ],
-    "reasoning": "The Firestore data structure is designed to ensure security, scalability, and ease of debugging, following the principles of Authorization Independence, Clarity of Intent, DBAC, and QAPs. User roles are stored in the database to avoid custom claims. Data is segregated into collections based on access needs.\n\n*   **Users (Collection: `/users/{userId}`):** Stores user profiles. This collection facilitates user authentication and authorization. Path-based ownership ensures that only the user can access their profile data.\n\n*   **Applications (Collection: `/users/{userId}/applications/{applicationId}`):** Each user has a collection of applications. This parent-child structure enforces that only the user can access their applications. The `userId` is part of the document path, thus enforcing path-based ownership.\n\n*   **Documents (Collection: `/users/{userId}/applications/{applicationId}/documents/{documentId}`):** Each application has a collection of documents. Similar to applications, documents inherit the `userId` and `applicationId` in their path, maintaining path-based ownership and enabling secure `list` operations. This structure ensures that documents can only be accessed in the context of their parent application and owner.\n\nThis structure ensures Authorization Independence by embedding the `userId` in all subcollections (Applications, Documents), eliminating the need for `get()` calls in the security rules. QAPs are satisfied because `list` operations are secured by the path-based ownership model. Admins will require separate logic to elevate access."
+    "reasoning": "The Firestore data structure has been refactored to support administrative roles efficiently. Applications are now in a top-level collection to allow admins to query across all submissions, which is not feasible with a nested structure. Security is maintained through Firestore rules that check user roles and document ownership.\n\n*   **Users (Collection: `/users/{userId}`):** Stores user profiles and roles. This collection is the source of truth for role-based access control (RBAC).\n\n*   **Applications (Collection: `/applications/{applicationId}`):** A flat collection for all applications. A user can only access their own applications (verified via the `userId` field in the document). Admins can list and view all applications. Documents are stored as an array within each application document, simplifying data retrieval."
   }
 }
