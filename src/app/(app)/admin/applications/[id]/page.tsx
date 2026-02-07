@@ -1,4 +1,3 @@
-
 'use client';
 
 import { notFound, useParams } from "next/navigation";
@@ -7,11 +6,25 @@ import { useFirestore, useDoc, useUser, useMemoFirebase } from "@/firebase";
 import { doc } from "firebase/firestore";
 import { LoadingScreen } from "@/components/LoadingScreen";
 import type { Application, UserProfile } from "@/types";
+import { useEffect, useMemo } from "react";
+import { useRouter } from "next/navigation";
 
 export default function AdminApplicationDetailPage() {
   const params = useParams<{ id: string }>();
   const firestore = useFirestore();
+  const router = useRouter();
   const { claims, loading: claimsLoading } = useUser();
+
+  const isAuthorized = useMemo(() => 
+    claims?.role && ['reviewer', 'admin', 'head-admin'].includes(claims.role),
+    [claims]
+  );
+
+  useEffect(() => {
+    if (!claimsLoading && !isAuthorized) {
+        router.push('/dashboard');
+    }
+  }, [claimsLoading, isAuthorized, router]);
 
   const appRef = useMemoFirebase(() => 
     firestore && params.id ? doc(firestore, 'applications', params.id) as any : null,
@@ -25,7 +38,7 @@ export default function AdminApplicationDetailPage() {
   );
   const { data: user, loading: userLoading } = useDoc<UserProfile>(userRef);
 
-  if (appLoading || userLoading || claimsLoading) {
+  if (appLoading || userLoading || claimsLoading || !isAuthorized) {
     return <LoadingScreen text="Loading application data..." />
   }
 

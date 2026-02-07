@@ -1,4 +1,3 @@
-
 'use client';
 import Link from "next/link";
 import { MoreHorizontal } from "lucide-react";
@@ -27,22 +26,37 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { StatusBadge } from "@/components/StatusBadge";
-import { format, parseISO } from "date-fns";
+import { format } from "date-fns";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { useCollection, useFirestore, useMemoFirebase } from "@/firebase";
+import { useCollection, useFirestore, useMemoFirebase, useUser } from "@/firebase";
 import { collection, query, where } from "firebase/firestore";
-import { useMemo } from "react";
+import { useMemo, useEffect } from "react";
 import type { Application, UserProfile } from "@/types";
 import { useToast } from "@/hooks/use-toast";
+import { useRouter } from "next/navigation";
+import { LoadingScreen } from "@/components/LoadingScreen";
 
 export default function AdminApplicationsPage() {
   const firestore = useFirestore();
   const { toast } = useToast();
+  const router = useRouter();
+  const { user, claims, loading: claimsLoading } = useUser();
   
-  const usersQuery = useMemoFirebase(() => firestore ? query(collection(firestore, "users")) : null, [firestore]);
+  const isAuthorized = useMemo(() => 
+    claims?.role && ['reviewer', 'admin', 'head-admin'].includes(claims.role),
+    [claims]
+  );
+
+  useEffect(() => {
+    if (!claimsLoading && !isAuthorized) {
+        router.push('/dashboard');
+    }
+  }, [claimsLoading, isAuthorized, router]);
+
+  const usersQuery = useMemoFirebase(() => isAuthorized && firestore ? query(collection(firestore, "users")) : null, [firestore, isAuthorized]);
   const { data: users, loading: usersLoading } = useCollection<UserProfile>(usersQuery);
 
-  const appsQuery = useMemoFirebase(() => firestore ? query(collection(firestore, "applications"), where("status", "!=", "draft")) : null, [firestore]);
+  const appsQuery = useMemoFirebase(() => isAuthorized && firestore ? query(collection(firestore, "applications"), where("status", "!=", "draft")) : null, [firestore, isAuthorized]);
   const { data: applications, loading: appsLoading } = useCollection<Application>(appsQuery);
 
   const allApplications = useMemo(() => {
@@ -53,13 +67,17 @@ export default function AdminApplicationsPage() {
     });
   }, [applications, users]);
 
-  const isLoading = usersLoading || appsLoading;
+  const isLoading = claimsLoading || usersLoading || appsLoading;
 
   const handleSendReminder = (applicantName: string | undefined, licenseType: string) => {
     toast({
         title: "Reminder Sent",
         description: `A reminder email has been sent to ${applicantName || 'the applicant'} for their ${licenseType} application.`,
     })
+  }
+
+  if (isLoading || !isAuthorized) {
+    return <LoadingScreen text="Verifying Access & Loading Applications..." />;
   }
 
   return (
@@ -163,7 +181,3 @@ export default function AdminApplicationsPage() {
     </div>
   );
 }
-
-    
-
-    
