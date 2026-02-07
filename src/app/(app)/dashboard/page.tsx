@@ -103,7 +103,7 @@ export default function DashboardPage() {
                      </CardHeader>
                      <CardContent>
                          <p className="text-sm text-muted-foreground">
-                             Last updated on {app.updatedAt ? format(typeof app.updatedAt.toDate === 'function' ? app.updatedAt.toDate() : parseISO(app.updatedAt), "PPP") : 'N/A'}
+                             Last updated on {app.updatedAt ? format(app.updatedAt.toDate ? app.updatedAt.toDate() : new Date(app.updatedAt.seconds * 1000 || app.updatedAt), "PPP") : 'N/A'}
                          </p>
                      </CardContent>
                      <CardFooter>
@@ -127,5 +127,7 @@ export default function DashboardPage() {
     </div>
   );
 }
+
+    
 
     

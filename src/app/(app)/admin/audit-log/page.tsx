@@ -65,7 +65,7 @@ export default function AuditLogPage() {
                                         <TableCell>{log.action}</TableCell>
                                         <TableCell className="text-muted-foreground">{log.details || 'N/A'}</TableCell>
                                         <TableCell className="text-right">
-                                            {log.timestamp ? format(typeof log.timestamp.toDate === 'function' ? log.timestamp.toDate() : parseISO(log.timestamp), 'PPpp') : 'N/A'}
+                                            {log.timestamp ? format(log.timestamp.toDate ? log.timestamp.toDate() : new Date(log.timestamp.seconds * 1000 || log.timestamp), 'PPpp') : 'N/A'}
                                         </TableCell>
                                     </TableRow>
                                 ))
@@ -77,5 +77,7 @@ export default function AuditLogPage() {
         </div>
     );
 }
+
+    
 
     
