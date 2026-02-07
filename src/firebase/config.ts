@@ -4,9 +4,10 @@
 export const firebaseConfig = {
     "apiKey":"AIzaSyCaeKxM0WkR0SY3CmA0v_Scpn660rwgBHQ",
     "appId":"1:444410678961:web:a67dde9c7099cdfafa9c90",
-    "authDomain":"pilotpack-pre-42167387-6c831.firebaseapp.com",
-    "measurementId":"",
+    "authDomain":"van-vert-app--REDACTED_FIREBASE_AUTH_DOMAIN",
+    "measurementId":"G-1WJ4K132Z7",
     "messagingSenderId":"444410678961",
-    "projectId":"pilotpack-pre-42167387-6c831"
+    "projectId":"REDACTED_FIREBASE_PROJECT_ID",
+    "storageBucket": "REDACTED_FIREBASE_PROJECT_ID.appspot.com"
 };
 
