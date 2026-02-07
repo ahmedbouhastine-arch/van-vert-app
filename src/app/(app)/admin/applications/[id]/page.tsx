@@ -19,13 +19,13 @@ function AdminApplicationDetailContent() {
         const isAuthorized = claims?.role && ['reviewer', 'admin', 'head-admin'].includes(claims.role);
         if (!firestore || !params.id || !isAuthorized) return null;
         return doc(firestore, 'applications', params.id) as any;
-    }, [firestore, params.id, claims]);
+    }, [firestore, params.id, claims?.role]);
     
     const { data: application, loading: appLoading } = useDoc<Application>(appRef);
 
     const userRef = useMemoFirebase(() => 
         firestore && application?.userId ? doc(firestore, 'users', application.userId) as any : null,
-        [firestore, application]
+        [firestore, application?.userId]
     );
     const { data: user, loading: userLoading } = useDoc<UserProfile>(userRef);
 

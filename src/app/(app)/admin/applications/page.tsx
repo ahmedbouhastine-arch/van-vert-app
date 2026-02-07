@@ -68,7 +68,7 @@ function AdminApplicationsContent() {
         const isAuthorized = claims?.role && ['reviewer', 'admin', 'head-admin'].includes(claims.role);
         if (!firestore || !isAuthorized) return null; // Return null to prevent the query
         return query(collection(firestore, "applications"), where("status", "!=", "draft"));
-    }, [firestore, claims]); 
+    }, [firestore, claims?.role]); 
 
     const { data: applications, loading: appsLoading } = useCollection<Application>(appsQuery);
 
