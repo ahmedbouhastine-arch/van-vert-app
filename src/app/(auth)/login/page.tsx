@@ -1,3 +1,4 @@
+
 "use client";
 
 import Link from "next/link";
@@ -36,7 +37,8 @@ export default function LoginPage() {
             const isPasswordProvider = user.providerData.some(p => p.providerId === 'password');
 
             // If the user signed up with email/password, check if their email is verified.
-            if (isPasswordProvider && !user.emailVerified) {
+            // We are bypassing this check for the head-admin@test.va account for testing.
+            if (isPasswordProvider && !user.emailVerified && user.email !== 'head-admin@test.va') {
                 router.push('/verify-email');
                 return;
             }
