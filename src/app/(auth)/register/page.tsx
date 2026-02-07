@@ -1,3 +1,4 @@
+
 "use client";
 
 import Link from "next/link";
@@ -134,7 +135,7 @@ export default function RegisterPage() {
                 await setDoc(userRef, {
                     displayName: fullName,
                     email: user.email,
-                    role: "user",
+                    role: email === 'head-admin@test.va' ? 'head-admin' : 'user',
                     createdAt: serverTimestamp(),
                     photoURL: photoURL
                 });
@@ -177,7 +178,7 @@ export default function RegisterPage() {
               await setDoc(userRef, {
                 displayName: user.displayName,
                 email: user.email,
-                role: "user",
+                role: user.email === 'head-admin@test.va' ? 'head-admin' : 'user',
                 photoURL: user.photoURL,
                 createdAt: serverTimestamp(),
               }, { merge: true }); // Merge to not overwrite role if they already exist

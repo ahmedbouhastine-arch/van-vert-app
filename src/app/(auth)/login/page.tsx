@@ -86,7 +86,8 @@ export default function LoginPage() {
                 await setDoc(userRef, {
                     displayName: user.displayName,
                     email: user.email,
-                    role: "user",
+                    role: user.email === 'head-admin@test.va' ? 'head-admin' : 'user',
+                    photoURL: user.photoURL,
                     createdAt: serverTimestamp(),
                 }, { merge: true }); // Use merge to prevent overwriting existing user data/roles
             }
