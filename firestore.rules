@@ -3,13 +3,22 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    //-------------------------------------------------------------------------
-    // Helper Functions
-    //-------------------------------------------------------------------------
-
     function isSignedIn() {
       return request.auth != null;
     }
+
+    // WARNING: This is a temporary rule for debugging.
+    // It allows any signed-in user to read and write all data.
+    // This should NOT be used in a production environment.
+    match /{document=**} {
+      allow read, write: if isSignedIn();
+    }
+
+    /* --- ORIGINAL RULES (COMMENTED OUT) ---
+
+    //-------------------------------------------------------------------------
+    // Helper Functions
+    //-------------------------------------------------------------------------
 
     function isOwner(userId) {
       return isSignedIn() && request.auth.uid == userId;
@@ -97,5 +106,7 @@ service cloud.firestore {
       // DELETE: For data integrity, only a Head Admin can delete an application record.
       allow delete: if isHeadAdmin();
     }
+    
+    --- END OF ORIGINAL RULES --- */
   }
 }
