@@ -19,17 +19,15 @@ export default function VerifyEmailPage() {
     const [isResending, startResendTransition] = useTransition();
     const [isSigningOut, startSignOutTransition] = useTransition();
 
-    // This effect handles all redirection logic for the page.
     useEffect(() => {
-        if (loading) return;
-
+        if (loading) {
+            return;
+        }
         if (!user) {
-            // If there's no user, they should be at the login page.
             router.push('/login');
             return;
         }
 
-        // If the user's email is verified, send them to their dashboard.
         if (user.emailVerified) {
             const isAdmin = claims?.role === 'admin' || claims?.role === 'head-admin' || claims?.role === 'reviewer';
             const homePath = isAdmin ? '/admin' : '/dashboard';
@@ -37,20 +35,20 @@ export default function VerifyEmailPage() {
             return;
         }
 
-        // If the user is not verified, this effect will set up an interval
-        // to periodically check their verification status.
         const interval = setInterval(async () => {
-            // user.reload() fetches the latest user state from Firebase servers.
-            await user.reload();
-            // The global onAuthStateChanged listener in FirebaseProvider will detect
-            // the change in `emailVerified` status and trigger a re-render,
-            // which causes this useEffect to run again and handle the redirect.
-        }, 5000); // Check every 5 seconds.
+            const currentUser = auth.currentUser;
+            if (currentUser) {
+                await currentUser.reload();
+                if (currentUser.emailVerified) {
+                    clearInterval(interval);
+                    router.refresh();
+                }
+            }
+        }, 3000); 
 
-        // Cleanup function to clear the interval when the component unmounts.
         return () => clearInterval(interval);
 
-    }, [user, loading, claims, router]);
+    }, [user, loading, claims, auth, router]);
 
     const handleResendVerification = () => {
         startResendTransition(async () => {
@@ -95,13 +93,10 @@ export default function VerifyEmailPage() {
         });
     };
 
-    // Show a loading screen while the initial user state is being determined,
-    // or if the user is already verified and is being redirected.
     if (loading || !user || user.emailVerified) {
         return <LoadingScreen text="Verifying your status..." />;
     }
 
-    // Render the verification prompt for unverified users.
     return (
         <Card className="w-full max-w-md">
             <CardHeader className="items-center text-center">
@@ -116,7 +111,7 @@ export default function VerifyEmailPage() {
                     <Info className="h-4 w-4" />
                     <AlertTitle>Can't find the email?</AlertTitle>
                     <AlertDescription>
-                        If you don&apos;t see the email in your inbox, please check your spam folder.
+                        If you don't see the email in your inbox, please check your spam or junk folder.
                     </AlertDescription>
                 </Alert>
                 
@@ -132,9 +127,8 @@ export default function VerifyEmailPage() {
                     ) : (
                         <LogOut className="mr-2 h-4 w-4" />
                     )}
-                    Sign Out
+                    Sign Out & Return to Login
                 </Button>
-                <p className="text-xs text-muted-foreground">Or, sign out and try logging in again.</p>
             </CardFooter>
         </Card>
     );
