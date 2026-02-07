@@ -1,4 +1,3 @@
-
 "use client";
 
 import Link from "next/link";
@@ -17,7 +16,7 @@ import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { CheckCircle2, XCircle, Eye, EyeOff, Camera, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { getAuth, createUserWithEmailAndPassword, GoogleAuthProvider, signInWithPopup, updateProfile } from "firebase/auth";
+import { getAuth, createUserWithEmailAndPassword, GoogleAuthProvider, signInWithPopup, updateProfile, sendEmailVerification } from "firebase/auth";
 import { useFirebaseApp, useFirestore, useUser, useStorage } from "@/firebase";
 import { doc, setDoc, serverTimestamp } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
@@ -104,6 +103,9 @@ export default function RegisterPage() {
             const userCredential = await createUserWithEmailAndPassword(auth, email, password);
             const user = userCredential.user;
 
+            // Send verification email
+            await sendEmailVerification(user);
+
             // Upload profile picture
             let photoURL = "";
             if (storage) {
@@ -127,10 +129,10 @@ export default function RegisterPage() {
             
             toast({
                 title: "Registration successful!",
-                description: "You can now log in.",
+                description: "We've sent a verification link to your email address.",
               });
               
-            router.push('/login');
+            router.push('/verify-email');
         } catch (error: any) {
             toast({
                 variant: 'destructive',
