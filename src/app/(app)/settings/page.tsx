@@ -37,7 +37,7 @@ export default function SettingsPage() {
 
     const [displayName, setDisplayName] = useState(user?.displayName || '');
     const [appUpdates, setAppUpdates] = useState(true);
-    const [promoEmails, setPromoEmails] = useState(false);
+    const [promoEmails, setPromoEmails] = useState(true);
     
     const [isPendingProfile, startTransitionProfile] = useTransition();
     const [isPendingNotifications, startTransitionNotifications] = useTransition();
