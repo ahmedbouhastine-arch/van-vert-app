@@ -24,8 +24,8 @@ function AdminApplicationDetailContent() {
     const { data: application, loading: appLoading } = useDoc<Application>(appRef);
 
     const userRef = useMemoFirebase(() => 
-        firestore && application?.userId ? doc(firestore, 'users', application.userId) as any : null,
-        [firestore, application?.userId]
+        firestore && application ? doc(firestore, 'users', application.userId) as any : null,
+        [firestore, application]
     );
     const { data: user, loading: userLoading } = useDoc<UserProfile>(userRef);
 
