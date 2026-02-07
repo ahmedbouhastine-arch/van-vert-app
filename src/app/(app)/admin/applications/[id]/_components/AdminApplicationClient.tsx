@@ -2,7 +2,7 @@
 "use client";
 
 import { useState, useTransition, useEffect } from "react";
-import type { Application, ApplicationDocument, ApplicationStatus, UserProfile, DocumentStatus } from "@/types";
+import type { Application, ApplicationDocument, ApplicationStatus, UserProfile, DocumentStatus, FirebaseTimestamp } from "@/types";
 import {
   Card,
   CardContent,
@@ -34,6 +34,21 @@ import type { CheckRecencyOutput } from "@/ai/flows/check-recency";
 import { cn } from "@/lib/utils";
 import { useFirestore } from "@/firebase";
 import { doc, serverTimestamp, updateDoc } from "firebase/firestore";
+
+// Helper function to safely format dates, whether they are Timestamps or strings
+const safeFormatDate = (date: FirebaseTimestamp | Date | string | undefined | null, formatString: string) => {
+  if (!date) return 'N/A';
+  try {
+    if (typeof date === 'object' && date && 'toDate' in date && typeof date.toDate === 'function') {
+      return format(date.toDate(), formatString);
+    }
+    return format(new Date(date as string), formatString);
+  } catch (error) {
+    console.error("Date formatting failed:", error);
+    return "Invalid Date";
+  }
+};
+
 
 async function checkExpiryAction(documents: ApplicationDocument[]) {
     const docsToCheck = documents
@@ -139,7 +154,7 @@ function DocumentReviewCard({
             </div>
             {doc.requiresExpiry && doc.expiryDate && (
               <p className="text-xs">
-                Expiry Date: {format(parseISO(doc.expiryDate), "PPP")}
+                Expiry Date: {safeFormatDate(doc.expiryDate, "PPP")}
               </p>
             )}
           </div>
@@ -284,7 +299,7 @@ export function AdminApplicationClient({
             <StatusBadge status={appState.status} />
           </div>
           <CardDescription>
-            Applicant: {user?.displayName} ({user?.email}) | Last updated on {appState.updatedAt ? format(appState.updatedAt.toDate ? appState.updatedAt.toDate() : new Date(appState.updatedAt.seconds * 1000 || appState.updatedAt), "PPP") : 'N/A'}
+            Applicant: {user?.displayName} ({user?.email}) | Last updated on {safeFormatDate(appState.updatedAt, "PPP")}
           </CardDescription>
         </CardHeader>
       </Card>
@@ -369,7 +384,3 @@ export function AdminApplicationClient({
     </div>
   );
 }
-
-    
-
-    

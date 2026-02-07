@@ -8,7 +8,22 @@ import { LoadingScreen } from "@/components/LoadingScreen";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { format, parseISO } from "date-fns";
-import type { AuditLogEntry } from "@/types";
+import type { AuditLogEntry, FirebaseTimestamp } from "@/types";
+
+// Helper function to safely format dates, whether they are Timestamps or strings
+const safeFormatDate = (date: FirebaseTimestamp | Date | string | undefined | null, formatString: string) => {
+  if (!date) return 'N/A';
+  try {
+    if (typeof date === 'object' && date && 'toDate' in date && typeof date.toDate === 'function') {
+      return format(date.toDate(), formatString);
+    }
+    return format(new Date(date as string), formatString);
+  } catch (error) {
+    console.error("Date formatting failed:", error);
+    return "Invalid Date";
+  }
+};
+
 
 export default function AuditLogPage() {
     const { user, loading, claims } = useUser();
@@ -65,7 +80,7 @@ export default function AuditLogPage() {
                                         <TableCell>{log.action}</TableCell>
                                         <TableCell className="text-muted-foreground">{log.details || 'N/A'}</TableCell>
                                         <TableCell className="text-right">
-                                            {log.timestamp ? format(log.timestamp.toDate ? log.timestamp.toDate() : new Date(log.timestamp.seconds * 1000 || log.timestamp), 'PPpp') : 'N/A'}
+                                            {safeFormatDate(log.timestamp, 'PPpp')}
                                         </TableCell>
                                     </TableRow>
                                 ))
@@ -77,7 +92,3 @@ export default function AuditLogPage() {
         </div>
     );
 }
-
-    
-
-    

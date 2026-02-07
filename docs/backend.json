@@ -1,3 +1,4 @@
+
 {
   "entities": {
     "User": {
@@ -17,7 +18,7 @@
         },
         "role": {
           "type": "string",
-          "description": "User's role (e.g., user, admin)."
+          "description": "User's role (e.g., user, reviewer, admin, head-admin)."
         }
       },
       "required": [
