@@ -1,3 +1,4 @@
+
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
@@ -15,30 +16,37 @@ service cloud.firestore {
     }
     
     function getUserRole() {
+      // Safely access role from the user's document.
+      // Assumes a /users/{uid} document exists for every authenticated user.
       return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role;
     }
 
+    function isReviewer() {
+      let role = getUserRole();
+      return role in ['reviewer', 'admin', 'head-admin'];
+    }
+    
     function isAdmin() {
       let role = getUserRole();
       return role in ['admin', 'head-admin'];
     }
     
-    function isReviewer() {
-      let role = getUserRole();
-      return role in ['admin', 'head-admin', 'reviewer'];
+    function isHeadAdmin() {
+      return getUserRole() == 'head-admin';
     }
+
 
     //-------------------------------------------------------------------------
     // Collection: users
     //-------------------------------------------------------------------------
     match /users/{userId} {
-      // Any signed in user can view a user's profile (needed for admins to see applicant names).
-      allow get: if isSignedIn();
-      // Only reviewers and admins can list all users.
-      allow list: if isReviewer();
       // A user can create their own user document.
       allow create: if isOwner(userId);
-      // A user can update their own profile; an admin can update any user's profile (e.g., to change a role).
+      // Anyone signed in can view a user profile (needed for admins to see names on applications).
+      allow get: if isSignedIn();
+      // Only reviewers and above can list all users.
+      allow list: if isReviewer();
+      // An owner can update their own profile, an admin can update anyone's.
       allow update: if isOwner(userId) || isAdmin();
       // Only admins can delete user documents.
       allow delete: if isAdmin();
@@ -50,38 +58,43 @@ service cloud.firestore {
     match /applications/{applicationId} {
       
       function isApplicationOwner() {
+        // Check the userId field in the document being accessed
         return resource.data.userId == request.auth.uid;
       }
       
       function isCreatingOwnApplication() {
+        // Check the userId field in the document being created
         return request.resource.data.userId == request.auth.uid;
       }
       
       function isApplicationUpdateValid() {
-        // Core data like the owner ID should not change after creation.
+        // Ensure the owner ID does not change after creation.
         return request.resource.data.userId == resource.data.userId;
       }
 
-      // Users can get their own applications. Reviewers/Admins can get any application.
+      // GET: A user can get their own application. Reviewers/Admins can get any application.
       allow get: if isSignedIn() && (isApplicationOwner() || isReviewer());
       
-      // Any signed-in user can attempt to list applications.
-      // Security is enforced by the 'get' rule, which Firestore checks for each document in the result.
-      // This means users will only be able to list applications they have 'get' access to.
+      // LIST: This is the key rule. Any signed-in user can attempt to list applications.
+      // However, Firestore enforces the 'get' rule on each document in the result set.
+      // This means a 'user' can only successfully list applications if their query is
+      // constrained (e.g., where("userId", "==", auth.uid)), because the 'get' rule will
+      // only pass for documents they own. An unconstrained query by a 'user' will fail.
+      // A 'reviewer' or 'admin' will succeed because the `isReviewer()` part of the 'get'
+      // rule will pass for all documents.
       allow list: if isSignedIn();
       
-      // Users can create an application for themselves.
+      // CREATE: Users can create an application for themselves.
       allow create: if isSignedIn() && isCreatingOwnApplication();
       
-      // Users can update their own application only if it's still a draft.
+      // UPDATE: Users can update their own application only if it's still a draft.
       // Reviewers/Admins can update any application at any stage.
-      // The application's owner must not change.
       allow update: if isSignedIn() && isApplicationUpdateValid() && (
         (isApplicationOwner() && resource.data.status == 'draft') || isReviewer()
       );
       
-      // For data integrity, only a Head Admin can delete an application record.
-      allow delete: if isSignedIn() && getUserRole() == 'head-admin';
+      // DELETE: For data integrity, only a Head Admin can delete an application record.
+      allow delete: if isHeadAdmin();
     }
   }
 }

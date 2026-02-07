@@ -1,3 +1,4 @@
+
 'use client';
 import Link from "next/link";
 import { MoreHorizontal } from "lucide-react";
@@ -8,7 +9,6 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
-  CardFooter,
 } from "@/components/ui/card";
 import {
   DropdownMenu,
@@ -30,7 +30,7 @@ import { format } from "date-fns";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useCollection, useFirestore, useMemoFirebase, useUser } from "@/firebase";
 import { collection, query, where } from "firebase/firestore";
-import { useMemo, useEffect } from "react";
+import React, { useMemo } from "react";
 import type { Application, UserProfile, FirebaseTimestamp } from "@/types";
 import { useToast } from "@/hooks/use-toast";
 import { useRouter } from "next/navigation";
@@ -54,9 +54,6 @@ function AdminApplicationsContent() {
     const firestore = useFirestore();
     const { toast } = useToast();
     
-    // We can be sure claims exist here because the parent guards it.
-    const { claims } = useUser();
-
     const usersQuery = useMemoFirebase(() => 
         firestore ? query(collection(firestore, "users")) : null, 
         [firestore]
@@ -160,7 +157,7 @@ function AdminApplicationsContent() {
 
 function RedirectToDashboard() {
   const router = useRouter();
-  useEffect(() => {
+  React.useEffect(() => {
     router.push('/dashboard');
   }, [router]);
   return <LoadingScreen text="Access Denied. Redirecting..." />;
@@ -176,12 +173,8 @@ export default function AdminApplicationsPage() {
 
   const isAuthorized = claims?.role && ['reviewer', 'admin', 'head-admin'].includes(claims.role);
 
-  if (!isAuthorized) {
-    return <RedirectToDashboard />;
-  }
-
-  return (
-    <div className="flex flex-col gap-4">
+  const PageContent = () => (
+     <div className="flex flex-col gap-4">
       <div className="flex flex-col gap-1">
         <h1 className="text-3xl font-bold font-headline tracking-tight">Manage Applications</h1>
         <p className="text-muted-foreground">Review and manage all submitted pilot license applications.</p>
@@ -216,4 +209,8 @@ export default function AdminApplicationsPage() {
       </Card>
     </div>
   );
+
+  // Render content only if authorized, otherwise redirect. This prevents child components
+  // from attempting to fetch data before the authorization check is complete.
+  return isAuthorized ? <PageContent /> : <RedirectToDashboard />;
 }
