@@ -34,7 +34,7 @@ const createLinks = (links: NavLinkItem[], claims: any, isMobile: boolean = fals
 
     const filteredLinks = links.filter(link => {
         if (link.for === 'all') return true;
-        if (link.for === 'applicant' && role === 'applicant') return true;
+        if (link.for === 'applicant' && role === 'user') return true;
         if (link.for === 'reviewer' && (role === 'reviewer' || role === 'admin' || role === 'head-admin')) return true;
         if (link.for === 'admin' && (role === 'admin' || role === 'head-admin')) return true;
         if (link.for === 'head-admin' && role === 'head-admin') return true;

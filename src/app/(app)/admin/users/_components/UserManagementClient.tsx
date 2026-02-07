@@ -13,7 +13,7 @@ import { type User } from "firebase/auth";
 
 type UserWithProfile = UserProfile & { id: string; photoURL?: string; };
 
-function UserRow({ user, currentUser, onRoleChange }: { user: UserWithProfile, currentUser: User, onRoleChange: (userId: string, role: 'applicant' | 'admin' | 'head-admin' | 'reviewer') => void }) {
+function UserRow({ user, currentUser, onRoleChange }: { user: UserWithProfile, currentUser: User, onRoleChange: (userId: string, role: 'user' | 'admin' | 'head-admin' | 'reviewer') => void }) {
     const [selectedRole, setSelectedRole] = useState(user.role);
 
     const handleUpdate = () => {
@@ -47,7 +47,7 @@ function UserRow({ user, currentUser, onRoleChange }: { user: UserWithProfile, c
                             <SelectValue placeholder="Select a role" />
                         </SelectTrigger>
                         <SelectContent>
-                            <SelectItem value="applicant">Applicant</SelectItem>
+                            <SelectItem value="user">User</SelectItem>
                             <SelectItem value="reviewer">Reviewer</SelectItem>
                             <SelectItem value="admin">Admin</SelectItem>
                             <SelectItem value="head-admin">Head Admin</SelectItem>
@@ -72,7 +72,7 @@ export function UserManagementClient({ currentUser }: { currentUser: User }) {
     const { data: users, loading } = useCollection<UserWithProfile>(usersQuery);
     const { toast } = useToast();
 
-    const handleRoleChange = async (userId: string, newRole: 'applicant' | 'admin' | 'head-admin' | 'reviewer') => {
+    const handleRoleChange = async (userId: string, newRole: 'user' | 'admin' | 'head-admin' | 'reviewer') => {
         if (!firestore) return;
         const userRef = doc(firestore, "users", userId);
         try {
