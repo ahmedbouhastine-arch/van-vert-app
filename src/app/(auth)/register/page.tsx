@@ -107,46 +107,68 @@ export default function RegisterPage() {
         const fullName = formData.get("full-name") as string;
 
         try {
+            // Step 1: Create the user account.
             const userCredential = await createUserWithEmailAndPassword(auth, email, password);
             const user = userCredential.user;
 
-            // 1. Upload profile picture to get the URL
-            let photoURL = "";
-            if (storage) {
-                const storageRef = ref(storage, `profile-pictures/${user.uid}`);
-                await uploadBytes(storageRef, profilePic);
-                photoURL = await getDownloadURL(storageRef);
-            }
-            
-            // 2. Update the Firebase Auth user profile with name and photo URL
-            await updateProfile(user, { displayName: fullName, photoURL });
-
-            // 3. Create the user document in Firestore
-            if (firestore) {
-              const userRef = doc(firestore, "users", user.uid);
-              await setDoc(userRef, {
-                displayName: fullName,
-                email: user.email,
-                role: "applicant",
-                createdAt: serverTimestamp(),
-                photoURL: photoURL
-              });
-            }
-
-            // 4. Now that the profile is updated, send the verification email
+            // Step 2: Send the verification email immediately. This is the most critical step.
             await sendEmailVerification(user);
+
+            // Step 3: Asynchronously handle profile picture upload and database writes.
+            // These operations can happen after we've already initiated the email verification.
+            const updateUserProfileAndDb = async () => {
+                try {
+                    let photoURL = "";
+                    if (storage && profilePic) {
+                        const storageRef = ref(storage, `profile-pictures/${user.uid}`);
+                        await uploadBytes(storageRef, profilePic);
+                        photoURL = await getDownloadURL(storageRef);
+                    }
+                    
+                    const profilePromise = updateProfile(user, { displayName: fullName, photoURL });
+
+                    let firestorePromise = Promise.resolve();
+                    if (firestore) {
+                        const userRef = doc(firestore, "users", user.uid);
+                        firestorePromise = setDoc(userRef, {
+                            displayName: fullName,
+                            email: user.email,
+                            role: "applicant",
+                            createdAt: serverTimestamp(),
+                            photoURL: photoURL
+                        });
+                    }
+
+                    await Promise.all([profilePromise, firestorePromise]);
+                } catch (updateError) {
+                    console.error("Non-critical background update failed:", updateError);
+                    // Optionally, you could log this to a monitoring service.
+                }
+            };
             
+            // Start the background updates but don't block the user flow.
+            updateUserProfileAndDb();
+            
+            // Step 4: Immediately notify the user and redirect them.
             toast({
                 title: "Registration successful!",
                 description: "We've sent a verification link to your email address.",
               });
               
             router.push('/verify-email');
+
         } catch (error: any) {
+            let description = error.message;
+            if (error.code === 'auth/email-already-in-use') {
+                description = "An account with this email already exists. Please log in.";
+            } else {
+                console.error("Registration Error: ", error); 
+                description = "An unexpected error occurred during registration. Please try again.";
+            }
             toast({
                 variant: 'destructive',
                 title: 'Registration Failed',
-                description: error.message,
+                description: description,
             });
         } finally {
             setIsSubmitting(false);
