@@ -1,3 +1,4 @@
+
 "use client";
 
 import Link from "next/link";
@@ -120,10 +121,7 @@ export default function RegisterPage() {
             // 2. Update the Firebase Auth user profile with name and photo URL
             await updateProfile(user, { displayName: fullName, photoURL });
 
-            // 3. Now that the profile is updated, send the verification email
-            await sendEmailVerification(user);
-
-            // 4. Create the user document in Firestore
+            // 3. Create the user document in Firestore
             if (firestore) {
               const userRef = doc(firestore, "users", user.uid);
               await setDoc(userRef, {
@@ -134,6 +132,9 @@ export default function RegisterPage() {
                 photoURL: photoURL
               });
             }
+
+            // 4. Now that the profile is updated, send the verification email
+            await sendEmailVerification(user);
             
             toast({
                 title: "Registration successful!",
