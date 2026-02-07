@@ -1,6 +1,5 @@
-
 'use client';
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useCollection, useFirestore, useMemoFirebase } from "@/firebase";
 import { collection, doc, updateDoc, query } from "firebase/firestore";
 import type { UserProfile } from "@/types";
