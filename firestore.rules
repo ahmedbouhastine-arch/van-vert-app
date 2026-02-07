@@ -42,14 +42,19 @@ service cloud.firestore {
     match /users/{userId} {
       // A user can create their own user document.
       allow create: if isOwner(userId);
-      // Anyone signed in can view a user profile (needed for admins to see names on applications).
-      allow get: if isSignedIn();
+      
+      // An owner can read their own profile. A reviewer can read any profile.
+      allow get: if isOwner(userId) || isReviewer();
+      
       // Only reviewers and above can list all users.
       allow list: if isReviewer();
-      // An owner can update their own profile, an admin can update anyone's.
-      allow update: if isOwner(userId) || isAdmin();
-      // Only admins can delete user documents.
-      allow delete: if isAdmin();
+      
+      // An owner can update their own profile, but cannot change their own role.
+      // An admin can update anyone's profile, including their role.
+      allow update: if (isOwner(userId) && request.resource.data.role == resource.data.role) || isAdmin();
+      
+      // Only head admins can delete user documents.
+      allow delete: if isHeadAdmin();
     }
 
     //-------------------------------------------------------------------------
@@ -75,13 +80,12 @@ service cloud.firestore {
       // GET: A user can get their own application. Reviewers/Admins can get any application.
       allow get: if isSignedIn() && (isApplicationOwner() || isReviewer());
       
-      // LIST: This is the key rule. Any signed-in user can attempt to list applications.
-      // However, Firestore enforces the 'get' rule on each document in the result set.
-      // This means a 'user' can only successfully list applications if their query is
-      // constrained (e.g., where("userId", "==", auth.uid)), because the 'get' rule will
-      // only pass for documents they own. An unconstrained query by a 'user' will fail.
-      // A 'reviewer' or 'admin' will succeed because the `isReviewer()` part of the 'get'
-      // rule will pass for all documents.
+      // LIST: This is a critical rule.
+      // 1. Reviewers/Admins can perform an unrestricted list query to get all documents.
+      // 2. Regular users CANNOT perform an unrestricted list. A query by a regular user
+      //    will only succeed if it is constrained (e.g., where("userId", "==", auth.uid)),
+      //    because Firestore enforces the 'get' rule on each document in the result set.
+      //    An unconstrained query by a 'user' will correctly fail.
       allow list: if isSignedIn();
       
       // CREATE: Users can create an application for themselves.
