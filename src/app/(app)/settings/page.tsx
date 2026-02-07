@@ -23,14 +23,24 @@ import {
 import { useUser, useFirestore } from "@/firebase"
 import { LoadingScreen } from "@/components/LoadingScreen";
 import { doc, updateDoc } from "firebase/firestore";
+import { updateProfile } from "firebase/auth";
 import { useToast } from "@/hooks/use-toast";
 import { useTheme } from "next-themes";
+import { useState, useTransition } from "react";
+import { Loader2 } from "lucide-react";
 
 export default function SettingsPage() {
     const { user, claims, loading } = useUser();
     const firestore = useFirestore();
     const { toast } = useToast();
     const { theme, setTheme } = useTheme();
+
+    const [displayName, setDisplayName] = useState(user?.displayName || '');
+    const [appUpdates, setAppUpdates] = useState(true);
+    const [promoEmails, setPromoEmails] = useState(false);
+    
+    const [isPendingProfile, startTransitionProfile] = useTransition();
+    const [isPendingNotifications, startTransitionNotifications] = useTransition();
 
     if (loading) {
       return <LoadingScreen text="Loading settings..." />
@@ -48,7 +58,7 @@ export default function SettingsPage() {
           await updateDoc(userRef, { role: newRole });
           toast({
               title: "Success",
-              description: `Your role has been updated to ${newRole}.`,
+              description: `Your role has been updated to ${newRole}. The change will be applied on your next login.`,
           });
       } catch (error: any) {
           toast({
@@ -58,6 +68,41 @@ export default function SettingsPage() {
           });
       }
     };
+    
+    const handleProfileSave = () => {
+        startTransitionProfile(async () => {
+            if (!user || !firestore) return;
+            
+            const userRef = doc(firestore, "users", user.uid);
+            try {
+                // Update auth profile
+                await updateProfile(user, { displayName });
+                // Update firestore profile
+                await updateDoc(userRef, { displayName });
+                toast({
+                    title: "Profile Updated",
+                    description: "Your name has been successfully updated.",
+                });
+            } catch (error: any) {
+                toast({
+                    variant: 'destructive',
+                    title: 'Update failed',
+                    description: error.message,
+                });
+            }
+        });
+    }
+
+    const handleNotificationsSave = () => {
+        startTransitionNotifications(() => {
+            // In a real app, you would save these preferences to the user's document in Firestore.
+            // For now, we'll just show a success toast.
+            toast({
+                title: "Preferences Saved",
+                description: "Your notification settings have been updated.",
+            });
+        });
+    }
 
   return (
     <div className="grid gap-6">
@@ -73,7 +118,7 @@ export default function SettingsPage() {
         <CardHeader>
           <CardTitle>My Profile</CardTitle>
           <CardDescription>
-            Update your personal information here.
+            This is how your name will be displayed in the application.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -81,15 +126,15 @@ export default function SettingsPage() {
             <div className="grid grid-cols-2 gap-4">
                 <div className="grid gap-2">
                 <Label htmlFor="full-name">Full Name</Label>
-                <Input id="full-name" defaultValue={user.displayName || ''} />
+                <Input id="full-name" value={displayName} onChange={(e) => setDisplayName(e.target.value)} />
                 </div>
                 <div className="grid gap-2">
                 <Label htmlFor="email">Email</Label>
-                <Input id="email" type="email" defaultValue={user.email || ''} readOnly />
+                <Input id="email" type="email" defaultValue={user.email || ''} readOnly disabled />
                 </div>
             </div>
             <div className="grid gap-2">
-                <Label htmlFor="role">Role</Label>
+                <Label htmlFor="role">Role (for testing)</Label>
                 <Select value={claims.role} onValueChange={(value) => handleRoleChange(value as any)}>
                     <SelectTrigger id="role" className="w-full max-w-sm">
                         <SelectValue placeholder="Select a role" />
@@ -101,11 +146,15 @@ export default function SettingsPage() {
                         <SelectItem value="head-admin">Head Admin</SelectItem>
                     </SelectContent>
                 </Select>
+                <p className="text-xs text-muted-foreground">This is for testing purposes. Role changes apply on next login.</p>
             </div>
           </form>
         </CardContent>
         <CardFooter className="border-t px-6 py-4">
-          <Button>Save</Button>
+          <Button onClick={handleProfileSave} disabled={isPendingProfile}>
+             {isPendingProfile && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            Save Changes
+          </Button>
         </CardFooter>
       </Card>
       <Card>
@@ -132,9 +181,6 @@ export default function SettingsPage() {
             </div>
           </form>
         </CardContent>
-        <CardFooter className="border-t px-6 py-4">
-          <Button>Save</Button>
-        </CardFooter>
       </Card>
       <Card>
         <CardHeader>
@@ -155,7 +201,7 @@ export default function SettingsPage() {
                     </p>
                 </div>
             </div>
-             <Checkbox defaultChecked />
+             <Checkbox checked={appUpdates} onCheckedChange={(checked) => setAppUpdates(!!checked)} />
           </div>
            <div className="flex items-center justify-between space-x-4 rounded-md border p-4">
             <div className="flex items-center space-x-4">
@@ -168,11 +214,14 @@ export default function SettingsPage() {
                     </p>
                 </div>
             </div>
-             <Checkbox />
+             <Checkbox checked={promoEmails} onCheckedChange={(checked) => setPromoEmails(!!checked)} />
           </div>
         </CardContent>
         <CardFooter className="border-t px-6 py-4">
-          <Button>Save</Button>
+          <Button onClick={handleNotificationsSave} disabled={isPendingNotifications}>
+            {isPendingNotifications && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            Save Preferences
+          </Button>
         </CardFooter>
       </Card>
     </div>

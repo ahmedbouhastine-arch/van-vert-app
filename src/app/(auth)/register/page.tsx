@@ -3,7 +3,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -15,13 +15,15 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
-import { CheckCircle2, XCircle, Eye, EyeOff } from "lucide-react";
+import { CheckCircle2, XCircle, Eye, EyeOff, Camera, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { getAuth, createUserWithEmailAndPassword, GoogleAuthProvider, signInWithPopup, updateProfile, sendEmailVerification } from "firebase/auth";
-import { useFirebaseApp, useFirestore, useUser } from "@/firebase";
+import { getAuth, createUserWithEmailAndPassword, GoogleAuthProvider, signInWithPopup, updateProfile } from "firebase/auth";
+import { useFirebaseApp, useFirestore, useUser, useStorage } from "@/firebase";
 import { doc, setDoc, serverTimestamp } from "firebase/firestore";
+import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { GoogleIcon } from "@/components/GoogleIcon";
 import { LoadingScreen } from "@/components/LoadingScreen";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 
 
 const passwordRequirements = [
@@ -36,14 +38,20 @@ export default function RegisterPage() {
     const { toast } = useToast();
     const [password, setPassword] = useState("");
     const [showPassword, setShowPassword] = useState(false);
+    const [profilePic, setProfilePic] = useState<File | null>(null);
+    const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+    const [isSubmitting, setIsSubmitting] = useState(false);
+    const fileInputRef = useRef<HTMLInputElement>(null);
+
     const app = useFirebaseApp();
     const auth = getAuth(app);
     const firestore = useFirestore();
+    const storage = useStorage();
     const { user, loading, claims } = useUser();
 
     useEffect(() => {
         if (!loading && user) {
-            const isAdmin = claims?.role === 'admin' || claims?.role === 'head-admin';
+            const isAdmin = claims?.role === 'admin' || claims?.role === 'head-admin' || claims?.role === 'reviewer';
             const homePath = isAdmin ? '/admin' : '/dashboard';
             router.push(homePath);
         }
@@ -56,6 +64,18 @@ export default function RegisterPage() {
 
     const allRequirementsMet = validatedRequirements.every(req => req.isValid);
 
+    const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+        const file = event.target.files?.[0];
+        if (file) {
+            setProfilePic(file);
+            const reader = new FileReader();
+            reader.onloadend = () => {
+                setPreviewUrl(reader.result as string);
+            };
+            reader.readAsDataURL(file);
+        }
+    };
+
     const handleRegister = async (event: React.FormEvent<HTMLFormElement>) => {
         event.preventDefault();
         if (!allRequirementsMet) {
@@ -66,7 +86,16 @@ export default function RegisterPage() {
             });
             return;
         }
+        if (!profilePic) {
+            toast({
+                variant: 'destructive',
+                title: 'Profile Picture Required',
+                description: 'Please upload a profile picture to continue.',
+            });
+            return;
+        }
         
+        setIsSubmitting(true);
         const formData = new FormData(event.currentTarget);
         const email = formData.get("email") as string;
         const fullName = formData.get("full-name") as string;
@@ -74,8 +103,16 @@ export default function RegisterPage() {
         try {
             const userCredential = await createUserWithEmailAndPassword(auth, email, password);
             const user = userCredential.user;
+
+            // Upload profile picture
+            let photoURL = "";
+            if (storage) {
+                const storageRef = ref(storage, `profile-pictures/${user.uid}`);
+                await uploadBytes(storageRef, profilePic);
+                photoURL = await getDownloadURL(storageRef);
+            }
             
-            await updateProfile(user, { displayName: fullName });
+            await updateProfile(user, { displayName: fullName, photoURL });
 
             if (firestore) {
               const userRef = doc(firestore, "users", user.uid);
@@ -84,6 +121,7 @@ export default function RegisterPage() {
                 email: user.email,
                 role: "applicant",
                 createdAt: serverTimestamp(),
+                photoURL: photoURL
               });
             }
             
@@ -99,6 +137,8 @@ export default function RegisterPage() {
                 title: 'Registration Failed',
                 description: error.message,
             });
+        } finally {
+            setIsSubmitting(false);
         }
     }
 
@@ -114,6 +154,7 @@ export default function RegisterPage() {
                 displayName: user.displayName,
                 email: user.email,
                 role: "applicant",
+                photoURL: user.photoURL,
                 createdAt: serverTimestamp(),
               }, { merge: true }); // Merge to not overwrite role if they already exist
             }
@@ -142,6 +183,27 @@ export default function RegisterPage() {
       </CardHeader>
       <CardContent>
         <form onSubmit={handleRegister} className="grid gap-4">
+          <div className="grid gap-4 justify-center">
+            <Label htmlFor="profile-pic-input">
+                <Avatar className="h-24 w-24 cursor-pointer">
+                    <AvatarImage src={previewUrl || undefined} alt="Profile preview" />
+                    <AvatarFallback className="bg-muted hover:bg-muted/80 transition-colors">
+                        <Camera className="h-8 w-8 text-muted-foreground" />
+                    </AvatarFallback>
+                </Avatar>
+            </Label>
+            <Input 
+                id="profile-pic-input" 
+                ref={fileInputRef}
+                type="file" 
+                className="hidden" 
+                accept="image/png, image/jpeg"
+                onChange={handleFileChange}
+            />
+            <p className="text-center text-xs text-muted-foreground">
+                Please upload a clear, forward-facing picture of the pilot.
+            </p>
+          </div>
           <div className="grid gap-2">
             <Label htmlFor="full-name">Full Name</Label>
             <Input id="full-name" name="full-name" placeholder="John Pilot" required />
@@ -193,7 +255,8 @@ export default function RegisterPage() {
                     </div>
                 ))}
             </div>
-          <Button type="submit" className="w-full" disabled={!allRequirementsMet && password.length > 0}>
+          <Button type="submit" className="w-full" disabled={(isSubmitting || (!allRequirementsMet && password.length > 0))}>
+            {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             Create an account
           </Button>
         </form>
