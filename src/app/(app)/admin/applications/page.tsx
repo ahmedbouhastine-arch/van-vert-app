@@ -123,7 +123,7 @@ export default function AdminApplicationsPage() {
                     <StatusBadge status={app.status} />
                   </TableCell>
                   <TableCell className="hidden md:table-cell">
-                    {app.submittedAt ? format(typeof app.submittedAt.toDate === 'function' ? app.submittedAt.toDate() : parseISO(app.submittedAt), "MMMM d, yyyy") : 'N/A'}
+                    {app.submittedAt ? format(app.submittedAt.toDate ? app.submittedAt.toDate() : new Date(app.submittedAt.seconds * 1000 || app.submittedAt), "MMMM d, yyyy") : 'N/A'}
                   </TableCell>
                   <TableCell>
                     <DropdownMenu>
@@ -163,5 +163,7 @@ export default function AdminApplicationsPage() {
     </div>
   );
 }
+
+    
 
     

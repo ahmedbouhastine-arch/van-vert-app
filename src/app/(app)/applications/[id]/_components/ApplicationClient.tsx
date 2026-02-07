@@ -233,8 +233,8 @@ export function ApplicationClient({
             <StatusBadge status={appState.status} />
           </div>
           <CardDescription>
-            Last updated on {appState.updatedAt ? format(typeof appState.updatedAt.toDate === 'function' ? appState.updatedAt.toDate() : parseISO(appState.updatedAt), "MMMM d, yyyy") : 'N/A'}
-            {appState.submittedAt && ` | Submitted on ${format(typeof appState.submittedAt.toDate === 'function' ? appState.submittedAt.toDate() : parseISO(appState.submittedAt), "MMMM d, yyyy")}`}
+            Last updated on {appState.updatedAt ? format(appState.updatedAt.toDate ? appState.updatedAt.toDate() : new Date(appState.updatedAt.seconds * 1000 || appState.updatedAt), "MMMM d, yyyy") : 'N/A'}
+            {appState.submittedAt && ` | Submitted on ${format(appState.submittedAt.toDate ? appState.submittedAt.toDate() : new Date(appState.submittedAt.seconds * 1000 || appState.submittedAt), "MMMM d, yyyy")}`}
           </CardDescription>
         </CardHeader>
       </Card>
@@ -287,5 +287,7 @@ export function ApplicationClient({
     </div>
   );
 }
+
+    
 
     
