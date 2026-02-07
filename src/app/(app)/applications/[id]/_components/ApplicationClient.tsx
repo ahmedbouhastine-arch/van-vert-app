@@ -207,7 +207,7 @@ export function ApplicationClient({
             const finalState = {
                 ...appState,
                 status: 'submitted' as const,
-                submittedAt: new Date().toISOString(),
+                submittedAt: serverTimestamp(),
             };
             await handlePersistChanges(finalState);
             setAppState(finalState);
@@ -233,8 +233,8 @@ export function ApplicationClient({
             <StatusBadge status={appState.status} />
           </div>
           <CardDescription>
-            Last updated on {appState.updatedAt ? format(appState.updatedAt && typeof (appState.updatedAt as any).toDate === 'function' ? (appState.updatedAt as any).toDate() : parseISO(appState.updatedAt as string), "MMMM d, yyyy") : 'N/A'}
-            {appState.submittedAt && ` | Submitted on ${format(appState.submittedAt && typeof (appState.submittedAt as any).toDate === 'function' ? (appState.submittedAt as any).toDate() : parseISO(appState.submittedAt as string), "MMMM d, yyyy")}`}
+            Last updated on {appState.updatedAt ? format(typeof appState.updatedAt.toDate === 'function' ? appState.updatedAt.toDate() : parseISO(appState.updatedAt), "MMMM d, yyyy") : 'N/A'}
+            {appState.submittedAt && ` | Submitted on ${format(typeof appState.submittedAt.toDate === 'function' ? appState.submittedAt.toDate() : parseISO(appState.submittedAt), "MMMM d, yyyy")}`}
           </CardDescription>
         </CardHeader>
       </Card>
@@ -287,3 +287,5 @@ export function ApplicationClient({
     </div>
   );
 }
+
+    

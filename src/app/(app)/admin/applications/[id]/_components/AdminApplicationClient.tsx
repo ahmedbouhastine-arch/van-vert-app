@@ -284,7 +284,7 @@ export function AdminApplicationClient({
             <StatusBadge status={appState.status} />
           </div>
           <CardDescription>
-            Applicant: {user?.displayName} ({user?.email}) | Last updated on {appState.updatedAt ? format(appState.updatedAt && typeof (appState.updatedAt as any).toDate === 'function' ? (appState.updatedAt as any).toDate() : parseISO(appState.updatedAt as string), "PPP") : 'N/A'}
+            Applicant: {user?.displayName} ({user?.email}) | Last updated on {appState.updatedAt ? format(typeof appState.updatedAt.toDate === 'function' ? appState.updatedAt.toDate() : parseISO(appState.updatedAt), "PPP") : 'N/A'}
           </CardDescription>
         </CardHeader>
       </Card>
@@ -369,3 +369,5 @@ export function AdminApplicationClient({
     </div>
   );
 }
+
+    

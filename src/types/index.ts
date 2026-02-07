@@ -15,9 +15,6 @@ export type AppUser = FirebaseUser & {
 
 export type DocumentStatus = 'missing' | 'uploaded' | 'needs_attention' | 'approved' | 'rejected';
 
-// A type that represents a value that can be either a Firestore Timestamp-like object or an ISO date string.
-export type FirestoreDate = { toDate: () => Date } | string;
-
 export type ApplicationDocument = {
   id: string;
   docRequirementId: string;
@@ -26,7 +23,7 @@ export type ApplicationDocument = {
   status: DocumentStatus;
   filePath?: string;
   fileName?: string;
-  uploadedAt?: FirestoreDate;
+  uploadedAt?: any;
   requiresExpiry: boolean;
   expiryDate?: string;
   isExpiringSoon?: boolean;
@@ -49,9 +46,9 @@ export type Application = {
   status: ApplicationStatus;
   documents: ApplicationDocument[];
   flightLogs?: FlightLog[];
-  submittedAt?: FirestoreDate;
-  updatedAt: FirestoreDate;
-  createdAt?: FirestoreDate;
+  submittedAt?: any;
+  updatedAt: any;
+  createdAt?: any;
   feedback?: string;
 };
 
@@ -82,6 +79,8 @@ export type AuditLogEntry = {
   adminName: string;
   adminEmail: string;
   action: string;
-  timestamp: string;
+  timestamp: any;
   details?: string;
 };
+
+    
