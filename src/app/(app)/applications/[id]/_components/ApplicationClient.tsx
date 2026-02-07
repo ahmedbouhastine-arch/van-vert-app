@@ -233,8 +233,8 @@ export function ApplicationClient({
             <StatusBadge status={appState.status} />
           </div>
           <CardDescription>
-            Last updated on {appState.updatedAt ? format(parseISO(appState.updatedAt.toString()), "MMMM d, yyyy") : 'N/A'}
-            {appState.submittedAt && ` | Submitted on ${format(parseISO(appState.submittedAt), "MMMM d, yyyy")}`}
+            Last updated on {appState.updatedAt ? format(appState.updatedAt.toDate ? appState.updatedAt.toDate() : parseISO(appState.updatedAt), "MMMM d, yyyy") : 'N/A'}
+            {appState.submittedAt && ` | Submitted on ${format(appState.submittedAt.toDate ? appState.submittedAt.toDate() : parseISO(appState.submittedAt), "MMMM d, yyyy")}`}
           </CardDescription>
         </CardHeader>
       </Card>

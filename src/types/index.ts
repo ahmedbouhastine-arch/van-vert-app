@@ -23,7 +23,7 @@ export type ApplicationDocument = {
   status: DocumentStatus;
   filePath?: string;
   fileName?: string;
-  uploadedAt?: string;
+  uploadedAt?: any;
   requiresExpiry: boolean;
   expiryDate?: string;
   isExpiringSoon?: boolean;
@@ -46,8 +46,9 @@ export type Application = {
   status: ApplicationStatus;
   documents: ApplicationDocument[];
   flightLogs?: FlightLog[];
-  submittedAt?: string;
-  updatedAt: string;
+  submittedAt?: any;
+  updatedAt: any;
+  createdAt?: any;
   feedback?: string;
 };
 
