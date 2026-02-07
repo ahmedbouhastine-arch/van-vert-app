@@ -5,7 +5,7 @@ export type UserProfile = {
   email: string;
   displayName?: string;
   photoURL?: string;
-  role: 'applicant' | 'admin' | 'head-admin' | 'reviewer';
+  role: 'user' | 'admin' | 'head-admin' | 'reviewer';
   createdAt: any; // Firestore server timestamp
 };
 

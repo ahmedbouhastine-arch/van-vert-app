@@ -17,7 +17,7 @@
         },
         "role": {
           "type": "string",
-          "description": "User's role (e.g., applicant, admin)."
+          "description": "User's role (e.g., user, admin)."
         }
       },
       "required": [

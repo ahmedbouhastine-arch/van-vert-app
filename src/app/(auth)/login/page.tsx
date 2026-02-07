@@ -48,7 +48,7 @@ export default function LoginPage() {
         }
     }, [user, loading, claims, router]);
 
-    const handleLogin = async (event: React.FormEvent<HTMLFormEvent>) => {
+    const handleLogin = async (event: React.FormEvent<HTMLFormElement>) => {
         event.preventDefault();
         const formData = new FormData(event.currentTarget);
         const email = formData.get("email") as string;
@@ -84,7 +84,7 @@ export default function LoginPage() {
                 await setDoc(userRef, {
                     displayName: user.displayName,
                     email: user.email,
-                    role: "applicant",
+                    role: "user",
                     createdAt: serverTimestamp(),
                 }, { merge: true }); // Use merge to prevent overwriting existing user data/roles
             }

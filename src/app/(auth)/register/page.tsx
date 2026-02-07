@@ -134,7 +134,7 @@ export default function RegisterPage() {
                 await setDoc(userRef, {
                     displayName: fullName,
                     email: user.email,
-                    role: "applicant",
+                    role: "user",
                     createdAt: serverTimestamp(),
                     photoURL: photoURL
                 });
@@ -177,7 +177,7 @@ export default function RegisterPage() {
               await setDoc(userRef, {
                 displayName: user.displayName,
                 email: user.email,
-                role: "applicant",
+                role: "user",
                 photoURL: user.photoURL,
                 createdAt: serverTimestamp(),
               }, { merge: true }); // Merge to not overwrite role if they already exist
