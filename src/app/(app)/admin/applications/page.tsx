@@ -53,18 +53,30 @@ const safeFormatDate = (date: FirebaseTimestamp | Date | string | undefined | nu
 function AdminApplicationsContent() {
     const firestore = useFirestore();
     const { toast } = useToast();
+    const { claims } = useUser();
 
-    const usersQuery = useMemoFirebase(() => firestore ? query(collection(firestore, "users")) : null, [firestore]);
+    const isAuthorized = useMemo(() =>
+        claims?.role && ['reviewer', 'admin', 'head-admin'].includes(claims.role),
+        [claims]
+    );
+
+    const usersQuery = useMemoFirebase(() => 
+        isAuthorized && firestore ? query(collection(firestore, "users")) : null, 
+        [firestore, isAuthorized]
+    );
     const { data: users, loading: usersLoading } = useCollection<UserProfile>(usersQuery);
 
-    const appsQuery = useMemoFirebase(() => firestore ? query(collection(firestore, "applications"), where("status", "!=", "draft")) : null, [firestore]);
+    const appsQuery = useMemoFirebase(() => 
+        isAuthorized && firestore ? query(collection(firestore, "applications"), where("status", "!=", "draft")) : null, 
+        [firestore, isAuthorized]
+    );
     const { data: applications, loading: appsLoading } = useCollection<Application>(appsQuery);
 
     const allApplications = useMemo(() => {
         if (!applications || !users) return [];
         return applications.map(app => {
-        const user = users.find((u) => u.id === app.userId);
-        return { ...app, user };
+            const user = users.find((u) => u.id === app.userId);
+            return { ...app, user };
         });
     }, [applications, users]);
 
