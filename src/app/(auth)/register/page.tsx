@@ -110,8 +110,12 @@ export default function RegisterPage() {
             const userCredential = await createUserWithEmailAndPassword(auth, email, password);
             const user = userCredential.user;
 
-            // Step 2: Send the verification email immediately.
-            await sendEmailVerification(user);
+            // Step 2: Send the verification email immediately with a redirect URL.
+            const actionCodeSettings = {
+                url: `${window.location.origin}/verified`,
+                handleCodeInApp: true,
+            };
+            await sendEmailVerification(user, actionCodeSettings);
 
             // Step 3: Upload the profile picture and get its URL.
             let photoURL = "";
