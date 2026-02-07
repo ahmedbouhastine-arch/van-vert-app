@@ -41,7 +41,10 @@ export default function VerifyEmailPage() {
                 await currentUser.reload();
                 if (currentUser.emailVerified) {
                     clearInterval(interval);
-                    router.refresh();
+                    // Force a full redirect instead of a soft refresh to avoid race conditions.
+                    const isAdmin = claims?.role === 'admin' || claims?.role === 'head-admin' || claims?.role === 'reviewer';
+                    const homePath = isAdmin ? '/admin' : '/dashboard';
+                    router.push(homePath);
                 }
             }
         }, 3000); 
