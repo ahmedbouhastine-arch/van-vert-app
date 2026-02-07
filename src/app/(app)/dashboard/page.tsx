@@ -14,9 +14,8 @@ import {
 } from "@/components/ui/card";
 import { StatusBadge } from "@/components/StatusBadge";
 import { format, parseISO } from "date-fns";
-import { useUser, useFirestore, useCollection } from "@/firebase";
+import { useUser, useFirestore, useCollection, useMemoFirebase } from "@/firebase";
 import { collection, query, where, orderBy, limit } from "firebase/firestore";
-import { useMemo } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { Application } from "@/types";
 
@@ -41,7 +40,7 @@ export default function DashboardPage() {
   const { user } = useUser();
   const firestore = useFirestore();
 
-  const appsQuery = useMemo(() => {
+  const appsQuery = useMemoFirebase(() => {
     if (!firestore || !user) return null;
     return query(
         collection(firestore, "applications"), 

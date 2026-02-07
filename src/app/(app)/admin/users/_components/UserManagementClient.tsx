@@ -1,7 +1,7 @@
 
 'use client';
-import { useState, useMemo } from "react";
-import { useCollection, useFirestore } from "@/firebase";
+import { useMemo } from "react";
+import { useCollection, useFirestore, useMemoFirebase } from "@/firebase";
 import { collection, doc, updateDoc, query } from "firebase/firestore";
 import type { UserProfile } from "@/types";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -69,7 +69,7 @@ function UserRow({ user, currentUser, onRoleChange }: { user: UserWithProfile, c
 
 export function UserManagementClient({ currentUser }: { currentUser: User }) {
     const firestore = useFirestore();
-    const usersQuery = useMemo(() => firestore ? query(collection(firestore, "users")) : null, [firestore]);
+    const usersQuery = useMemoFirebase(() => firestore ? query(collection(firestore, "users")) : null, [firestore]);
     const { data: users, loading } = useCollection<UserWithProfile>(usersQuery);
     const { toast } = useToast();
 

@@ -3,17 +3,16 @@
 
 import { notFound, useParams } from "next/navigation";
 import { ApplicationClient } from "./_components/ApplicationClient";
-import { useFirestore, useDoc } from "@/firebase";
+import { useFirestore, useDoc, useMemoFirebase } from "@/firebase";
 import { doc } from "firebase/firestore";
 import { LoadingScreen } from "@/components/LoadingScreen";
-import { useMemo } from "react";
 import type { Application } from "@/types";
 
 export default function ApplicationDetailPage() {
   const params = useParams<{ id: string }>();
   const firestore = useFirestore();
 
-  const appRef = useMemo(() => 
+  const appRef = useMemoFirebase(() => 
     firestore && params.id ? doc(firestore, 'applications', params.id) as any : null,
     [firestore, params.id]
   );
