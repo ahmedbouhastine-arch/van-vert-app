@@ -6,22 +6,22 @@
   :root {
     --background: 206 33% 95%; /* Light grey */
     --foreground: 224 71.4% 4.1%; /* Dark blue-ish text */
-    --card: 0 0% 100%; /* White */
+    --card: 0 0% 100% / 0.4; /* Semi-transparent white for glass effect */
     --card-foreground: 224 71.4% 4.1%;
-    --popover: 0 0% 100%;
+    --popover: 0 0% 100% / 0.7; /* Semi-transparent white */
     --popover-foreground: 224 71.4% 4.1%;
     --primary: 231 48% 48%; /* Deep blue */
     --primary-foreground: 0 0% 100%;
     --secondary: 220 14% 96%;
     --secondary-foreground: 222 47% 11%;
-    --muted: 220 14% 96%;
+    --muted: 220 14% 96% / 0.4; /* Semi-transparent for glass effect */
     --muted-foreground: 220 9% 46%;
     --accent: 36 100% 50%; /* Orange */
     --accent-foreground: 24 10% 10%;
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
-    --border: 220 13% 91%;
-    --input: 220 13% 91%;
+    --border: 220 13% 91% / 0.3; /* Lighter border for glass */
+    --input: 220 13% 91% / 0.3;
     --ring: 231 48% 48%;
     --radius: 0.5rem;
   }
@@ -29,22 +29,22 @@
   .dark {
     --background: 222 47% 11%;
     --foreground: 210 40% 98%;
-    --card: 222 47% 11%;
+    --card: 222 47% 11% / 0.4; /* Semi-transparent dark for glass effect */
     --card-foreground: 210 40% 98%;
-    --popover: 222 47% 11%;
+    --popover: 222 47% 11% / 0.7; /* Semi-transparent dark */
     --popover-foreground: 210 40% 98%;
     --primary: 231 48% 48%;
     --primary-foreground: 0 0% 100%;
     --secondary: 217 33% 17%;
     --secondary-foreground: 210 40% 98%;
-    --muted: 217 33% 17%;
+    --muted: 217 33% 17% / 0.4; /* Semi-transparent dark for glass effect */
     --muted-foreground: 215 20% 65%;
     --accent: 36 100% 50%;
     --accent-foreground: 24 10% 10%;
     --destructive: 0 63% 31%;
     --destructive-foreground: 210 40% 98%;
-    --border: 217 33% 17%;
-    --input: 217 33% 17%;
+    --border: 217 33% 17% / 0.3; /* Lighter border for glass */
+    --input: 217 33% 17% / 0.3;
     --ring: 231 48% 48%;
   }
 }
@@ -54,6 +54,26 @@
     @apply border-border;
   }
   body {
-    @apply bg-background text-foreground;
+    @apply bg-transparent text-foreground;
+  }
+  
+  body::before {
+    content: '';
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    z-index: -1;
+    background: linear-gradient(135deg, hsl(var(--primary)), hsl(var(--secondary)));
+  }
+
+  .dark body::before {
+     background: linear-gradient(135deg, hsl(var(--primary) / 0.8), hsl(var(--background)) 80%);
+  }
+
+  /* Apply glass effect to components */
+  .bg-card, .bg-popover, .bg-muted, .bg-background, .bg-muted\/40 {
+    @apply bg-card/60 backdrop-blur-md;
   }
 }
