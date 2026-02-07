@@ -1,3 +1,4 @@
+
 'use client';
 import Link from "next/link";
 import { MoreHorizontal } from "lucide-react";
@@ -122,7 +123,7 @@ export default function AdminApplicationsPage() {
                     <StatusBadge status={app.status} />
                   </TableCell>
                   <TableCell className="hidden md:table-cell">
-                    {app.submittedAt ? format(parseISO(app.submittedAt.toString()), "MMMM d, yyyy") : 'N/A'}
+                    {app.submittedAt ? format(app.submittedAt.toDate ? app.submittedAt.toDate() : parseISO(app.submittedAt), "MMMM d, yyyy") : 'N/A'}
                   </TableCell>
                   <TableCell>
                     <DropdownMenu>

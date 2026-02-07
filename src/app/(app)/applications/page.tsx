@@ -112,7 +112,7 @@ export default function MyApplicationsPage() {
                       <StatusBadge status={app.status} />
                     </TableCell>
                     <TableCell className="hidden md:table-cell">
-                      {app.updatedAt ? format(parseISO(app.updatedAt.toString()), "MMMM d, yyyy") : 'N/A'}
+                      {app.updatedAt ? format(app.updatedAt.toDate ? app.updatedAt.toDate() : parseISO(app.updatedAt), "MMMM d, yyyy") : 'N/A'}
                     </TableCell>
                     <TableCell>
                       <DropdownMenu>
