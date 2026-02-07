@@ -50,9 +50,15 @@ export default function RegisterPage() {
 
     useEffect(() => {
         if (!loading && user) {
-            const isAdmin = claims?.role === 'admin' || claims?.role === 'head-admin' || claims?.role === 'reviewer';
-            const homePath = isAdmin ? '/admin' : '/dashboard';
-            router.push(homePath);
+            // If user is already logged in, redirect them.
+            // If they are not verified, they should land on the verify-email page.
+            if (user.emailVerified) {
+                const isAdmin = claims?.role === 'admin' || claims?.role === 'head-admin' || claims?.role === 'reviewer';
+                const homePath = isAdmin ? '/admin' : '/dashboard';
+                router.push(homePath);
+            } else {
+                router.push('/verify-email');
+            }
         }
     }, [user, loading, claims, router]);
 
@@ -103,10 +109,7 @@ export default function RegisterPage() {
             const userCredential = await createUserWithEmailAndPassword(auth, email, password);
             const user = userCredential.user;
 
-            // Send verification email
-            await sendEmailVerification(user);
-
-            // Upload profile picture
+            // 1. Upload profile picture to get the URL
             let photoURL = "";
             if (storage) {
                 const storageRef = ref(storage, `profile-pictures/${user.uid}`);
@@ -114,8 +117,13 @@ export default function RegisterPage() {
                 photoURL = await getDownloadURL(storageRef);
             }
             
+            // 2. Update the Firebase Auth user profile with name and photo URL
             await updateProfile(user, { displayName: fullName, photoURL });
 
+            // 3. Now that the profile is updated, send the verification email
+            await sendEmailVerification(user);
+
+            // 4. Create the user document in Firestore
             if (firestore) {
               const userRef = doc(firestore, "users", user.uid);
               await setDoc(userRef, {
