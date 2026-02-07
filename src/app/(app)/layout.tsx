@@ -1,3 +1,4 @@
+
 'use client';
 
 import Link from "next/link";
@@ -12,6 +13,7 @@ import { useUser } from "@/firebase";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 import { LoadingScreen } from "@/components/LoadingScreen";
+import { NotificationBell } from "@/components/NotificationBell";
 
 export default function AppLayout({
   children,
@@ -78,6 +80,7 @@ export default function AppLayout({
               className="w-full rounded-lg bg-background pl-8 md:w-[200px] lg:w-[336px]"
             />
           </div>
+          <NotificationBell />
           <UserNav />
         </header>
         <main className="grid flex-1 items-start gap-4 p-4 sm:px-6 sm:py-0 md:gap-8">

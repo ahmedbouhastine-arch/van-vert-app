@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState, useTransition, useRef } from "react";
 import type { Application, ApplicationDocument, FirebaseTimestamp } from "@/types";
 import {
   Card,
@@ -28,8 +28,9 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { format } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
 import { flagExpiringDocuments } from "@/ai/flows/flag-expiring-documents";
-import { useFirestore } from "@/firebase";
+import { useFirestore, useStorage } from "@/firebase";
 import { doc, serverTimestamp, updateDoc } from "firebase/firestore";
+import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 
 // Helper function to safely format dates, whether they are Timestamps or strings
 const safeFormatDate = (date: FirebaseTimestamp | Date | string | undefined | null, formatString: string) => {
@@ -69,12 +70,15 @@ function DocumentCard({
   onUpload,
   onDateChange,
   isSubmitted,
+  isUploading,
 }: {
   doc: ApplicationDocument;
   onUpload: (docId: string) => void;
   onDateChange: (docId: string, date: string) => void;
   isSubmitted: boolean;
+  isUploading: boolean;
 }) {
+  const isButtonDisabled = isSubmitted || isUploading;
   return (
     <Card className="overflow-hidden">
       <CardHeader className="flex flex-row items-start justify-between gap-4 bg-muted/50 p-4">
@@ -88,16 +92,17 @@ function DocumentCard({
       </CardHeader>
       <CardContent className="p-4 text-sm">
         {doc.status === "missing" && (
-          <Button variant="outline" onClick={() => onUpload(doc.id)} disabled={isSubmitted}>
-            <UploadCloud className="mr-2 h-4 w-4" /> Upload Document
+          <Button variant="outline" onClick={() => onUpload(doc.id)} disabled={isButtonDisabled}>
+            {isUploading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <UploadCloud className="mr-2 h-4 w-4" />}
+            {isUploading ? 'Uploading...' : 'Upload Document'}
           </Button>
         )}
         {doc.status !== "missing" && (
           <div className="flex items-center gap-4 text-muted-foreground">
             <FileIcon className="h-5 w-5" />
-            <span className="font-medium text-foreground">{doc.fileName}</span>
-            <Button variant="link" size="sm" onClick={() => onUpload(doc.id)} disabled={isSubmitted}>
-              Replace
+            <span className="font-medium text-foreground truncate">{doc.fileName}</span>
+            <Button variant="link" size="sm" onClick={() => onUpload(doc.id)} disabled={isButtonDisabled}>
+              {isUploading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Replace'}
             </Button>
           </div>
         )}
@@ -136,24 +141,63 @@ export function ApplicationClient({
 }) {
   const [appState, setAppState] = useState<Application>(initialApplication);
   const [isPending, startTransition] = useTransition();
+  const [uploadingDocId, setUploadingDocId] = useState<string | null>(null);
+  const [activeUploadDocId, setActiveUploadDocId] = useState<string | null>(null);
   const { toast } = useToast();
   const firestore = useFirestore();
+  const storage = useStorage();
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const handleUpload = (docId: string) => {
-    setAppState((prev) => ({
-      ...prev,
-      documents: prev.documents.map((doc) =>
-        doc.id === docId
-          ? {
-              ...doc,
-              status: "uploaded",
-              fileName: "document_placeholder.pdf",
-              uploadedAt: new Date().toISOString(),
-            }
-          : doc
-      ),
-    }));
+  const handleUploadClick = (docId: string) => {
+    setActiveUploadDocId(docId);
+    fileInputRef.current?.click();
   };
+
+  const handleFileSelected = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file || !activeUploadDocId || !storage) return;
+
+    setUploadingDocId(activeUploadDocId);
+
+    try {
+        const storageRef = ref(storage, `applications/${appState.id}/${activeUploadDocId}/${file.name}`);
+        await uploadBytes(storageRef, file);
+        const downloadURL = await getDownloadURL(storageRef);
+
+        setAppState((prev) => ({
+            ...prev,
+            documents: prev.documents.map((doc) =>
+              doc.id === activeUploadDocId
+                ? {
+                    ...doc,
+                    status: "uploaded",
+                    fileName: file.name,
+                    uploadedAt: new Date().toISOString(),
+                    storagePath: storageRef.fullPath,
+                  }
+                : doc
+            ),
+        }));
+        
+        toast({ title: "Upload Successful", description: `${file.name} has been uploaded.` });
+
+    } catch (error) {
+        console.error("Upload failed:", error);
+        toast({
+            variant: "destructive",
+            title: "Upload Failed",
+            description: "There was an error uploading your file.",
+        });
+    } finally {
+        setUploadingDocId(null);
+        setActiveUploadDocId(null);
+        // Reset file input
+        if (fileInputRef.current) {
+            fileInputRef.current.value = "";
+        }
+    }
+  };
+
 
   const handleDateChange = (docId: string, date: string) => {
     setAppState((prev) => ({
@@ -224,7 +268,18 @@ export function ApplicationClient({
                 submittedAt: serverTimestamp(),
             };
             await handlePersistChanges(finalState);
-            setAppState(finalState);
+            setAppState(finalState); // Update local state to reflect submission
+             if (firestore) {
+                const notificationsRef = collection(firestore, 'users', appState.userId, 'notifications');
+                await addDoc(notificationsRef, {
+                    userId: appState.userId,
+                    title: `Application Submitted`,
+                    body: `Your '${appState.licenseType}' application has been submitted for review.`,
+                    href: `/applications/${appState.id}`,
+                    isRead: false,
+                    createdAt: serverTimestamp(),
+                });
+            }
             toast({
                 title: "Application Submitted!",
                 description: "Your application has been submitted for review.",
@@ -240,6 +295,7 @@ export function ApplicationClient({
 
   return (
     <div className="grid gap-8">
+      <input type="file" ref={fileInputRef} onChange={handleFileSelected} className="hidden" />
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between">
@@ -259,9 +315,10 @@ export function ApplicationClient({
           <DocumentCard
             key={doc.id}
             doc={doc}
-            onUpload={handleUpload}
+            onUpload={handleUploadClick}
             onDateChange={handleDateChange}
             isSubmitted={isSubmitted}
+            isUploading={uploadingDocId === doc.id}
           />
         ))}
       </div>

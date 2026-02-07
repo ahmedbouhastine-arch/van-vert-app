@@ -23,7 +23,7 @@ import {
   Loader2,
 } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { format, parseISO } from "date-fns";
+import { format } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -32,8 +32,9 @@ import { flagExpiringDocuments } from "@/ai/flows/flag-expiring-documents";
 import { checkRecency } from "@/ai/flows/check-recency";
 import type { CheckRecencyOutput } from "@/ai/flows/check-recency";
 import { cn } from "@/lib/utils";
-import { useFirestore } from "@/firebase";
-import { doc, serverTimestamp, updateDoc } from "firebase/firestore";
+import { useFirestore, useStorage } from "@/firebase";
+import { doc, serverTimestamp, updateDoc, addDoc, collection } from "firebase/firestore";
+import { getDownloadURL, ref } from "firebase/storage";
 
 // Helper function to safely format dates, whether they are Timestamps or strings
 const safeFormatDate = (date: FirebaseTimestamp | Date | string | undefined | null, formatString: string) => {
@@ -73,10 +74,12 @@ function DocumentReviewCard({
   doc,
   onStatusChange,
   isReviewer,
+  onDownload,
 }: {
   doc: ApplicationDocument;
   onStatusChange: (docId: string, status: DocumentStatus) => void;
   isReviewer: boolean;
+  onDownload: (storagePath: string) => void;
 }) {
   const documentStatuses: DocumentStatus[] = [
     "uploaded",
@@ -148,7 +151,7 @@ function DocumentReviewCard({
             <div className="flex items-center gap-4 text-muted-foreground">
               <FileIcon className="h-5 w-5" />
               <span className="font-medium text-foreground">{doc.fileName}</span>
-              <Button variant="outline" size="sm">
+              <Button variant="outline" size="sm" onClick={() => doc.storagePath && onDownload(doc.storagePath)}>
                 <Download className="mr-2 h-4 w-4" /> Download
               </Button>
             </div>
@@ -197,6 +200,7 @@ export function AdminApplicationClient({
   const { toast } = useToast();
   const isReviewer = claims?.role === 'reviewer';
   const firestore = useFirestore();
+  const storage = useStorage();
 
   useEffect(() => {
     const handleRecencyCheck = async () => {
@@ -266,6 +270,8 @@ export function AdminApplicationClient({
     startTransition(async () => {
         if (!firestore) return;
         const appRef = doc(firestore, 'applications', appState.id);
+        const originalStatus = initialApplication.status;
+
         try {
             await updateDoc(appRef, {
                 status: status,
@@ -273,6 +279,20 @@ export function AdminApplicationClient({
                 documents: appState.documents,
                 updatedAt: serverTimestamp()
             });
+
+            // If the status has changed, create a notification for the user
+            if (originalStatus !== status && appState.userId) {
+                 const notificationsRef = collection(firestore, 'users', appState.userId, 'notifications');
+                 await addDoc(notificationsRef, {
+                     userId: appState.userId,
+                     title: `Application Updated`,
+                     body: `Your '${appState.licenseType}' application is now ${status.replace(/_/g, ' ')}.`,
+                     href: `/applications/${appState.id}`,
+                     isRead: false,
+                     createdAt: serverTimestamp(),
+                 });
+            }
+
             setAppState(prev => ({ ...prev, status, feedback }));
             toast({
                 title: "Changes Saved",
@@ -287,6 +307,22 @@ export function AdminApplicationClient({
         }
     });
   }
+
+  const handleDownload = async (storagePath: string) => {
+    if (!storage) return;
+    try {
+        const fileRef = ref(storage, storagePath);
+        const url = await getDownloadURL(fileRef);
+        window.open(url, '_blank');
+    } catch (error) {
+        console.error("Download failed:", error);
+        toast({
+            variant: "destructive",
+            title: "Download Failed",
+            description: "Could not get the download URL for the file.",
+        });
+    }
+  };
 
   const applicationStatuses: ApplicationStatus[] = ['draft', 'submitted', 'in_review', 'needs_attention', 'approved', 'rejected'];
 
@@ -308,7 +344,7 @@ export function AdminApplicationClient({
         <div className="grid gap-4">
             <h2 className="font-semibold text-lg">Uploaded Documents</h2>
             {appState.documents.map((doc) => (
-            <DocumentReviewCard key={doc.id} doc={doc} onStatusChange={handleDocumentStatusChange} isReviewer={isReviewer} />
+            <DocumentReviewCard key={doc.id} doc={doc} onStatusChange={handleDocumentStatusChange} isReviewer={isReviewer} onDownload={handleDownload} />
             ))}
         </div>
         <div className="grid gap-6">
