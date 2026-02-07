@@ -24,11 +24,13 @@ import { useUser, useFirestore } from "@/firebase"
 import { LoadingScreen } from "@/components/LoadingScreen";
 import { doc, updateDoc } from "firebase/firestore";
 import { useToast } from "@/hooks/use-toast";
+import { useTheme } from "next-themes";
 
 export default function SettingsPage() {
     const { user, claims, loading } = useUser();
     const firestore = useFirestore();
     const { toast } = useToast();
+    const { theme, setTheme } = useTheme();
 
     if (loading) {
       return <LoadingScreen text="Loading settings..." />
@@ -117,7 +119,7 @@ export default function SettingsPage() {
         <form className="grid gap-4">
             <div className="grid gap-2">
                 <Label htmlFor="theme">Theme</Label>
-                 <Select defaultValue="system">
+                 <Select value={theme} onValueChange={setTheme}>
                     <SelectTrigger id="theme" className="w-full max-w-sm">
                         <SelectValue placeholder="Select theme" />
                     </SelectTrigger>
