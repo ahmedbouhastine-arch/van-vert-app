@@ -1,4 +1,3 @@
-
 'use client';
 
 import Link from "next/link";
@@ -9,10 +8,12 @@ import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { UserNav } from "@/components/UserNav";
 import { MainNavLinks, SecondaryNavLinks, MobileNavLinks } from "./_components/NavLinks";
 import { Breadcrumbs } from "./_components/Breadcrumbs";
-import { useUser } from "@/firebase";
+import { useUser, useAuth } from "@/firebase";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 import { LoadingScreen } from "@/components/LoadingScreen";
+import { signOut } from "firebase/auth";
+import { useToast } from "@/hooks/use-toast";
 
 export default function AppLayout({
   children,
@@ -21,22 +22,43 @@ export default function AppLayout({
 }) {
     const { user, loading, claims } = useUser();
     const router = useRouter();
+    const auth = useAuth();
+    const { toast } = useToast();
     const homePath = (claims?.role === 'admin' || claims?.role === 'head-admin' || claims?.role === 'reviewer') ? "/admin" : "/dashboard";
 
+    // This effect is a temporary measure to fulfill the user's request to be logged out.
     useEffect(() => {
-        if (loading) {
-            return;
-        }
-
-        if (!user) {
-            router.push('/login');
-            return;
-        }
-
-    }, [user, loading, router]);
+      // Check if there's a user to prevent running on subsequent renders after logout
+      if (auth.currentUser) {
+        signOut(auth).then(() => {
+          toast({
+            title: "Logged Out",
+            description: "You have been successfully logged out."
+          });
+          router.push('/login'); // Force the redirect
+        }).catch((error) => {
+          toast({
+            variant: "destructive",
+            title: "Logout Failed",
+            description: error.message
+          });
+        });
+      } else if (!loading) {
+        // If there's no user and we're not loading, ensure we're on the login page.
+        router.push('/login');
+      }
+    }, [auth, toast, router, loading]);
     
-    if (loading || !user) {
-        return <LoadingScreen />;
+    // Because the effect above will trigger a logout,
+    // we show a loading screen to prevent the child content from flashing.
+    // The `useUser` hook will update, and the user will be redirected.
+    if (loading || auth.currentUser) {
+        return <LoadingScreen text="Logging you out..." />;
+    }
+    
+    // This part should not be reached if logout is successful, but it's here as a fallback.
+    if (!user) {
+        return <LoadingScreen text="Redirecting to login..."/>;
     }
 
 
