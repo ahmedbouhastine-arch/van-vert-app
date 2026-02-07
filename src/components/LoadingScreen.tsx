@@ -9,7 +9,7 @@ export function LoadingScreen({ text = "Loading..." }: { text?: string }) {
                 <div className="absolute h-full w-full animate-spin rounded-full border-4 border-dashed border-primary"></div>
                 <Plane className="h-10 w-10 text-primary" />
             </div>
-            <p className="text-lg font-medium text-muted-foreground">{text}</p>
+            <p className="text-lg font-medium text-foreground drop-shadow-sm">{text}</p>
         </div>
     )
 }
