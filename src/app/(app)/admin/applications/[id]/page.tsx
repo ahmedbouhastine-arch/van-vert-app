@@ -1,14 +1,12 @@
+
 'use client';
 
-import { notFound, useParams } from "next/navigation";
+import { notFound, useParams, useRouter } from "next/navigation";
 import { AdminApplicationClient } from "./_components/AdminApplicationClient";
 import { useFirestore, useDoc, useUser, useMemoFirebase } from "@/firebase";
 import { doc } from "firebase/firestore";
 import { LoadingScreen } from "@/components/LoadingScreen";
 import type { Application, UserProfile } from "@/types";
-import { useEffect, useMemo } from "react";
-import { useRouter } from "next/navigation";
-
 
 function AdminApplicationDetailContent() {
     const params = useParams<{ id: string }>();
@@ -50,24 +48,25 @@ function AdminApplicationDetailContent() {
     )
 }
 
-export default function AdminApplicationDetailPage() {
+function RedirectToDashboard() {
   const router = useRouter();
+  React.useEffect(() => {
+    router.push('/dashboard');
+  }, [router]);
+  return <LoadingScreen text="Access Denied. Redirecting..." />;
+}
+
+
+export default function AdminApplicationDetailPage() {
   const { claims, loading: claimsLoading } = useUser();
 
-  const isAuthorized = useMemo(() => 
-    claims?.role && ['reviewer', 'admin', 'head-admin'].includes(claims.role),
-    [claims]
-  );
-
-  useEffect(() => {
-    if (!claimsLoading && !isAuthorized) {
-        router.push('/dashboard');
-    }
-  }, [claimsLoading, isAuthorized, router]);
-
-  if (claimsLoading || !isAuthorized) {
+  if (claimsLoading) {
     return <LoadingScreen text="Verifying Access..." />
   }
 
-  return <AdminApplicationDetailContent />;
+  // Render content only if authorized, otherwise redirect. This prevents child components
+  // from attempting to fetch data before the authorization check is complete.
+  return (claims?.role && ['reviewer', 'admin', 'head-admin'].includes(claims.role))
+    ? <AdminApplicationDetailContent />
+    : <RedirectToDashboard />;
 }
