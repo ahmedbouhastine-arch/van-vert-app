@@ -8,7 +8,8 @@ import { LoadingScreen } from '@/components/LoadingScreen';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
-import { MailCheck, Loader2, LogOut } from 'lucide-react';
+import { MailCheck, Loader2, LogOut, Info } from 'lucide-react';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 export default function VerifyEmailPage() {
     const { user, loading, claims } = useUser();
@@ -55,7 +56,11 @@ export default function VerifyEmailPage() {
         startResendTransition(async () => {
             if (user) {
                 try {
-                    await sendEmailVerification(user);
+                    const actionCodeSettings = {
+                        url: `${window.location.origin}/verified`,
+                        handleCodeInApp: true,
+                    };
+                    await sendEmailVerification(user, actionCodeSettings);
                     toast({
                         title: 'Verification Email Sent',
                         description: 'A new verification link has been sent to your email address.',
@@ -103,13 +108,18 @@ export default function VerifyEmailPage() {
                 <MailCheck className="h-12 w-12 text-primary mb-4" />
                 <CardTitle className="text-2xl font-headline">Verify Your Email</CardTitle>
                 <CardDescription>
-                    A verification link has been sent to <span className="font-semibold text-foreground">{user.email}</span>. Please check your inbox and click the link to continue.
+                    A verification link has been sent to <span className="font-semibold text-foreground">{user.email}</span>. Please click the link to continue.
                 </CardDescription>
             </CardHeader>
             <CardContent className="text-center">
-                <p className="text-sm text-muted-foreground mb-6">
-                    Didn't receive the email? Check your spam folder or click below to resend.
-                </p>
+                <Alert className="mb-6 text-left">
+                    <Info className="h-4 w-4" />
+                    <AlertTitle>Can't find the email?</AlertTitle>
+                    <AlertDescription>
+                        If you don&apos;t see the email in your inbox, please check your spam folder.
+                    </AlertDescription>
+                </Alert>
+                
                 <Button onClick={handleResendVerification} disabled={isResending || isSigningOut}>
                     {isResending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                     Resend Verification Email
