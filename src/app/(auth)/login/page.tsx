@@ -1,4 +1,3 @@
-
 "use client";
 
 import Link from "next/link";
@@ -34,6 +33,15 @@ export default function LoginPage() {
 
     useEffect(() => {
         if (!loading && user) {
+            const isPasswordProvider = user.providerData.some(p => p.providerId === 'password');
+
+            // If the user signed up with email/password, check if their email is verified.
+            if (isPasswordProvider && !user.emailVerified) {
+                router.push('/verify-email');
+                return;
+            }
+
+            // For verified users or social logins, redirect to the appropriate dashboard.
             const isAdmin = claims?.role === 'admin' || claims?.role === 'head-admin' || claims?.role === 'reviewer';
             const homePath = isAdmin ? '/admin' : '/dashboard';
             router.push(homePath);
