@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useRouter } from 'next/navigation';
@@ -22,35 +21,41 @@ export default function VerifyEmailPage() {
 
     useEffect(() => {
         if (loading) {
-            return;
+            return; // Wait until user and claims are fully loaded.
         }
         if (!user) {
-            router.push('/login');
+            router.push('/login'); // Not logged in, so redirect.
             return;
         }
 
+        // Once loading is complete and user is present, check verification status.
         if (user.emailVerified) {
-            const isAdmin = claims?.role === 'admin' || claims?.role === 'head-admin' || claims?.role === 'reviewer';
+            // User is verified, so perform the role-based redirect.
+            const isAdmin = claims?.role && ['admin', 'head-admin', 'reviewer'].includes(claims.role);
             const homePath = isAdmin ? '/admin' : '/dashboard';
-            // Use a hard redirect to ensure the new session state is fully loaded.
+            
+            // Use a hard redirect to ensure the new session state and claims are fully loaded.
             window.location.href = homePath;
-            return;
+            return; // Stop the effect here.
         }
 
+        // If the user is not yet verified, start polling their status.
         const interval = setInterval(async () => {
             const currentUser = auth.currentUser;
             if (currentUser) {
+                // This re-fetches the latest user data from Firebase Auth backend.
                 await currentUser.reload();
+                
+                // The onAuthStateChanged listener in FirebaseProvider will detect the change 
+                // in emailVerified, update the user state, and trigger this useEffect to re-run.
+                // The re-run will then execute the redirect logic above.
                 if (currentUser.emailVerified) {
                     clearInterval(interval);
-                    // Force a full redirect to the dashboard. The layout will then handle
-                    // redirecting admins to the correct /admin page.
-                    // This is more robust than a soft navigation and prevents race conditions.
-                    window.location.href = '/dashboard';
                 }
             }
         }, 3000); 
 
+        // Cleanup the interval when the component unmounts.
         return () => clearInterval(interval);
 
     }, [user, loading, claims, auth, router]);
@@ -98,17 +103,19 @@ export default function VerifyEmailPage() {
         });
     };
 
-    if (loading || !user || user.emailVerified) {
+    // While waiting for the initial user/claims load, or during the final redirect, show a loading screen.
+    if (loading || (user && user.emailVerified)) {
         return <LoadingScreen text="Verifying your status..." />;
     }
 
+    // Once we know the user exists and is not verified, show the verification prompt.
     return (
         <Card className="w-full max-w-md">
             <CardHeader className="items-center text-center">
                 <MailCheck className="h-12 w-12 text-primary mb-4" />
                 <CardTitle className="text-2xl font-headline">Verify Your Email</CardTitle>
                 <CardDescription>
-                    A verification link has been sent to <span className="font-semibold text-foreground">{user.email}</span>. Please click the link to continue.
+                    A verification link has been sent to <span className="font-semibold text-foreground">{user?.email}</span>. Please click the link to continue.
                 </CardDescription>
             </CardHeader>
             <CardContent className="text-center">
