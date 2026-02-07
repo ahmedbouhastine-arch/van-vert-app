@@ -3,10 +3,9 @@
 
 import { notFound, useParams } from "next/navigation";
 import { AdminApplicationClient } from "./_components/AdminApplicationClient";
-import { useFirestore, useDoc, useUser } from "@/firebase";
+import { useFirestore, useDoc, useUser, useMemoFirebase } from "@/firebase";
 import { doc } from "firebase/firestore";
 import { LoadingScreen } from "@/components/LoadingScreen";
-import { useMemo } from "react";
 import type { Application, UserProfile } from "@/types";
 
 export default function AdminApplicationDetailPage() {
@@ -14,13 +13,13 @@ export default function AdminApplicationDetailPage() {
   const firestore = useFirestore();
   const { claims, loading: claimsLoading } = useUser();
 
-  const appRef = useMemo(() => 
+  const appRef = useMemoFirebase(() => 
     firestore && params.id ? doc(firestore, 'applications', params.id) as any : null,
     [firestore, params.id]
   );
   const { data: application, loading: appLoading } = useDoc<Application>(appRef);
 
-  const userRef = useMemo(() => 
+  const userRef = useMemoFirebase(() => 
     firestore && application?.userId ? doc(firestore, 'users', application.userId) as any : null,
     [firestore, application]
   );

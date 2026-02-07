@@ -29,7 +29,7 @@ import {
 import { StatusBadge } from "@/components/StatusBadge";
 import { format, parseISO } from "date-fns";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { useCollection, useFirestore } from "@/firebase";
+import { useCollection, useFirestore, useMemoFirebase } from "@/firebase";
 import { collection, query, where } from "firebase/firestore";
 import { useMemo } from "react";
 import type { Application, UserProfile } from "@/types";
@@ -37,10 +37,10 @@ import type { Application, UserProfile } from "@/types";
 export default function AdminApplicationsPage() {
   const firestore = useFirestore();
   
-  const usersQuery = useMemo(() => firestore ? query(collection(firestore, "users")) : null, [firestore]);
+  const usersQuery = useMemoFirebase(() => firestore ? query(collection(firestore, "users")) : null, [firestore]);
   const { data: users, loading: usersLoading } = useCollection<UserProfile>(usersQuery);
 
-  const appsQuery = useMemo(() => firestore ? query(collection(firestore, "applications"), where("status", "!=", "draft")) : null, [firestore]);
+  const appsQuery = useMemoFirebase(() => firestore ? query(collection(firestore, "applications"), where("status", "!=", "draft")) : null, [firestore]);
   const { data: applications, loading: appsLoading } = useCollection<Application>(appsQuery);
 
   const allApplications = useMemo(() => {

@@ -2,7 +2,7 @@
 'use client';
 
 import Link from "next/link";
-import { useState, useMemo } from "react";
+import { useState } from "react";
 import { PlusCircle, MoreHorizontal } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -38,7 +38,7 @@ import {
 } from "@/components/ui/table";
 import { StatusBadge } from "@/components/StatusBadge";
 import { format, parseISO } from "date-fns";
-import { useUser, useFirestore, useCollection } from "@/firebase";
+import { useUser, useFirestore, useCollection, useMemoFirebase } from "@/firebase";
 import { collection, query, where } from "firebase/firestore";
 import type { Application } from "@/types";
 
@@ -47,7 +47,7 @@ export default function MyApplicationsPage() {
   const [selectedFeedback, setSelectedFeedback] = useState<string | null>(null);
   const firestore = useFirestore();
 
-  const appsQuery = useMemo(() => {
+  const appsQuery = useMemoFirebase(() => {
     if (!firestore || !user) return null;
     return query(collection(firestore, "applications"), where("userId", "==", user.uid));
   }, [firestore, user]);
