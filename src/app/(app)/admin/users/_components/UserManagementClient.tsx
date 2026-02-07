@@ -22,6 +22,8 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Trash2 } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 
 type UserWithProfile = UserProfile & { id: string; photoURL?: string; };
 
@@ -37,6 +39,7 @@ function UserRow({
     onDeleteUser: (userId: string, displayName: string) => void
 }) {
     const [selectedRole, setSelectedRole] = useState(user.role);
+    const [confirmationEmail, setConfirmationEmail] = useState("");
 
     const handleUpdate = () => {
         onRoleChange(user.id, selectedRole);
@@ -90,12 +93,28 @@ function UserRow({
                                 <AlertDialogHeader>
                                     <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
                                     <AlertDialogDescription>
-                                        This action will permanently delete the user '{user.displayName}' from the user database, which may orphan some of their data. This action cannot be undone.
+                                        This action cannot be undone. This will permanently delete the user '{user.displayName}' and all associated data. To confirm, please type <span className="font-semibold text-foreground">{user.email}</span> below.
                                     </AlertDialogDescription>
                                 </AlertDialogHeader>
+                                <div className="py-2">
+                                     <Label htmlFor={`delete-confirm-${user.id}`} className="sr-only">Confirm Email</Label>
+                                     <Input
+                                        id={`delete-confirm-${user.id}`}
+                                        placeholder="Type user's email to confirm"
+                                        value={confirmationEmail}
+                                        onChange={(e) => setConfirmationEmail(e.target.value)}
+                                        autoComplete="off"
+                                    />
+                                </div>
                                 <AlertDialogFooter>
-                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                    <AlertDialogAction onClick={() => onDeleteUser(user.id, user.displayName || '')} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">Delete User</AlertDialogAction>
+                                    <AlertDialogCancel onClick={() => setConfirmationEmail('')}>Cancel</AlertDialogCancel>
+                                    <AlertDialogAction 
+                                        onClick={() => onDeleteUser(user.id, user.displayName || '')}
+                                        disabled={confirmationEmail.toLowerCase() !== user.email?.toLowerCase()}
+                                        className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                    >
+                                        Delete User
+                                    </AlertDialogAction>
                                 </AlertDialogFooter>
                             </AlertDialogContent>
                         </AlertDialog>
