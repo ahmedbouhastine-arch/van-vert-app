@@ -53,22 +53,19 @@ const safeFormatDate = (date: FirebaseTimestamp | Date | string | undefined | nu
 function AdminApplicationsContent() {
     const firestore = useFirestore();
     const { toast } = useToast();
+    
+    // We can be sure claims exist here because the parent guards it.
     const { claims } = useUser();
 
-    const isAuthorized = useMemo(() =>
-        claims?.role && ['reviewer', 'admin', 'head-admin'].includes(claims.role),
-        [claims]
-    );
-
     const usersQuery = useMemoFirebase(() => 
-        isAuthorized && firestore ? query(collection(firestore, "users")) : null, 
-        [firestore, isAuthorized]
+        firestore ? query(collection(firestore, "users")) : null, 
+        [firestore]
     );
     const { data: users, loading: usersLoading } = useCollection<UserProfile>(usersQuery);
 
     const appsQuery = useMemoFirebase(() => 
-        isAuthorized && firestore ? query(collection(firestore, "applications"), where("status", "!=", "draft")) : null, 
-        [firestore, isAuthorized]
+        firestore ? query(collection(firestore, "applications"), where("status", "!=", "draft")) : null, 
+        [firestore]
     );
     const { data: applications, loading: appsLoading } = useCollection<Application>(appsQuery);
 
@@ -161,23 +158,26 @@ function AdminApplicationsContent() {
     )
 }
 
-export default function AdminApplicationsPage() {
+function RedirectToDashboard() {
   const router = useRouter();
-  const { claims, loading: claimsLoading } = useUser();
-  
-  const isAuthorized = useMemo(() => 
-    claims?.role && ['reviewer', 'admin', 'head-admin'].includes(claims.role),
-    [claims]
-  );
-
   useEffect(() => {
-    if (!claimsLoading && !isAuthorized) {
-        router.push('/dashboard');
-    }
-  }, [claimsLoading, isAuthorized, router]);
+    router.push('/dashboard');
+  }, [router]);
+  return <LoadingScreen text="Access Denied. Redirecting..." />;
+}
 
-  if (claimsLoading || !isAuthorized) {
+
+export default function AdminApplicationsPage() {
+  const { claims, loading: claimsLoading } = useUser();
+
+  if (claimsLoading) {
     return <LoadingScreen text="Verifying Access..." />;
+  }
+
+  const isAuthorized = claims?.role && ['reviewer', 'admin', 'head-admin'].includes(claims.role);
+
+  if (!isAuthorized) {
+    return <RedirectToDashboard />;
   }
 
   return (
