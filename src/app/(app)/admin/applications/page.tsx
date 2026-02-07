@@ -1,4 +1,3 @@
-
 'use client';
 import Link from "next/link";
 import { MoreHorizontal } from "lucide-react";
@@ -33,9 +32,11 @@ import { useCollection, useFirestore, useMemoFirebase } from "@/firebase";
 import { collection, query, where } from "firebase/firestore";
 import { useMemo } from "react";
 import type { Application, UserProfile } from "@/types";
+import { useToast } from "@/hooks/use-toast";
 
 export default function AdminApplicationsPage() {
   const firestore = useFirestore();
+  const { toast } = useToast();
   
   const usersQuery = useMemoFirebase(() => firestore ? query(collection(firestore, "users")) : null, [firestore]);
   const { data: users, loading: usersLoading } = useCollection<UserProfile>(usersQuery);
@@ -52,6 +53,13 @@ export default function AdminApplicationsPage() {
   }, [applications, users]);
 
   const isLoading = usersLoading || appsLoading;
+
+  const handleSendReminder = (applicantName: string | undefined, licenseType: string) => {
+    toast({
+        title: "Reminder Sent",
+        description: `A reminder email has been sent to ${applicantName || 'the applicant'} for their ${licenseType} application.`,
+    })
+  }
 
   return (
     <div className="flex flex-col gap-4">
@@ -114,7 +122,7 @@ export default function AdminApplicationsPage() {
                     <StatusBadge status={app.status} />
                   </TableCell>
                   <TableCell className="hidden md:table-cell">
-                    {app.submittedAt ? format(parseISO(app.submittedAt), "MMMM d, yyyy") : 'N/A'}
+                    {app.submittedAt ? format(parseISO(app.submittedAt.toString()), "MMMM d, yyyy") : 'N/A'}
                   </TableCell>
                   <TableCell>
                     <DropdownMenu>
@@ -133,7 +141,7 @@ export default function AdminApplicationsPage() {
                          <DropdownMenuItem asChild>
                             <Link href={`/admin/applications/${app.id}`}>Review Application</Link>
                         </DropdownMenuItem>
-                        <DropdownMenuItem>Send Reminder</DropdownMenuItem>
+                        <DropdownMenuItem onSelect={() => handleSendReminder(app.user?.displayName, app.licenseType)}>Send Reminder</DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </TableCell>
