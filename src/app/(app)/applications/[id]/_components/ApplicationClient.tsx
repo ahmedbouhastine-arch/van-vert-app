@@ -148,6 +148,15 @@ export function ApplicationClient({
   const storage = useStorage();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  const handlePersistChanges = async (updates: Partial<Application>) => {
+    if (!firestore) return;
+    const appRef = doc(firestore, 'applications', appState.id);
+    await updateDoc(appRef, {
+        ...updates,
+        updatedAt: serverTimestamp(),
+    });
+  };
+
   const handleUploadClick = (docId: string) => {
     setActiveUploadDocId(docId);
     fileInputRef.current?.click();
@@ -164,34 +173,34 @@ export function ApplicationClient({
         await uploadBytes(storageRef, file);
         const downloadURL = await getDownloadURL(storageRef);
 
-        setAppState((prev) => ({
-            ...prev,
-            documents: prev.documents.map((doc) =>
-              doc.id === activeUploadDocId
-                ? {
-                    ...doc,
-                    status: "uploaded",
-                    fileName: file.name,
-                    uploadedAt: new Date().toISOString(),
-                    storagePath: storageRef.fullPath,
-                  }
-                : doc
-            ),
-        }));
+        const newDocuments = appState.documents.map((doc) =>
+          doc.id === activeUploadDocId
+            ? {
+                ...doc,
+                status: "uploaded" as const,
+                fileName: file.name,
+                uploadedAt: new Date().toISOString(),
+                storagePath: storageRef.fullPath,
+              }
+            : doc
+        );
         
-        toast({ title: "Upload Successful", description: `${file.name} has been uploaded.` });
+        await handlePersistChanges({ documents: newDocuments });
+
+        setAppState((prev) => ({ ...prev, documents: newDocuments }));
+        
+        toast({ title: "Upload Successful", description: `${file.name} has been uploaded and saved.` });
 
     } catch (error) {
         console.error("Upload failed:", error);
         toast({
             variant: "destructive",
             title: "Upload Failed",
-            description: "There was an error uploading your file.",
+            description: "There was an error uploading and saving your file.",
         });
     } finally {
         setUploadingDocId(null);
         setActiveUploadDocId(null);
-        // Reset file input
         if (fileInputRef.current) {
             fileInputRef.current.value = "";
         }
@@ -199,13 +208,29 @@ export function ApplicationClient({
   };
 
 
-  const handleDateChange = (docId: string, date: string) => {
-    setAppState((prev) => ({
-      ...prev,
-      documents: prev.documents.map((doc) =>
+  const handleDateChange = async (docId: string, date: string) => {
+    const newDocuments = appState.documents.map((doc) =>
         doc.id === docId ? { ...doc, expiryDate: date } : doc
-      ),
-    }));
+    );
+
+    // Optimistically update the UI
+    setAppState((prev) => ({ ...prev, documents: newDocuments }));
+
+    try {
+        await handlePersistChanges({ documents: newDocuments });
+        toast({
+            title: "Expiry Date Saved",
+            description: "The expiry date has been updated.",
+        });
+    } catch (error: any) {
+        toast({
+            variant: 'destructive',
+            title: "Save Failed",
+            description: "Could not save the expiry date. Please try again.",
+        });
+        // Revert optimistic update on failure
+        setAppState(initialApplication);
+    }
   };
   
   const handleCheckExpiry = () => {
@@ -233,15 +258,6 @@ export function ApplicationClient({
             title: 'Action Required',
             description: `${results.filter(r => r.isExpiringSoon).length} document(s) are expiring soon.`,
           });
-    });
-  };
-
-  const handlePersistChanges = async (updates: Partial<Application>) => {
-    if (!firestore) return;
-    const appRef = doc(firestore, 'applications', appState.id);
-    await updateDoc(appRef, {
-        ...updates,
-        updatedAt: serverTimestamp(),
     });
   };
 

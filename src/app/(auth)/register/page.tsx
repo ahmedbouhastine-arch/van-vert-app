@@ -17,7 +17,7 @@ import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { CheckCircle2, XCircle, Eye, EyeOff, Camera, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { getAuth, createUserWithEmailAndPassword, GoogleAuthProvider, signInWithPopup, updateProfile, sendEmailVerification } from "firebase/auth";
+import { getAuth, createUserWithEmailAndPassword, GoogleAuthProvider, signInWithPopup, updateProfile, sendEmailVerification, deleteUser } from "firebase/auth";
 import { useFirebaseApp, useFirestore, useUser, useStorage } from "@/firebase";
 import { doc, setDoc, serverTimestamp } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
@@ -106,39 +106,46 @@ export default function RegisterPage() {
         const email = formData.get("email") as string;
         const fullName = formData.get("full-name") as string;
 
+        let userCredential;
         try {
             // Step 1: Create the user account.
-            const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+            userCredential = await createUserWithEmailAndPassword(auth, email, password);
             const user = userCredential.user;
 
-            // Step 2: Send the verification email immediately with a redirect URL.
-            const actionCodeSettings = {
-                url: `${window.location.origin}/verified`,
-                handleCodeInApp: true,
-            };
-            await sendEmailVerification(user, actionCodeSettings);
+            try {
+                // Step 2: Send the verification email immediately.
+                const actionCodeSettings = {
+                    url: `${window.location.origin}/verified`,
+                    handleCodeInApp: true,
+                };
+                await sendEmailVerification(user, actionCodeSettings);
 
-            // Step 3: Upload the profile picture and get its URL.
-            let photoURL = "";
-            if (storage && profilePic) {
-                const storageRef = ref(storage, `profile-pictures/${user.uid}`);
-                await uploadBytes(storageRef, profilePic);
-                photoURL = await getDownloadURL(storageRef);
-            }
-            
-            // Step 4: Update the user's Auth profile with their name and photo.
-            await updateProfile(user, { displayName: fullName, photoURL });
+                // Step 3: Upload the profile picture and get its URL.
+                let photoURL = "";
+                if (storage && profilePic) {
+                    const storageRef = ref(storage, `profile-pictures/${user.uid}`);
+                    await uploadBytes(storageRef, profilePic);
+                    photoURL = await getDownloadURL(storageRef);
+                }
+                
+                // Step 4: Update the user's Auth profile with their name and photo.
+                await updateProfile(user, { displayName: fullName, photoURL });
 
-            // Step 5: Create the user's document in Firestore.
-            if (firestore) {
-                const userRef = doc(firestore, "users", user.uid);
-                await setDoc(userRef, {
-                    displayName: fullName,
-                    email: user.email,
-                    role: email === 'head-admin@test.va' ? 'head-admin' : 'user',
-                    createdAt: serverTimestamp(),
-                    photoURL: photoURL
-                });
+                // Step 5: Create the user's document in Firestore.
+                if (firestore) {
+                    const userRef = doc(firestore, "users", user.uid);
+                    await setDoc(userRef, {
+                        displayName: fullName,
+                        email: user.email,
+                        role: email === 'head-admin@test.va' ? 'head-admin' : 'user',
+                        createdAt: serverTimestamp(),
+                        photoURL: photoURL
+                    });
+                }
+            } catch (innerError) {
+                // If any step after user creation fails, delete the user to roll back.
+                await deleteUser(user);
+                throw innerError; // Re-throw the error to be caught by the outer catch block.
             }
 
             // Step 6: All steps succeeded. Notify the user and redirect.
