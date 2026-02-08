@@ -50,8 +50,11 @@ service cloud.firestore {
       allow list: if isReviewer();
       
       // An owner can update their own profile, but cannot change their own role.
-      // An admin can update anyone's profile, including their role.
-      allow update: if (isOwner(userId) && request.resource.data.role == resource.data.role) || isAdmin();
+      // A head-admin can update any user's profile.
+      // An admin can update any user's profile, as long as that user is NOT a head-admin.
+      allow update: if (isOwner(userId) && request.resource.data.role == resource.data.role) ||
+                     isHeadAdmin() ||
+                     (getUserRole() == 'admin' && resource.data.role != 'head-admin');
       
       // Only head admins can delete user documents.
       allow delete: if isHeadAdmin();

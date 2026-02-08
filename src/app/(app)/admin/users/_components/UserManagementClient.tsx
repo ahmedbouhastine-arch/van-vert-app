@@ -15,11 +15,13 @@ type UserWithProfile = UserProfile & { id: string; photoURL?: string; };
 
 function UserRow({ 
     user, 
-    currentUser, 
+    currentUser,
+    currentUserClaims,
     onRoleChange
 }: { 
     user: UserWithProfile, 
-    currentUser: User, 
+    currentUser: User,
+    currentUserClaims: any,
     onRoleChange: (userId: string, newRole: 'user' | 'admin' | 'head-admin' | 'reviewer') => void
 }) {
     const [selectedRole, setSelectedRole] = useState(user.role);
@@ -29,7 +31,21 @@ function UserRow({
     };
     
     const isCurrentUser = user.id === currentUser.uid;
-    const canPerformActions = !isCurrentUser;
+
+    // Determines if the current user can modify the target user at all
+    const canPerformActions = (() => {
+        if (isCurrentUser) return false; // Can't edit self.
+        const currentUserRole = currentUserClaims?.role;
+        if (currentUserRole === 'head-admin') return true; // Head admin can edit anyone.
+        if (currentUserRole === 'admin') {
+            return user.role !== 'head-admin'; // Admins cannot edit head-admins.
+        }
+        return false; // Reviewers and users can't perform actions.
+    })();
+
+    // Determines if an admin is trying to promote someone to head-admin
+    const isPromotionToHeadAdminDisabled = currentUserClaims?.role === 'admin';
+
 
     return (
         <TableRow>
@@ -55,7 +71,7 @@ function UserRow({
                             <SelectItem value="user">User</SelectItem>
                             <SelectItem value="reviewer">Reviewer</SelectItem>
                             <SelectItem value="admin">Admin</SelectItem>
-                            <SelectItem value="head-admin">Head Admin</SelectItem>
+                            <SelectItem value="head-admin" disabled={isPromotionToHeadAdminDisabled}>Head Admin</SelectItem>
                         </SelectContent>
                     </Select>
                 ) : (
@@ -77,7 +93,7 @@ function UserRow({
     );
 }
 
-export function UserManagementClient({ currentUser }: { currentUser: User }) {
+export function UserManagementClient({ currentUser, currentUserClaims }: { currentUser: User, currentUserClaims: any }) {
     const firestore = useFirestore();
     const usersQuery = useMemoFirebase(() => firestore ? query(collection(firestore, "users")) : null, [firestore]);
     const { data: users, loading } = useCollection<UserWithProfile>(usersQuery);
@@ -120,7 +136,7 @@ export function UserManagementClient({ currentUser }: { currentUser: User }) {
                         {loading && <TableRow><TableCell colSpan={3} className="text-center">Loading users...</TableCell></TableRow>}
                         {!loading && users?.length === 0 && <TableRow><TableCell colSpan={3} className="text-center h-24">No users found.</TableCell></TableRow>}
                         {users?.sort((a, b) => (a.displayName || '').localeCompare(b.displayName || '')).map(user => (
-                            <UserRow key={user.id} user={user} currentUser={currentUser} onRoleChange={handleRoleChange} />
+                            <UserRow key={user.id} user={user} currentUser={currentUser} currentUserClaims={currentUserClaims} onRoleChange={handleRoleChange} />
                         ))}
                     </TableBody>
                 </Table>

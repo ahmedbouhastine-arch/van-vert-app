@@ -27,7 +27,7 @@ export default function UserManagementPage() {
                 <h1 className="text-3xl font-bold font-headline tracking-tight">User Management</h1>
                 <p className="text-muted-foreground">Promote or demote users to different roles.</p>
             </div>
-            <UserManagementClient currentUser={user} />
+            <UserManagementClient currentUser={user} currentUserClaims={claims} />
         </div>
     );
 }
