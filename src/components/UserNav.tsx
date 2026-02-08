@@ -27,11 +27,9 @@ export function UserNav() {
   const handleLogout = async () => {
     try {
       await signOut(auth);
-      router.push("/login");
-      toast({
-        title: "Logged Out",
-        description: "You have been successfully logged out.",
-      });
+      // Force a hard reload to the login page to ensure all state is cleared.
+      // This is more reliable than a client-side redirect for logout.
+      window.location.href = "/login";
     } catch (error: any) {
       toast({
         variant: "destructive",
