@@ -5,7 +5,7 @@ import { FirebaseClientProvider } from '@/firebase/client-provider';
 import { ThemeProvider } from '@/components/ThemeProvider';
 
 export const metadata: Metadata = {
-  title: 'PilotPack',
+  title: 'Van-Vert',
   description: 'Collect and organize documents for license conversion.',
 };
 
