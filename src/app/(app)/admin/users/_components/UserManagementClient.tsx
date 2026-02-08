@@ -85,9 +85,12 @@ function UserRow({
                     <div className="flex items-center justify-end gap-2">
                         <Button onClick={handleUpdate} disabled={selectedRole === user.role}>Update Role</Button>
                     </div>
+                ) : isCurrentUser ? (
+                     <span className="text-sm text-muted-foreground pr-4">Cannot edit self</span>
                 ) : (
-                    <span className="text-sm text-muted-foreground pr-4">Cannot edit self</span>
-                )}
+                    <span className="text-sm text-muted-foreground pr-4">Permission Denied</span>
+                )
+                }
             </TableCell>
         </TableRow>
     );
