@@ -15,13 +15,13 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
-import { getAuth, signInWithEmailAndPassword, GoogleAuthProvider, signInWithPopup } from "firebase/auth";
+import { getAuth, signInWithEmailAndPassword } from "firebase/auth";
 import { useToast } from "@/hooks/use-toast";
 import { useFirebaseApp, useUser, useFirestore } from "@/firebase";
-import { doc, setDoc, serverTimestamp } from "firebase/firestore";
 import { GoogleIcon } from "@/components/GoogleIcon";
 import { LoadingScreen } from "@/components/LoadingScreen";
-import { Eye, EyeOff } from "lucide-react";
+import { Eye, EyeOff, Loader2 } from "lucide-react";
+import { signInWithGoogle } from "@/firebase/auth-actions";
 
 export default function LoginPage() {
     const router = useRouter();
@@ -31,19 +31,17 @@ export default function LoginPage() {
     const firestore = useFirestore();
     const { user, loading, claims } = useUser();
     const [showPassword, setShowPassword] = useState(false);
+    const [isSubmitting, setIsSubmitting] = useState(false);
 
     useEffect(() => {
         if (!loading && user) {
             const isPasswordProvider = user.providerData.some(p => p.providerId === 'password');
 
-            // If the user signed up with email/password, check if their email is verified.
-            // We are bypassing this check for the head-admin@test.va account for testing.
             if (isPasswordProvider && !user.emailVerified && user.email !== 'head-admin@test.va') {
                 router.push('/verify-email');
                 return;
             }
 
-            // For verified users or social logins, redirect to the appropriate dashboard.
             const isAdmin = claims?.role === 'admin' || claims?.role === 'head-admin' || claims?.role === 'reviewer';
             const homePath = isAdmin ? '/admin' : '/dashboard';
             router.push(homePath);
@@ -52,19 +50,16 @@ export default function LoginPage() {
 
     const handleLogin = async (event: React.FormEvent<HTMLFormElement>) => {
         event.preventDefault();
+        setIsSubmitting(true);
         const formData = new FormData(event.currentTarget);
         const email = formData.get("email") as string;
         const password = formData.get("password") as string;
         
         try {
             await signInWithEmailAndPassword(auth, email, password);
-            // Redirection is handled by the useEffect hook
         } catch (error: any) {
             let description = error.message;
-            if (error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password') {
-                description = "Invalid email or password. Please try again.";
-            }
-             if (error.code === 'auth/invalid-credential') {
+            if (error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password' || error.code === 'auth/invalid-credential') {
                 description = "Invalid email or password. Please try again.";
             }
             toast({
@@ -72,33 +67,21 @@ export default function LoginPage() {
                 title: 'Login Failed',
                 description: description,
             });
+        } finally {
+            setIsSubmitting(false);
         }
     }
 
     const handleGoogleLogin = async () => {
-        const provider = new GoogleAuthProvider();
-        try {
-            const result = await signInWithPopup(auth, provider);
-            const user = result.user;
-
-            if (firestore) {
-                const userRef = doc(firestore, "users", user.uid);
-                await setDoc(userRef, {
-                    displayName: user.displayName,
-                    email: user.email,
-                    role: user.email === 'head-admin@test.va' ? 'head-admin' : 'user',
-                    photoURL: user.photoURL,
-                    createdAt: serverTimestamp(),
-                }, { merge: true }); // Use merge to prevent overwriting existing user data/roles
-            }
-            // Redirection is handled by the useEffect hook
-        } catch (error: any) {
+        if (!firestore) {
             toast({
                 variant: 'destructive',
-                title: 'Login Failed',
-                description: error.message,
+                title: 'Error',
+                description: 'Cannot connect to the database. Please try again later.',
             });
+            return;
         }
+        await signInWithGoogle(auth, firestore);
     }
 
     if (loading || user) {
@@ -157,7 +140,8 @@ export default function LoginPage() {
               </button>
             </div>
           </div>
-          <Button type="submit" className="w-full">
+          <Button type="submit" className="w-full" disabled={isSubmitting}>
+             {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             Login
           </Button>
         </form>

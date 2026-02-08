@@ -17,13 +17,14 @@ import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { CheckCircle2, XCircle, Eye, EyeOff, Camera, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { getAuth, createUserWithEmailAndPassword, GoogleAuthProvider, signInWithPopup, updateProfile, sendEmailVerification, deleteUser } from "firebase/auth";
+import { getAuth, createUserWithEmailAndPassword, updateProfile, sendEmailVerification, deleteUser } from "firebase/auth";
 import { useFirebaseApp, useFirestore, useUser, useStorage } from "@/firebase";
 import { doc, setDoc, serverTimestamp } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { GoogleIcon } from "@/components/GoogleIcon";
 import { LoadingScreen } from "@/components/LoadingScreen";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+import { signInWithGoogle } from "@/firebase/auth-actions";
 
 
 const passwordRequirements = [
@@ -51,14 +52,12 @@ export default function RegisterPage() {
 
     useEffect(() => {
         if (!loading && user) {
-            // If user is already logged in, redirect them.
-            // If they are not verified, they should land on the verify-email page.
-            if (user.emailVerified) {
+            if (!user.emailVerified && user.providerData.some(p => p.providerId === 'password') && user.email !== 'head-admin@test.va') {
+                router.push('/verify-email');
+            } else {
                 const isAdmin = claims?.role === 'admin' || claims?.role === 'head-admin' || claims?.role === 'reviewer';
                 const homePath = isAdmin ? '/admin' : '/dashboard';
                 router.push(homePath);
-            } else {
-                router.push('/verify-email');
             }
         }
     }, [user, loading, claims, router]);
@@ -108,19 +107,16 @@ export default function RegisterPage() {
 
         let userCredential;
         try {
-            // Step 1: Create the user account.
             userCredential = await createUserWithEmailAndPassword(auth, email, password);
             const user = userCredential.user;
 
             try {
-                // Step 2: Send the verification email immediately.
                 const actionCodeSettings = {
                     url: `${window.location.origin}/verified`,
                     handleCodeInApp: true,
                 };
                 await sendEmailVerification(user, actionCodeSettings);
 
-                // Step 3: Upload the profile picture and get its URL.
                 let photoURL = "";
                 if (storage && profilePic) {
                     const storageRef = ref(storage, `profile-pictures/${user.uid}`);
@@ -128,10 +124,8 @@ export default function RegisterPage() {
                     photoURL = await getDownloadURL(storageRef);
                 }
                 
-                // Step 4: Update the user's Auth profile with their name and photo.
                 await updateProfile(user, { displayName: fullName, photoURL });
 
-                // Step 5: Create the user's document in Firestore.
                 if (firestore) {
                     const userRef = doc(firestore, "users", user.uid);
                     await setDoc(userRef, {
@@ -143,12 +137,10 @@ export default function RegisterPage() {
                     });
                 }
             } catch (innerError) {
-                // If any step after user creation fails, delete the user to roll back.
                 await deleteUser(user);
-                throw innerError; // Re-throw the error to be caught by the outer catch block.
+                throw innerError;
             }
 
-            // Step 6: All steps succeeded. Notify the user and redirect.
             toast({
                 title: "Registration successful!",
                 description: "We've sent a verification link to your email address.",
@@ -175,30 +167,15 @@ export default function RegisterPage() {
     }
 
     const handleGoogleLogin = async () => {
-        const provider = new GoogleAuthProvider();
-        try {
-            const result = await signInWithPopup(auth, provider);
-            const user = result.user;
-
-            if (firestore) {
-              const userRef = doc(firestore, "users", user.uid);
-              await setDoc(userRef, {
-                displayName: user.displayName,
-                email: user.email,
-                role: user.email === 'head-admin@test.va' ? 'head-admin' : 'user',
-                photoURL: user.photoURL,
-                createdAt: serverTimestamp(),
-              }, { merge: true }); // Merge to not overwrite role if they already exist
-            }
-
-            // Redirection is handled by useEffect
-        } catch (error: any) {
+        if (!firestore) {
             toast({
                 variant: 'destructive',
-                title: 'Login Failed',
-                description: error.message,
+                title: 'Error',
+                description: 'Cannot connect to the database. Please try again later.',
             });
+            return;
         }
+        await signInWithGoogle(auth, firestore);
     }
 
     if (loading || user) {
