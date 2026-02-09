@@ -3,22 +3,27 @@
 
 import { useUser } from "@/firebase";
 import { useRouter } from "next/navigation";
-import { useEffect } from "react";
+import React from "react";
 import { LoadingScreen } from "@/components/LoadingScreen";
 import { UserManagementClient } from "./_components/UserManagementClient";
 
+function RedirectToAdminDashboard() {
+    const router = useRouter();
+    React.useEffect(() => {
+        router.push('/admin');
+    }, [router]);
+    return <LoadingScreen text="Access Denied. Redirecting..." />;
+}
+
 export default function UserManagementPage() {
     const { user, loading, claims } = useUser();
-    const router = useRouter();
 
-    useEffect(() => {
-        if (!loading && claims?.role !== 'head-admin') {
-            router.push('/admin');
-        }
-    }, [user, loading, claims, router]);
-
-    if (loading || !user || claims?.role !== 'head-admin') {
+    if (loading || !user) {
         return <LoadingScreen text="Verifying Access..." />;
+    }
+
+    if (claims?.role !== 'head-admin') {
+        return <RedirectToAdminDashboard />;
     }
     
     return (

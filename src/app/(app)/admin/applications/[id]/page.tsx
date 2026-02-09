@@ -95,9 +95,11 @@ export default function AdminApplicationDetailPage() {
     return <LoadingScreen text="Verifying Access..." />
   }
 
-  // Render content only if authorized, otherwise redirect. This prevents child components
-  // from attempting to fetch data before the authorization check is complete.
   const isAuthorized = claims?.role && ['reviewer', 'admin', 'head-admin'].includes(claims.role);
   
-  return isAuthorized ? <AdminApplicationDetailContent /> : <RedirectToDashboard />;
+  if (!isAuthorized) {
+      return <RedirectToDashboard />;
+  }
+  
+  return <AdminApplicationDetailContent />;
 }
