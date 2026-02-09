@@ -2,7 +2,7 @@
 'use client';
 
 import Link from "next/link";
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { PlusCircle, MoreHorizontal } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -41,6 +41,7 @@ import { format } from "date-fns";
 import { useUser, useFirestore, useCollection, useMemoFirebase } from "@/firebase";
 import { collection, query, where } from "firebase/firestore";
 import type { Application, FirebaseTimestamp } from "@/types";
+import { mockApplications } from "@/lib/mock-data";
 
 // Helper function to safely format dates, whether they are Timestamps or strings
 const safeFormatDate = (date: FirebaseTimestamp | Date | string | undefined | null, formatString: string) => {
@@ -57,18 +58,40 @@ const safeFormatDate = (date: FirebaseTimestamp | Date | string | undefined | nu
 };
 
 export default function MyApplicationsPage() {
-  const { user, loading: userLoading } = useUser();
+  const { user, claims, loading: userLoading } = useUser();
   const [selectedFeedback, setSelectedFeedback] = useState<string | null>(null);
   const firestore = useFirestore();
 
+  const isReviewer = claims?.role && ['reviewer', 'admin', 'head-admin'].includes(claims.role);
+
+  // --- Data Fetching Logic ---
+  // Use mock data for reviewer roles for presentation purposes
+  const mockAdminApplications = useMemo(() => {
+    if (!isReviewer || !user) return [];
+    // Create a mock application for the admin to see in their "My Applications" view
+    const adminApp: Application = {
+      // Find the CPL mock application to use as a base
+      ...mockApplications.find(app => app.licenseType === 'CPL Conversion')!,
+      id: 'mock-admin-app-1',
+      userId: user.uid,
+      status: 'draft',
+      updatedAt: { toDate: () => new Date(), seconds: new Date().getTime() / 1000, nanoseconds: 0 },
+    };
+    return [adminApp];
+  }, [isReviewer, user]);
+
+  // Use live data for regular users
   const appsQuery = useMemoFirebase(() => {
-    if (!firestore || !user) return null;
+    if (!firestore || !user || isReviewer) return null;
     return query(collection(firestore, "applications"), where("userId", "==", user.uid));
-  }, [firestore, user]);
+  }, [firestore, user, isReviewer]);
+  
+  const { data: liveUserApplications, loading: appsLoading } = useCollection<Application>(appsQuery);
+  
+  const userApplications = isReviewer ? mockAdminApplications : liveUserApplications;
+  const isLoading = userLoading || (!isReviewer && appsLoading);
+  // --- End Data Fetching Logic ---
 
-  const { data: userApplications, loading: appsLoading } = useCollection<Application>(appsQuery);
-
-  const isLoading = userLoading || appsLoading;
 
   return (
     <div className="flex flex-col gap-4">

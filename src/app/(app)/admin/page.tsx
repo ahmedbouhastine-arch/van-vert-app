@@ -8,13 +8,14 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { FileText, UserCog, LineChart, History, PlusCircle } from "lucide-react";
+import { FileText, UserCog, LineChart, History, PlusCircle, UserSquare } from "lucide-react";
 import { useUser } from "@/firebase";
 
 export default function AdminDashboardPage() {
     const { claims } = useUser();
     const isHeadAdmin = claims?.role === 'head-admin';
     const isAdmin = claims?.role === 'admin' || isHeadAdmin;
+    const isReviewer = claims?.role === 'reviewer' || isAdmin;
 
   return (
     <div className="flex flex-col gap-4">
@@ -30,15 +31,54 @@ export default function AdminDashboardPage() {
                     <span>Application Management</span>
                 </CardTitle>
                 <CardDescription>
-                    Review, approve, or reject user applications.
+                    Review, approve, or reject all user applications.
                 </CardDescription>
             </CardHeader>
             <CardContent>
                 <Link href="/admin/applications">
-                    <Button>View Applications</Button>
+                    <Button>View All Applications</Button>
                 </Link>
             </CardContent>
         </Card>
+
+        {isReviewer && (
+             <Card>
+                <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                        <UserSquare className="h-6 w-6" />
+                        <span>My Applications</span>
+                    </CardTitle>
+                    <CardDescription>
+                        View and manage your own applications as a user.
+                    </CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <Link href="/applications">
+                        <Button>View My Applications</Button>
+                    </Link>
+                </CardContent>
+            </Card>
+        )}
+
+        {isReviewer && (
+             <Card>
+                <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                        <PlusCircle className="h-6 w-6" />
+                        <span>New Application</span>
+                    </CardTitle>
+                    <CardDescription>
+                        Create a new license application for your own account.
+                    </CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <Link href="/applications/new">
+                        <Button>Start Application</Button>
+                    </Link>
+                </CardContent>
+            </Card>
+        )}
+
         {isAdmin && (
             <Card>
                 <CardHeader>
@@ -89,24 +129,6 @@ export default function AdminDashboardPage() {
                 <CardContent>
                     <Link href="/admin/audit-log">
                         <Button>View Logs</Button>
-                    </Link>
-                </CardContent>
-            </Card>
-        )}
-        {isHeadAdmin && (
-             <Card>
-                <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                        <PlusCircle className="h-6 w-6" />
-                        <span>Create Application</span>
-                    </CardTitle>
-                    <CardDescription>
-                        Create a new license application for your own account.
-                    </CardDescription>
-                </CardHeader>
-                <CardContent>
-                    <Link href="/applications/new">
-                        <Button>Start Application</Button>
                     </Link>
                 </CardContent>
             </Card>
