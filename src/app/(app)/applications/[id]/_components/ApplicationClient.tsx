@@ -1,8 +1,8 @@
 
 "use client";
 
-import { useState, useTransition, useRef } from "react";
-import type { Application, ApplicationDocument, FirebaseTimestamp } from "@/types";
+import { useState, useTransition, useRef, useEffect } from "react";
+import type { Application, ApplicationDocument, FirebaseTimestamp, FlightLog } from "@/types";
 import {
   Card,
   CardContent,
@@ -20,7 +20,10 @@ import {
   File as FileIcon,
   UploadCloud,
   Save,
-  Loader2
+  Loader2,
+  Trash2,
+  PlusCircle,
+  X,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -28,9 +31,13 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { format } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
 import { flagExpiringDocuments } from "@/ai/flows/flag-expiring-documents";
+import { checkRecency, type CheckRecencyOutput } from "@/ai/flows/check-recency";
 import { useFirestore, useStorage } from "@/firebase";
 import { doc, serverTimestamp, updateDoc, collection, addDoc } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
+import { Textarea } from "@/components/ui/textarea";
+import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
+import { v4 as uuidv4 } from 'uuid';
 
 // Helper function to safely format dates, whether they are Timestamps or strings
 const safeFormatDate = (date: FirebaseTimestamp | Date | string | undefined | null, formatString: string) => {
@@ -148,6 +155,12 @@ export function ApplicationClient({
   const storage = useStorage();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  const [recencyResult, setRecencyResult] = useState<CheckRecencyOutput | null>(null);
+  const [isRecencyChecking, setIsRecencyChecking] = useState(false);
+
+  const [newLog, setNewLog] = useState({ date: '', duration: '', aircraft: '', remarks: '' });
+  const [showLogForm, setShowLogForm] = useState(false);
+  
   const handlePersistChanges = async (updates: Partial<Application>) => {
     if (!firestore) return;
     const appRef = doc(firestore, 'applications', appState.id);
@@ -213,7 +226,6 @@ export function ApplicationClient({
         doc.id === docId ? { ...doc, expiryDate: date } : doc
     );
 
-    // Optimistically update the UI
     setAppState((prev) => ({ ...prev, documents: newDocuments }));
 
     try {
@@ -228,7 +240,6 @@ export function ApplicationClient({
             title: "Save Failed",
             description: "Could not save the expiry date. Please try again.",
         });
-        // Revert optimistic update on failure
         setAppState(initialApplication);
     }
   };
@@ -264,7 +275,7 @@ export function ApplicationClient({
   const handleSaveDraft = () => {
     startTransition(async () => {
         try {
-            await handlePersistChanges({ documents: appState.documents });
+            await handlePersistChanges({ documents: appState.documents, flightLogs: appState.flightLogs });
             toast({
                 title: "Draft Saved!",
                 description: "Your changes have been saved.",
@@ -284,7 +295,7 @@ export function ApplicationClient({
                 submittedAt: serverTimestamp(),
             };
             await handlePersistChanges(finalState);
-            setAppState(finalState); // Update local state to reflect submission
+            setAppState(finalState);
              if (firestore) {
                 const notificationsRef = collection(firestore, 'users', appState.userId, 'notifications');
                 await addDoc(notificationsRef, {
@@ -305,6 +316,72 @@ export function ApplicationClient({
         }
     });
   }
+
+  const handleAddLogEntry = async () => {
+    const duration = parseFloat(newLog.duration);
+    if (!newLog.date || !newLog.duration || isNaN(duration) || duration <= 0) {
+        toast({ variant: 'destructive', title: 'Invalid Entry', description: 'Please provide a valid date and positive duration.' });
+        return;
+    }
+    const newEntry: FlightLog = {
+        id: uuidv4(),
+        ...newLog,
+        duration,
+    };
+    const newLogs = [...(appState.flightLogs || []), newEntry];
+    setAppState(prev => ({ ...prev, flightLogs: newLogs }));
+    try {
+      await handlePersistChanges({ flightLogs: newLogs });
+      toast({ title: "Flight Log Added" });
+      setNewLog({ date: '', duration: '', aircraft: '', remarks: '' });
+      setShowLogForm(false);
+    } catch (e: any) {
+      toast({ variant: 'destructive', title: "Save failed", description: e.message });
+      setAppState(initialApplication);
+    }
+  };
+
+  const handleDeleteLogEntry = async (logId: string) => {
+    const newLogs = appState.flightLogs?.filter(log => log.id !== logId);
+    setAppState(prev => ({ ...prev, flightLogs: newLogs }));
+    try {
+        await handlePersistChanges({ flightLogs: newLogs });
+        toast({ title: "Flight Log Removed" });
+    } catch (e: any) {
+        toast({ variant: 'destructive', title: "Save failed", description: e.message });
+        setAppState(initialApplication);
+    }
+  }
+  
+  useEffect(() => {
+    const handleRecencyCheck = async () => {
+        const logs = appState.flightLogs;
+        if (!logs || logs.length === 0) {
+            setRecencyResult(null);
+            setIsRecencyChecking(false);
+            return;
+        }
+        setIsRecencyChecking(true);
+        try {
+            const result = await checkRecency({
+                flights: logs.map(f => ({ date: f.date, duration: f.duration }))
+            });
+            setRecencyResult(result);
+        } catch (error) {
+            console.error("Recency check failed:", error);
+            toast({
+                variant: "destructive",
+                title: "AI Check Failed",
+                description: "Could not perform pilot recency check.",
+            });
+        } finally {
+            setIsRecencyChecking(false);
+        }
+    };
+
+    handleRecencyCheck();
+  }, [appState.flightLogs, toast]);
+
 
   const allDocsUploaded = appState.documents.every(doc => doc.status !== 'missing');
   const isSubmitted = appState.status !== 'draft';
@@ -349,6 +426,91 @@ export function ApplicationClient({
 
       <Card>
         <CardHeader>
+            <CardTitle>Flight Logs</CardTitle>
+            <CardDescription>Add your recent flight logs to verify currency requirements.</CardDescription>
+        </CardHeader>
+        <CardContent>
+            {isRecencyChecking ? (
+                <div className="flex items-center gap-2 text-muted-foreground">
+                    <Loader2 className="h-5 w-5 animate-spin" />
+                    <span>AI is analyzing flight logs...</span>
+                </div>
+            ) : recencyResult ? (
+                <div className={`p-4 rounded-md flex items-start gap-4 mb-6 ${recencyResult.hasRecency ? 'bg-green-50 border-green-200 text-green-800' : 'bg-red-50 border-red-200 text-red-800'}`}>
+                    {recencyResult.hasRecency ? <Check className="h-5 w-5 flex-shrink-0 mt-0.5" /> : <X className="h-5 w-5 flex-shrink-0 mt-0.5" />}
+                    <div>
+                        <h4 className="font-semibold">
+                            {recencyResult.hasRecency ? 'Recency Requirement Met' : 'Recency Requirement Not Met'}
+                        </h4>
+                        <p className="text-sm">
+                            You have logged <strong>{recencyResult.totalHours} hours</strong> in the last 6 months.
+                        </p>
+                    </div>
+                </div>
+            ) : null}
+
+            <Table>
+                <TableHeader>
+                    <TableRow>
+                        <TableHead>Date</TableHead>
+                        <TableHead>Aircraft</TableHead>
+                        <TableHead className="text-right">Duration (hrs)</TableHead>
+                        <TableHead className="hidden md:table-cell">Remarks</TableHead>
+                        <TableHead><span className="sr-only">Actions</span></TableHead>
+                    </TableRow>
+                </TableHeader>
+                <TableBody>
+                    {appState.flightLogs && appState.flightLogs.length > 0 ? (
+                        appState.flightLogs.map(log => (
+                            <TableRow key={log.id}>
+                                <TableCell>{format(new Date(log.date), 'PPP')}</TableCell>
+                                <TableCell>{log.aircraft}</TableCell>
+                                <TableCell className="text-right">{log.duration.toFixed(2)}</TableCell>
+                                <TableCell className="hidden md:table-cell truncate max-w-[200px]">{log.remarks}</TableCell>
+                                <TableCell className="text-right">
+                                    <Button variant="ghost" size="icon" onClick={() => !isSubmitted && handleDeleteLogEntry(log.id)} disabled={isSubmitted}>
+                                        <Trash2 className="h-4 w-4" />
+                                    </Button>
+                                </TableCell>
+                            </TableRow>
+                        ))
+                    ) : (
+                        <TableRow>
+                            <TableCell colSpan={5} className="h-24 text-center">No flight logs added yet.</TableCell>
+                        </TableRow>
+                    )}
+                </TableBody>
+            </Table>
+             {!isSubmitted && showLogForm && (
+                <TableBody>
+                    <TableRow className="bg-muted/50">
+                        <TableCell><Input type="date" value={newLog.date} onChange={e => setNewLog({...newLog, date: e.target.value})} /></TableCell>
+                        <TableCell><Input placeholder="e.g., C172" value={newLog.aircraft} onChange={e => setNewLog({...newLog, aircraft: e.target.value})} /></TableCell>
+                        <TableCell><Input type="number" placeholder="e.g., 1.5" className="text-right" value={newLog.duration} onChange={e => setNewLog({...newLog, duration: e.target.value})} /></TableCell>
+                        <TableCell className="hidden md:table-cell"><Textarea placeholder="e.g., Cross-country flight" value={newLog.remarks} onChange={e => setNewLog({...newLog, remarks: e.target.value})} rows={1} /></TableCell>
+                        <TableCell className="text-right">
+                            <div className="flex gap-2 justify-end">
+                                <Button size="sm" onClick={handleAddLogEntry}>Save</Button>
+                                <Button size="sm" variant="ghost" onClick={() => setShowLogForm(false)}>Cancel</Button>
+                            </div>
+                        </TableCell>
+                    </TableRow>
+                </TableBody>
+             )}
+            </Table>
+        </CardContent>
+        <CardFooter>
+            {!isSubmitted && !showLogForm && (
+                <Button variant="outline" onClick={() => setShowLogForm(true)}>
+                    <PlusCircle className="mr-2 h-4 w-4" /> Add Log Entry
+                </Button>
+            )}
+        </CardFooter>
+      </Card>
+
+
+      <Card>
+        <CardHeader>
             <CardTitle>Next Steps</CardTitle>
         </CardHeader>
         <CardContent className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -374,3 +536,5 @@ export function ApplicationClient({
     </div>
   );
 }
+
+    

@@ -2,7 +2,7 @@
 "use client";
 
 import { useState, useTransition, useEffect } from "react";
-import type { Application, ApplicationDocument, ApplicationStatus, UserProfile, DocumentStatus, FirebaseTimestamp } from "@/types";
+import type { Application, ApplicationDocument, ApplicationStatus, UserProfile, DocumentStatus, FirebaseTimestamp, FlightLog } from "@/types";
 import {
   Card,
   CardContent,
@@ -35,6 +35,8 @@ import { cn } from "@/lib/utils";
 import { useFirestore, useStorage } from "@/firebase";
 import { doc, serverTimestamp, updateDoc, addDoc, collection } from "firebase/firestore";
 import { getDownloadURL, ref } from "firebase/storage";
+import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
+
 
 // Helper function to safely format dates, whether they are Timestamps or strings
 const safeFormatDate = (date: FirebaseTimestamp | Date | string | undefined | null, formatString: string) => {
@@ -341,7 +343,7 @@ export function AdminApplicationClient({
       </Card>
 
       <div className="grid md:grid-cols-2 gap-8">
-        <div className="grid gap-4">
+        <div className="grid gap-4 self-start">
             <h2 className="font-semibold text-lg">Uploaded Documents</h2>
             {appState.documents.map((doc) => (
             <DocumentReviewCard key={doc.id} doc={doc} onStatusChange={handleDocumentStatusChange} isReviewer={isReviewer} onDownload={handleDownload} />
@@ -378,6 +380,44 @@ export function AdminApplicationClient({
                     )}
                 </CardContent>
             </Card>
+
+             <Card>
+                <CardHeader>
+                    <CardTitle>Applicant's Flight Logs</CardTitle>
+                    <CardDescription>
+                        A read-only view of the logs submitted by the applicant.
+                    </CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <div className="border rounded-md">
+                    <Table>
+                        <TableHeader>
+                            <TableRow>
+                                <TableHead>Date</TableHead>
+                                <TableHead>Aircraft</TableHead>
+                                <TableHead className="text-right">Duration</TableHead>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                            {appState.flightLogs && appState.flightLogs.length > 0 ? (
+                                appState.flightLogs.map(log => (
+                                    <TableRow key={log.id}>
+                                        <TableCell>{format(new Date(log.date), 'PPP')}</TableCell>
+                                        <TableCell>{log.aircraft}</TableCell>
+                                        <TableCell className="text-right">{log.duration.toFixed(2)}</TableCell>
+                                    </TableRow>
+                                ))
+                            ) : (
+                                <TableRow>
+                                    <TableCell colSpan={3} className="h-24 text-center">No flight logs submitted.</TableCell>
+                                </TableRow>
+                            )}
+                        </TableBody>
+                    </Table>
+                    </div>
+                </CardContent>
+            </Card>
+            
             <Card>
                 <CardHeader>
                     <CardTitle>Admin Actions</CardTitle>
@@ -420,3 +460,5 @@ export function AdminApplicationClient({
     </div>
   );
 }
+
+    
