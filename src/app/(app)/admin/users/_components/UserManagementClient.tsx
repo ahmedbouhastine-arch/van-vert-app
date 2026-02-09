@@ -1,7 +1,5 @@
 'use client';
-import { useState } from "react";
-import { useCollection, useFirestore, useMemoFirebase } from "@/firebase";
-import { collection, doc, updateDoc, query } from "firebase/firestore";
+import { useState, useMemo } from "react";
 import type { UserProfile } from "@/types";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -30,7 +28,7 @@ function UserRow({
         onRoleChange(user.id, selectedRole);
     };
     
-    const isCurrentUser = user.id === currentUser.uid;
+    const isCurrentUser = user.id === currentUser.uid || user.email === currentUser.email;
 
     // Determines if the current user can modify the target user at all
     const canPerformActions = (() => {
@@ -97,27 +95,53 @@ function UserRow({
 }
 
 export function UserManagementClient({ currentUser, currentUserClaims }: { currentUser: User, currentUserClaims: any }) {
-    const firestore = useFirestore();
-    const usersQuery = useMemoFirebase(() => firestore ? query(collection(firestore, "users")) : null, [firestore]);
-    const { data: users, loading } = useCollection<UserWithProfile>(usersQuery);
     const { toast } = useToast();
+    
+    const mockUsers: UserWithProfile[] = useMemo(() => [
+        {
+            id: currentUser.uid,
+            displayName: currentUser.displayName || 'Head Admin',
+            email: currentUser.email || 'head-admin@test.va',
+            role: 'head-admin',
+            photoURL: currentUser.photoURL || 'https://picsum.photos/seed/104/200/200',
+            createdAt: { toDate: () => new Date(), seconds: 0, nanoseconds: 0 }
+        },
+        {
+            id: 'mock-admin-id',
+            displayName: 'Adam Admin',
+            email: 'adam.admin@test.va',
+            role: 'admin',
+            photoURL: 'https://picsum.photos/seed/103/200/200',
+            createdAt: { toDate: () => new Date(), seconds: 0, nanoseconds: 0 }
+        },
+        {
+            id: 'mock-reviewer-id',
+            displayName: 'Sarah Reviewer',
+            email: 'sarah.reviewer@test.va',
+            role: 'reviewer',
+            photoURL: 'https://picsum.photos/seed/102/200/200',
+            createdAt: { toDate: () => new Date(), seconds: 0, nanoseconds: 0 }
+        },
+        {
+            id: 'mock-user-id',
+            displayName: 'John Pilot',
+            email: 'john.pilot@example.com',
+            role: 'user',
+            photoURL: 'https://picsum.photos/seed/101/200/200',
+            createdAt: { toDate: () => new Date(), seconds: 0, nanoseconds: 0 }
+        }
+    ], [currentUser]);
+    
+    const [users, setUsers] = useState<UserWithProfile[]>(mockUsers);
+    const loading = false;
 
     const handleRoleChange = async (userId: string, newRole: 'user' | 'admin' | 'head-admin' | 'reviewer') => {
-        if (!firestore) return;
-        const userRef = doc(firestore, "users", userId);
-        try {
-            await updateDoc(userRef, { role: newRole });
-            toast({
-                title: "Success",
-                description: `User role has been updated to ${newRole}.`,
-            });
-        } catch (error: any) {
-            toast({
-                variant: 'destructive',
-                title: 'Update failed',
-                description: `Could not update role. Error: ${error.message}`,
-            });
-        }
+        setUsers(currentUsers => currentUsers.map(u => u.id === userId ? { ...u, role: newRole } : u));
+        
+        toast({
+            title: "Mock Data",
+            description: `This is for demonstration and is not saved to the database.`,
+        });
     };
     
     return (
