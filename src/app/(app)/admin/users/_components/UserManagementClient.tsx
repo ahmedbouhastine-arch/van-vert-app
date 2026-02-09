@@ -9,6 +9,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { useToast } from "@/hooks/use-toast";
 import { type User } from "firebase/auth";
 import { Loader2 } from "lucide-react";
+import { useFirestore, useCollection, useMemoFirebase } from "@/firebase";
+import { collection, doc, updateDoc } from "firebase/firestore";
 
 type UserWithProfile = UserProfile & { id: string; photoURL?: string; };
 
@@ -103,28 +105,33 @@ function UserRow({
 export function UserManagementClient({ currentUser, currentUserClaims }: { currentUser: User, currentUserClaims: any }) {
     const { toast } = useToast();
     const [isUpdating, setIsUpdating] = useState<string | null>(null);
+    const firestore = useFirestore();
 
-    const mockUsers: UserWithProfile[] = [
-        { id: 'user-head-admin', displayName: 'Admin Head', email: 'head-admin@test.va', role: 'head-admin', photoURL: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?q=80&w=1780&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D', createdAt: { seconds: 0, nanoseconds: 0, toDate: () => new Date() } },
-        { id: 'user-admin', displayName: 'Jane Doe', email: 'jane.doe@test.va', role: 'admin', photoURL: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?q=80&w=1887&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D', createdAt: { seconds: 0, nanoseconds: 0, toDate: () => new Date() } },
-        { id: 'user-reviewer', displayName: 'Reviewer Person', email: 'reviewer@test.va', role: 'reviewer', photoURL: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?q=80&w=1888&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D', createdAt: { seconds: 0, nanoseconds: 0, toDate: () => new Date() } },
-        { id: 'user-regular', displayName: 'John Pilot', email: 'john.pilot@example.com', role: 'user', photoURL: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?q=80&w=1887&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D', createdAt: { seconds: 0, nanoseconds: 0, toDate: () => new Date() } },
-    ];
-    
-    const [users, setUsers] = useState<UserWithProfile[]>(mockUsers);
-    const loading = false;
+    const usersQuery = useMemoFirebase(() =>
+        firestore ? collection(firestore, 'users') as any : null
+    , [firestore]);
 
-    const handleRoleChange = (userId: string, newRole: 'user' | 'admin' | 'head-admin' | 'reviewer') => {
+    const { data: users, isLoading: loading } = useCollection<UserWithProfile>(usersQuery);
+
+    const handleRoleChange = async (userId: string, newRole: 'user' | 'admin' | 'head-admin' | 'reviewer') => {
+        if (!firestore) return;
         setIsUpdating(userId);
-        // Simulate an API call
-        setTimeout(() => {
-            setUsers(users.map(u => u.id === userId ? { ...u, role: newRole } : u));
+        const userRef = doc(firestore, 'users', userId);
+        try {
+            await updateDoc(userRef, { role: newRole });
             toast({
-                title: "Role Updated (Mock)",
-                description: `User role has been changed to ${newRole}. This change is for demonstration and will not be saved.`,
+                title: "Role Updated",
+                description: `User role has been successfully changed to ${newRole}.`,
             });
+        } catch (error: any) {
+            toast({
+                variant: 'destructive',
+                title: "Update Failed",
+                description: error.message,
+            });
+        } finally {
             setIsUpdating(null);
-        }, 1000);
+        }
     };
     
     return (
@@ -143,7 +150,7 @@ export function UserManagementClient({ currentUser, currentUserClaims }: { curre
                         </TableRow>
                     </TableHeader>
                     <TableBody>
-                        {loading && <TableRow><TableCell colSpan={3} className="text-center">Loading users...</TableCell></TableRow>}
+                        {loading && <TableRow><TableCell colSpan={3} className="text-center h-24">Loading users...</TableCell></TableRow>}
                         {!loading && users?.length === 0 && <TableRow><TableCell colSpan={3} className="text-center h-24">No users found.</TableCell></TableRow>}
                         {users?.sort((a, b) => (a.displayName || '').localeCompare(b.displayName || '')).map(user => (
                             <UserRow 
