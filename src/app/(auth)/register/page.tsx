@@ -17,7 +17,7 @@ import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { CheckCircle2, XCircle, Eye, EyeOff, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { getAuth, createUserWithEmailAndPassword, updateProfile, deleteUser } from "firebase/auth";
+import { getAuth, createUserWithEmailAndPassword, updateProfile, deleteUser, type UserCredential } from "firebase/auth";
 import { useFirebaseApp, useFirestore, useUser } from "@/firebase";
 import { doc, setDoc, serverTimestamp } from "firebase/firestore";
 import { GoogleIcon } from "@/components/GoogleIcon";
@@ -75,56 +75,48 @@ export default function RegisterPage() {
         const email = formData.get("email") as string;
         const fullName = formData.get("full-name") as string;
 
-        let userCredential;
+        let userCredential: UserCredential | undefined;
         try {
-            // 1. Create the user in Firebase Auth
             userCredential = await createUserWithEmailAndPassword(auth, email, password);
             const user = userCredential.user;
 
-            try {
-                // 2. Update their Auth profile
-                await updateProfile(user, { displayName: fullName });
-
-                // 3. Create their user document in Firestore
-                if (firestore) {
-                    const userRef = doc(firestore, "users", user.uid);
-                    await setDoc(userRef, {
-                        displayName: fullName,
-                        email: user.email,
-                        photoURL: user.photoURL, // Initially null, can be updated later
-                        role: email === 'head-admin@test.va' ? 'head-admin' : 'user', // Special role for demo purposes
-                        createdAt: serverTimestamp(),
-                    });
-                }
-            } catch (innerError) {
-                // If creating the profile or Firestore doc fails, delete the Auth user
-                // to prevent an inconsistent state.
-                await deleteUser(user);
-                throw innerError; // Rethrow to be caught by the outer catch block
+            await updateProfile(user, { displayName: fullName });
+            
+            if (firestore) {
+                const userRef = doc(firestore, "users", user.uid);
+                await setDoc(userRef, {
+                    displayName: fullName,
+                    email: user.email,
+                    photoURL: user.photoURL,
+                    role: email === 'head-admin@test.va' ? 'head-admin' : 'user',
+                    createdAt: serverTimestamp(),
+                });
             }
-
+            
             toast({
                 title: "Registration successful!",
                 description: "You are now logged in and will be redirected.",
             });
-              
-            // After registration, the onAuthStateChanged listener in the provider
-            // will detect the new user and claims, and the useEffect hook will redirect.
 
         } catch (error: any) {
+            if (userCredential) {
+                await deleteUser(userCredential.user).catch(deleteError => {
+                    console.error("Failed to clean up orphaned user:", deleteError);
+                });
+            }
+
             let description = error.message;
             if (error.code === 'auth/email-already-in-use') {
                 description = "An account with this email already exists. Please log in.";
             } else {
                 console.error("Registration Error: ", error); 
-                description = "An unexpected error occurred. Please try again.";
+                description = "An unexpected error occurred during sign-up. Please try again.";
             }
             toast({
                 variant: 'destructive',
                 title: 'Registration Failed',
                 description: description,
             });
-        } finally {
             setIsSubmitting(false);
         }
     }

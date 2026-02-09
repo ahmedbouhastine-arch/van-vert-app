@@ -50,10 +50,11 @@ export default function LoginPage() {
         
         try {
             await signInWithEmailAndPassword(auth, email, password);
-            // On success, the useEffect hook will handle the redirect.
+            // On successful login, the `useEffect` hook will handle the redirect.
+            // We leave `isSubmitting` as true to keep the form disabled during redirection.
         } catch (error: any) {
             let description = error.message;
-            if (error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password' || error.code === 'auth/invalid-credential') {
+            if (error.code === 'auth/invalid-credential') {
                 description = "Invalid email or password. Please try again.";
             }
             toast({
@@ -61,8 +62,7 @@ export default function LoginPage() {
                 title: 'Login Failed',
                 description: description,
             });
-        } finally {
-            setIsSubmitting(false);
+            setIsSubmitting(false); // Re-enable the form ONLY on failure.
         }
     }
 
