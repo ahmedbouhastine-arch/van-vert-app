@@ -1,5 +1,5 @@
 
-import type { Application, UserProfile, DocumentRequirement, ApplicationDocument } from "@/types";
+import type { Application, UserProfile, DocumentRequirement, ApplicationDocument, DocumentStatus } from "@/types";
 import { licenseTypes } from "@/lib/licensing";
 
 export const mockUsers: Record<string, UserProfile & { id: string }> = {
@@ -8,21 +8,70 @@ export const mockUsers: Record<string, UserProfile & { id: string }> = {
     'user3': { id: 'user3', displayName: 'Chuck Yeager', email: 'chuck.yeager@example.com', photoURL: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=1887&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D', role: 'user', createdAt: { seconds: 0, nanoseconds: 0, toDate: () => new Date() } },
 };
 
-const getDocsForLicense = (licenseId: 'ppl' | 'cpl' | 'atpl'): ApplicationDocument[] => {
+// A helper to generate realistic dates
+const pastDate = (days: number) => new Date(Date.now() - days * 24 * 60 * 60 * 1000);
+const futureDate = (days: number) => new Date(Date.now() + days * 24 * 60 * 60 * 1000);
+
+const getDocsForLicense = (licenseId: 'ppl' | 'cpl' | 'atpl', userId: string): ApplicationDocument[] => {
     const license = licenseTypes.find(l => l.id === licenseId);
     if (!license) return [];
-    return license.documentRequirements.map((req: DocumentRequirement, index: number) => ({
-        id: `doc${index + 1}`,
-        docRequirementId: req.id,
-        name: req.name,
-        description: req.description,
-        status: index % 3 === 0 ? 'approved' : (index % 3 === 1 ? 'uploaded' : 'needs_attention'),
-        requiresExpiry: req.requiresExpiry,
-        fileName: 'mock_document.pdf',
-        uploadedAt: new Date().toISOString(),
-        storagePath: '/mock/path',
-        expiryDate: req.requiresExpiry ? new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0] : undefined,
-    }));
+
+    const user = mockUsers[userId];
+    const userName = user ? user.displayName?.toLowerCase().replace(' ', '_') : 'user';
+
+    return license.documentRequirements.map((req: DocumentRequirement, index: number) => {
+        // Make some documents missing for more realistic scenarios
+        if (licenseId === 'ppl' && (req.id === 'doc9' || req.id === 'doc10')) { // Air Law Exam & RT License
+             return {
+                id: req.id,
+                docRequirementId: req.id,
+                name: req.name,
+                description: req.description,
+                status: 'missing',
+                requiresExpiry: req.requiresExpiry,
+             };
+        }
+        if (licenseId === 'cpl' && req.id === 'doc15') { // Multi-Engine, let's say this user doesn't have it.
+             return {
+                id: req.id,
+                docRequirementId: req.id,
+                name: req.name,
+                description: req.description,
+                status: 'missing',
+                requiresExpiry: req.requiresExpiry,
+             };
+        }
+
+        let status: DocumentStatus = 'approved';
+        let expiry: string | undefined;
+        let isExpiringSoon = false;
+
+        // Make medical certs expiring soon
+        if (req.requiresExpiry && (req.id === 'doc8' || req.id === 'doc13')) { 
+            expiry = futureDate(80).toISOString().split('T')[0]; // Expiring soon
+            status = 'needs_attention';
+            isExpiringSoon = true;
+        } else if (req.requiresExpiry) {
+            expiry = futureDate(400).toISOString().split('T')[0]; // Not expiring soon
+        }
+        
+        if(index % 4 === 0) status = 'uploaded';
+        if (req.id === 'doc4') status = 'needs_attention'; // License verification often needs checking
+
+        return {
+            id: req.id,
+            docRequirementId: req.id,
+            name: req.name,
+            description: req.description,
+            status: status,
+            requiresExpiry: req.requiresExpiry,
+            fileName: `${userName}_${req.name.toLowerCase().replace(/ /g, '_').replace(/&/g, 'and')}.pdf`,
+            uploadedAt: pastDate(index * 5 + 10).toISOString(),
+            storagePath: `mock/${userId}/${req.id}.pdf`,
+            expiryDate: expiry,
+            isExpiringSoon: isExpiringSoon
+        };
+    });
 }
 
 
@@ -32,43 +81,47 @@ export const mockApplications: (Omit<Application, 'user'> & { user?: UserProfile
         userId: 'user1', 
         licenseType: 'PPL Conversion', 
         status: 'in_review', 
-        submittedAt: { toDate: () => new Date('2023-10-26T10:00:00Z'), seconds: 0, nanoseconds: 0 }, 
-        updatedAt: { toDate: () => new Date('2023-10-28T10:00:00Z'), seconds: 0, nanoseconds: 0 }, 
-        documents: getDocsForLicense('ppl'), 
+        submittedAt: { toDate: () => pastDate(60), seconds: 0, nanoseconds: 0 }, 
+        updatedAt: { toDate: () => pastDate(5), seconds: 0, nanoseconds: 0 }, 
+        documents: getDocsForLicense('ppl', 'user1'), 
         user: mockUsers['user1'],
         flightLogs: [
-            { id: 'log1', date: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], duration: 2.5, aircraft: 'Cessna 172', remarks: 'Local flight training' },
-            { id: 'log2', date: new Date(Date.now() - 60 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], duration: 5.1, aircraft: 'Piper PA-28', remarks: 'Cross-country to KSQL' },
-            { id: 'log3', date: new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], duration: 3.0, aircraft: 'Cessna 172', remarks: 'Night flight' },
-            { id: 'log4', date: new Date(Date.now() - 120 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], duration: 4.5, aircraft: 'Cessna 172', remarks: 'Instrument approaches' },
-
+            { id: 'log1', date: pastDate(30).toISOString().split('T')[0], duration: 2.5, aircraft: 'Cessna 172', remarks: 'VFR maneuvers and pattern work at KPAO.' },
+            { id: 'log2', date: pastDate(45).toISOString().split('T')[0], duration: 5.1, aircraft: 'Piper PA-28', remarks: 'Cross-country from KSQL to KMRY and back.' },
+            { id: 'log3', date: pastDate(90).toISOString().split('T')[0], duration: 3.0, aircraft: 'Cessna 172', remarks: 'Night flight, city tour and 3 takeoffs/landings.' },
+            { id: 'log4', date: pastDate(120).toISOString().split('T')[0], duration: 4.5, aircraft: 'Cessna 172', remarks: 'Simulated instrument flight under VFR.' },
+            { id: 'log5', date: pastDate(150).toISOString().split('T')[0], duration: 1.2, aircraft: 'Piper PA-28', remarks: 'Review of emergency procedures.' },
         ],
-        feedback: "Please double-check the expiry date on your medical certificate. It seems to be incorrect."
+        feedback: "Your medical certificate is expiring soon. Please upload a new one. Also, you are missing your Air Law Exam and RT License."
     },
     { 
         id: 'mock-app2', 
         userId: 'user2', 
         licenseType: 'CPL Conversion', 
         status: 'needs_attention', 
-        submittedAt: { toDate: () => new Date('2023-10-25T10:00:00Z'), seconds: 0, nanoseconds: 0 }, 
-        updatedAt: { toDate: () => new Date('2023-10-29T10:00:00Z'), seconds: 0, nanoseconds: 0 }, 
-        documents: getDocsForLicense('cpl'), 
+        submittedAt: { toDate: () => pastDate(50), seconds: 0, nanoseconds: 0 }, 
+        updatedAt: { toDate: () => pastDate(3), seconds: 0, nanoseconds: 0 }, 
+        documents: getDocsForLicense('cpl', 'user2'), 
         user: mockUsers['user2'],
         flightLogs: Array.from({ length: 10 }).map((_, i) => ({
-             id: `log${i}`, date: new Date(Date.now() - (i+1) * 15 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], duration: 1.8, aircraft: 'DA42', remarks: 'Multi-engine training'
+             id: `log${i}`, date: pastDate((i+1) * 15).toISOString().split('T')[0], duration: 1.8, aircraft: 'DA42', remarks: `Multi-engine training flight #${10 - i}`
         })),
-        feedback: "Your English proficiency certificate seems to be missing. Please upload it."
+        feedback: "Your Class 1 Medical Certificate is expiring in less than 90 days. We require this to be renewed before we can proceed. The multi-engine rating document is also missing."
     },
     { 
         id: 'mock-app3', 
         userId: 'user3', 
         licenseType: 'ATPL Conversion', 
         status: 'approved', 
-        submittedAt: { toDate: () => new Date('2023-11-01T10:00:00Z'), seconds: 0, nanoseconds: 0 }, 
-        updatedAt: { toDate: () => new Date('2023-11-20T10:00:00Z'), seconds: 0, nanoseconds: 0 }, 
-        documents: getDocsForLicense('atpl'), 
+        submittedAt: { toDate: () => pastDate(30), seconds: 0, nanoseconds: 0 }, 
+        updatedAt: { toDate: () => pastDate(10), seconds: 0, nanoseconds: 0 }, 
+        documents: getDocsForLicense('atpl', 'user3'), 
         user: mockUsers['user3'],
-        flightLogs: [],
-        feedback: "Congratulations! Your ATPL conversion has been approved."
+        flightLogs: [
+             { id: 'log-atpl-1', date: pastDate(70).toISOString().split('T')[0], duration: 6.7, aircraft: 'Airbus A320', remarks: 'JFK-LAX, line operating experience.' },
+             { id: 'log-atpl-2', date: pastDate(78).toISOString().split('T')[0], duration: 5.5, aircraft: 'Airbus A320', remarks: 'LAX-ORD, long haul sector.' },
+             { id: 'log-atpl-3', date: pastDate(92).toISOString().split('T')[0], duration: 1.5, aircraft: 'Boeing 737 Sim', remarks: 'Recurrent training, engine out procedure.' },
+        ],
+        feedback: "Congratulations! Your ATPL conversion has been approved. Welcome."
     },
 ];
