@@ -1,7 +1,8 @@
-
 'use client';
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useEffect } from "react";
 import { PlusCircle, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -18,6 +19,7 @@ import { useUser, useFirestore, useCollection, useMemoFirebase } from "@/firebas
 import { collection, query, where, orderBy, limit } from "firebase/firestore";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { Application, FirebaseTimestamp } from "@/types";
+import { LoadingScreen } from "@/components/LoadingScreen";
 
 // Helper function to safely format dates, whether they are Timestamps or strings
 const safeFormatDate = (date: FirebaseTimestamp | Date | string | undefined | null, formatString: string) => {
@@ -51,8 +53,16 @@ function ApplicationCardSkeleton() {
 
 
 export default function DashboardPage() {
-  const { user } = useUser();
+  const { user, claims, loading: userLoading } = useUser();
+  const router = useRouter();
   const firestore = useFirestore();
+
+  useEffect(() => {
+    // Redirect admins to their own dashboard to prevent confusion
+    if (!userLoading && claims && ['reviewer', 'admin', 'head-admin'].includes(claims.role)) {
+      router.push('/admin');
+    }
+  }, [userLoading, claims, router]);
 
   const appsQuery = useMemoFirebase(() => {
     if (!firestore || !user) return null;
@@ -66,14 +76,60 @@ export default function DashboardPage() {
 
   const { data: recentApplications, loading: appsLoading } = useCollection<Application>(appsQuery);
 
-  // Note: We don't have total count without another query.
-  // For a production app, you might store this in the user's profile document.
+  const isLoading = userLoading || appsLoading;
+  const isUserAnAdmin = !userLoading && claims && ['reviewer', 'admin', 'head-admin'].includes(claims.role);
+
+  // While redirecting or loading, show a loading screen.
+  if (userLoading || isUserAnAdmin) {
+    return <LoadingScreen text="Loading Dashboard..." />;
+  }
+
+  const renderContent = () => {
+    if (isLoading) {
+        return Array.from({ length: 3 }).map((_, i) => <ApplicationCardSkeleton key={i} />);
+    }
+    if (!recentApplications || recentApplications.length === 0) {
+        return (
+            <div className="text-center text-muted-foreground py-8 col-span-full">
+                <p className="mb-2">You have no applications yet.</p>
+                <Link href="/applications/new">
+                    <Button>Start your first application</Button>
+                </Link>
+            </div>
+        );
+    }
+    return recentApplications.map((app) => (
+        <Card key={app.id}>
+            <CardHeader>
+                <div className="flex items-center justify-between">
+                <CardTitle className="text-lg font-semibold">{app.licenseType}</CardTitle>
+                <StatusBadge status={app.status} />
+                </div>
+            </CardHeader>
+            <CardContent>
+                <p className="text-sm text-muted-foreground">
+                    Last updated on {safeFormatDate(app.updatedAt, "PPP")}
+                </p>
+            </CardContent>
+            <CardFooter>
+                <Link href={`/applications/${app.id}`} className="w-full">
+                <Button variant="outline" className="w-full">
+                    View Details <ArrowRight className="ml-2 h-4 w-4" />
+                </Button>
+                </Link>
+            </CardFooter>
+        </Card>
+    ));
+  }
+
 
   return (
     <div className="flex flex-col gap-8">
       <div className="flex items-center justify-between">
         <div className="flex flex-col gap-1">
-            <h1 className="text-3xl font-bold font-headline tracking-tight">Welcome, {user?.displayName || 'User'}!</h1>
+            <h1 className="text-3xl font-bold font-headline tracking-tight">
+              {userLoading ? <Skeleton className="h-9 w-48" /> : `Welcome, ${user?.displayName || 'User'}!`}
+            </h1>
             <p className="text-muted-foreground">Here's a quick look at your recent activity.</p>
         </div>
         <Link href="/applications/new">
@@ -92,45 +148,9 @@ export default function DashboardPage() {
           </CardDescription>
         </CardHeader>
         <CardContent className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {appsLoading && (
-                <>
-                    <ApplicationCardSkeleton />
-                    <ApplicationCardSkeleton />
-                    <ApplicationCardSkeleton />
-                </>
-            )}
-            {!appsLoading && (!recentApplications || recentApplications.length === 0) && (
-                <div className="text-center text-muted-foreground py-8 col-span-full">
-                    <p className="mb-2">You have no applications yet.</p>
-                    <Link href="/applications/new">
-                        <Button>Start your first application</Button>
-                    </Link>
-                </div>
-            )}
-             {!appsLoading && recentApplications && recentApplications.map((app) => (
-                 <Card key={app.id}>
-                     <CardHeader>
-                         <div className="flex items-center justify-between">
-                            <CardTitle className="text-lg font-semibold">{app.licenseType}</CardTitle>
-                            <StatusBadge status={app.status} />
-                         </div>
-                     </CardHeader>
-                     <CardContent>
-                         <p className="text-sm text-muted-foreground">
-                             Last updated on {safeFormatDate(app.updatedAt, "PPP")}
-                         </p>
-                     </CardContent>
-                     <CardFooter>
-                         <Link href={`/applications/${app.id}`} className="w-full">
-                            <Button variant="outline" className="w-full">
-                                View Details <ArrowRight className="ml-2 h-4 w-4" />
-                            </Button>
-                         </Link>
-                     </CardFooter>
-                 </Card>
-            ))}
+            {renderContent()}
         </CardContent>
-        {!appsLoading && recentApplications && recentApplications.length > 0 && (
+        {!isLoading && recentApplications && recentApplications.length > 0 && (
             <CardFooter className="border-t pt-6">
                 <Link href="/applications" className="w-full">
                     <Button variant="secondary" className="w-full">View All My Applications</Button>
