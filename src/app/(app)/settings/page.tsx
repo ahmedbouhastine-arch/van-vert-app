@@ -1,4 +1,4 @@
-
+All right, last question. 
 'use client';
 
 import {
@@ -27,7 +27,7 @@ import { updateProfile } from "firebase/auth";
 import { useToast } from "@/hooks/use-toast";
 import { useTheme } from "next-themes";
 import { useState, useTransition } from "react";
-import { Loader2 } from "lucide-react";
+import { Loader2, User, Palette, Bell } from "lucide-react";
 
 export default function SettingsPage() {
     const { user, claims, loading } = useUser();
@@ -98,7 +98,7 @@ export default function SettingsPage() {
       </div>
       <Card>
         <CardHeader>
-          <CardTitle>My Profile</CardTitle>
+          <CardTitle className="flex items-center gap-2"><User /> My Profile</CardTitle>
           <CardDescription>
             This is how your name will be displayed in the application.
           </CardDescription>
@@ -126,7 +126,7 @@ export default function SettingsPage() {
       </Card>
       <Card>
         <CardHeader>
-          <CardTitle>Appearance</CardTitle>
+          <CardTitle className="flex items-center gap-2"><Palette /> Appearance</CardTitle>
           <CardDescription>
             Customize the look and feel of the application.
           </CardDescription>
@@ -151,7 +151,7 @@ export default function SettingsPage() {
       </Card>
       <Card>
         <CardHeader>
-          <CardTitle>Notifications</CardTitle>
+          <CardTitle className="flex items-center gap-2"><Bell /> Notifications</CardTitle>
           <CardDescription>
             Choose what you want to be notified about.
           </CardDescription>
