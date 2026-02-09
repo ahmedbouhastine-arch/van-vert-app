@@ -155,9 +155,16 @@ export default function AdminApplicationsPage() {
 
   const PageContent = () => (
      <div className="flex flex-col gap-4">
-      <div className="flex flex-col gap-1">
-        <h1 className="text-3xl font-bold font-headline tracking-tight">Manage Applications</h1>
-        <p className="text-muted-foreground">Review and manage all submitted pilot license applications.</p>
+       <div className="flex flex-col gap-1">
+        <div className="flex justify-between items-center">
+          <div>
+            <h1 className="text-3xl font-bold font-headline tracking-tight">Manage Applications</h1>
+            <p className="text-muted-foreground">Review and manage all submitted pilot license applications.</p>
+          </div>
+          <Button asChild>
+            <Link href="/applications/new">New Application</Link>
+          </Button>
+        </div>
       </div>
       <Card>
         <CardHeader>
@@ -192,5 +199,4 @@ export default function AdminApplicationsPage() {
 
   // Render content only if authorized, otherwise redirect. This prevents child components
   // from attempting to fetch data before the authorization check is complete.
-  return isAuthorized ? <PageContent /> : <RedirectToDashboard />;
-}
+  return isAuthorized ? <PageContent /> : <RedirectToDashboard />;}
