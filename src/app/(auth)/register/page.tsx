@@ -17,7 +17,7 @@ import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { CheckCircle2, XCircle, Eye, EyeOff, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { getAuth, createUserWithEmailAndPassword, updateProfile, deleteUser, type UserCredential } from "firebase/auth";
+import { getAuth, createUserWithEmailAndPassword, updateProfile, deleteUser, type UserCredential, sendEmailVerification } from "firebase/auth";
 import { useFirebaseApp, useFirestore, useUser } from "@/firebase";
 import { doc, setDoc, serverTimestamp } from "firebase/firestore";
 import { GoogleIcon } from "@/components/GoogleIcon";
@@ -46,9 +46,14 @@ export default function RegisterPage() {
 
     useEffect(() => {
         if (!loading && user && claims) {
-            const isAdmin = ['reviewer', 'admin', 'head-admin'].includes(claims.role);
-            const homePath = isAdmin ? '/admin' : '/dashboard';
-            router.push(homePath);
+            // Google users are pre-verified. Password users need to be checked.
+            if (!user.emailVerified && user.providerData.some(p => p.providerId === 'password')) {
+                router.push('/verify-email');
+            } else {
+                const isAdmin = ['reviewer', 'admin', 'head-admin'].includes(claims.role);
+                const homePath = isAdmin ? '/admin' : '/dashboard';
+                router.push(homePath);
+            }
         }
     }, [user, loading, claims, router]);
 
@@ -80,22 +85,21 @@ export default function RegisterPage() {
             userCredential = await createUserWithEmailAndPassword(auth, email, password);
             const user = userCredential.user;
 
-            await updateProfile(user, { displayName: fullName });
-            
-            if (firestore) {
-                const userRef = doc(firestore, "users", user.uid);
-                await setDoc(userRef, {
+            await Promise.all([
+                updateProfile(user, { displayName: fullName }),
+                sendEmailVerification(user),
+                firestore ? setDoc(doc(firestore, "users", user.uid), {
                     displayName: fullName,
                     email: user.email,
                     photoURL: user.photoURL,
                     role: email === 'head-admin@test.va' ? 'head-admin' : 'user',
                     createdAt: serverTimestamp(),
-                });
-            }
+                }) : Promise.resolve()
+            ]);
             
             toast({
                 title: "Registration successful!",
-                description: "You are now logged in and will be redirected.",
+                description: "Please check your inbox to verify your email.",
             });
             // The useEffect will handle the redirect, keep submitting true
         } catch (error: any) {

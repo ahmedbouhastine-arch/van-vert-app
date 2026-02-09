@@ -35,9 +35,14 @@ export default function LoginPage() {
 
     useEffect(() => {
         if (!loading && user && claims) {
-            const isAdmin = ['reviewer', 'admin', 'head-admin'].includes(claims.role);
-            const homePath = isAdmin ? '/admin' : '/dashboard';
-            router.push(homePath);
+            // Google users are pre-verified. Password users need to be checked.
+            if (!user.emailVerified && user.providerData.some(p => p.providerId === 'password')) {
+                router.push('/verify-email');
+            } else {
+                const isAdmin = ['reviewer', 'admin', 'head-admin'].includes(claims.role);
+                const homePath = isAdmin ? '/admin' : '/dashboard';
+                router.push(homePath);
+            }
         }
     }, [user, loading, claims, router]);
 
