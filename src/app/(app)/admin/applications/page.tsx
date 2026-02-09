@@ -219,9 +219,6 @@ export default function AdminApplicationsPage() {
             <h1 className="text-3xl font-bold font-headline tracking-tight">Manage Applications</h1>
             <p className="text-muted-foreground">Review and manage all submitted pilot license applications.</p>
           </div>
-          <Button asChild>
-            <Link href="/applications/new">New Application</Link>
-          </Button>
         </div>
       </div>
       <Card>
