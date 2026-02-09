@@ -9,7 +9,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { licenseTypes } from "@/lib/licensing";
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useFirestore, useUser } from '@/firebase';
 import { addDoc, collection, serverTimestamp } from 'firebase/firestore';
@@ -17,6 +17,7 @@ import { Button } from '@/components/ui/button';
 import { ArrowRight, Loader2 } from 'lucide-react';
 import type { LicenseType } from '@/lib/licensing';
 import { useToast } from '@/hooks/use-toast';
+import { LoadingScreen } from "@/components/LoadingScreen";
 
 function NewApplicationButton({ licenseType }: { licenseType: LicenseType }) {
   const [isCreating, setIsCreating] = useState(false);
@@ -93,6 +94,19 @@ function NewApplicationButton({ licenseType }: { licenseType: LicenseType }) {
 
 
 export default function NewApplicationPage() {
+  const { claims, loading: userLoading } = useUser();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (!userLoading && claims && ['reviewer', 'admin', 'head-admin'].includes(claims.role)) {
+      router.push('/admin');
+    }
+  }, [userLoading, claims, router]);
+
+  if (userLoading || (claims && ['reviewer', 'admin', 'head-admin'].includes(claims.role))) {
+    return <LoadingScreen text="Verifying access..." />;
+  }
+
   return (
     <div className="mx-auto grid w-full max-w-4xl gap-4">
       <div className="flex flex-col gap-2">

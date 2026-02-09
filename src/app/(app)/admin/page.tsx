@@ -1,4 +1,3 @@
-
 'use client';
 import Link from "next/link";
 import {
@@ -9,14 +8,13 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { FileText, UserCog, LineChart, History, UserSquare } from "lucide-react";
+import { FileText, UserCog, LineChart, History } from "lucide-react";
 import { useUser } from "@/firebase";
 
 export default function AdminDashboardPage() {
     const { claims } = useUser();
     const isHeadAdmin = claims?.role === 'head-admin';
     const isAdmin = claims?.role === 'admin' || isHeadAdmin;
-    const isReviewer = claims?.role === 'reviewer' || isAdmin;
 
   return (
     <div className="flex flex-col gap-4">
@@ -41,25 +39,6 @@ export default function AdminDashboardPage() {
                 </Link>
             </CardContent>
         </Card>
-
-        {isReviewer && (
-             <Card>
-                <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                        <UserSquare className="h-6 w-6" />
-                        <span>My Applications</span>
-                    </CardTitle>
-                    <CardDescription>
-                        View and manage your own applications as a user.
-                    </CardDescription>
-                </CardHeader>
-                <CardContent>
-                    <Link href="/applications">
-                        <Button>View My Applications</Button>
-                    </Link>
-                </CardContent>
-            </Card>
-        )}
 
         {isAdmin && (
             <Card>
