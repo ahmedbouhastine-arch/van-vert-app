@@ -1,4 +1,3 @@
-
 'use client';
 
 import Link from "next/link";
@@ -68,10 +67,18 @@ export default function MyApplicationsPage() {
   // Use mock data for reviewer roles for presentation purposes
   const mockAdminApplications = useMemo(() => {
     if (!isReviewer || !user) return [];
+    
+    const cplBaseApplication = mockApplications.find(app => app.licenseType === 'CPL Conversion');
+
+    if (!cplBaseApplication) {
+        // This case should not happen with current mock data, but it's a good safeguard.
+        console.error("Could not find base CPL Conversion mock application.");
+        return [];
+    }
+
     // Create a mock application for the admin to see in their "My Applications" view
     const adminApp: Application = {
-      // Find the CPL mock application to use as a base
-      ...mockApplications.find(app => app.licenseType === 'CPL Conversion')!,
+      ...cplBaseApplication,
       id: 'mock-admin-app-1',
       userId: user.uid,
       status: 'draft',
