@@ -9,7 +9,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { FileText, UserCog, LineChart, History, PlusCircle, UserSquare } from "lucide-react";
+import { FileText, UserCog, LineChart, History, UserSquare } from "lucide-react";
 import { useUser } from "@/firebase";
 
 export default function AdminDashboardPage() {
@@ -56,25 +56,6 @@ export default function AdminDashboardPage() {
                 <CardContent>
                     <Link href="/applications">
                         <Button>View My Applications</Button>
-                    </Link>
-                </CardContent>
-            </Card>
-        )}
-
-        {isReviewer && (
-             <Card>
-                <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                        <PlusCircle className="h-6 w-6" />
-                        <span>New Application</span>
-                    </CardTitle>
-                    <CardDescription>
-                        Create a new license application for your own account.
-                    </CardDescription>
-                </CardHeader>
-                <CardContent>
-                    <Link href="/applications/new">
-                        <Button>Start Application</Button>
                     </Link>
                 </CardContent>
             </Card>
