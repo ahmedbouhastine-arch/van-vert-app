@@ -1,4 +1,3 @@
-
 "use client";
 
 import Link from "next/link";
@@ -17,7 +16,7 @@ import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { CheckCircle2, XCircle, Eye, EyeOff, Camera, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { getAuth, createUserWithEmailAndPassword, updateProfile, sendEmailVerification, deleteUser } from "firebase/auth";
+import { getAuth, createUserWithEmailAndPassword, updateProfile, deleteUser } from "firebase/auth";
 import { useFirebaseApp, useFirestore, useUser, useStorage } from "@/firebase";
 import { doc, setDoc, serverTimestamp } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
@@ -52,13 +51,9 @@ export default function RegisterPage() {
 
     useEffect(() => {
         if (!loading && user) {
-            if (!user.emailVerified && user.providerData.some(p => p.providerId === 'password') && user.email !== 'head-admin@test.va') {
-                router.push('/verify-email');
-            } else {
-                const isAdmin = claims?.role === 'admin' || claims?.role === 'head-admin' || claims?.role === 'reviewer';
-                const homePath = isAdmin ? '/admin' : '/dashboard';
-                router.push(homePath);
-            }
+            const isAdmin = claims?.role === 'admin' || claims?.role === 'head-admin' || claims?.role === 'reviewer';
+            const homePath = isAdmin ? '/admin' : '/dashboard';
+            router.push(homePath);
         }
     }, [user, loading, claims, router]);
 
@@ -111,12 +106,6 @@ export default function RegisterPage() {
             const user = userCredential.user;
 
             try {
-                const actionCodeSettings = {
-                    url: `${window.location.origin}/verified`,
-                    handleCodeInApp: true,
-                };
-                await sendEmailVerification(user, actionCodeSettings);
-
                 let photoURL = "";
                 if (storage && profilePic) {
                     const storageRef = ref(storage, `profile-pictures/${user.uid}`);
@@ -143,10 +132,10 @@ export default function RegisterPage() {
 
             toast({
                 title: "Registration successful!",
-                description: "We've sent a verification link to your email address.",
+                description: "You are now logged in and will be redirected.",
               });
               
-            router.push('/verify-email');
+            // After registration, onAuthStateChanged will handle the redirect via useEffect
 
         } catch (error: any) {
             let description = error.message;

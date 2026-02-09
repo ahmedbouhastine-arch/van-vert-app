@@ -1,4 +1,3 @@
-
 "use client";
 
 import Link from "next/link";
@@ -35,13 +34,6 @@ export default function LoginPage() {
 
     useEffect(() => {
         if (!loading && user) {
-            const isPasswordProvider = user.providerData.some(p => p.providerId === 'password');
-
-            if (isPasswordProvider && !user.emailVerified && user.email !== 'head-admin@test.va') {
-                router.push('/verify-email');
-                return;
-            }
-
             const isAdmin = claims?.role === 'admin' || claims?.role === 'head-admin' || claims?.role === 'reviewer';
             const homePath = isAdmin ? '/admin' : '/dashboard';
             router.push(homePath);
