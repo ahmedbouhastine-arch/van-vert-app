@@ -15,6 +15,7 @@ export default function UserManagementPage() {
 
     if (claims?.role !== 'head-admin') {
         redirect('/admin');
+        return null; // Stop rendering immediately
     }
     
     return (

@@ -106,11 +106,12 @@ export function UserManagementClient({ currentUser, currentUserClaims }: { curre
     const { toast } = useToast();
     const [isUpdating, setIsUpdating] = useState<string | null>(null);
     const firestore = useFirestore();
-    const isAuthorized = currentUserClaims?.role === 'head-admin';
 
+    // This component now assumes it is only rendered for authorized users.
+    // The query can be created without an additional authorization check.
     const usersQuery = useMemoFirebase(() =>
-        (firestore && isAuthorized) ? collection(firestore, 'users') as any : null
-    , [firestore, isAuthorized]);
+        firestore ? collection(firestore, 'users') as any : null
+    , [firestore]);
 
     const { data: users, isLoading: loading } = useCollection<UserWithProfile>(usersQuery);
 
