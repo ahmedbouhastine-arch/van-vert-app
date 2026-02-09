@@ -1,4 +1,3 @@
-
 'use client';
 import Link from "next/link";
 import { MoreHorizontal } from "lucide-react";
@@ -26,10 +25,9 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { StatusBadge } from "@/components/StatusBadge";
-import { format } from "date-fns";
+import { format, subDays, subHours } from "date-fns";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { useCollection, useFirestore, useMemoFirebase, useUser } from "@/firebase";
-import { collection, query, where } from "firebase/firestore";
+import { useUser } from "@/firebase";
 import React, { useMemo } from "react";
 import type { Application, UserProfile, FirebaseTimestamp } from "@/types";
 import { useToast } from "@/hooks/use-toast";
@@ -51,38 +49,76 @@ const safeFormatDate = (date: FirebaseTimestamp | Date | string | undefined | nu
 };
 
 function AdminApplicationsContent() {
-    const firestore = useFirestore();
     const { toast } = useToast();
-    const { claims } = useUser();
     
-    // This query is safe because any signed-in user can view profiles.
-    const usersQuery = useMemoFirebase(() => 
-        firestore ? query(collection(firestore, "users")) : null, 
-        [firestore]
-    );
-    const { data: users, loading: usersLoading } = useCollection<UserProfile>(usersQuery);
+    type MockUserProfile = UserProfile & { id: string };
 
-    // CRITICAL: This query is now conditional on the user's role.
-    // It will only be created if the user is authorized, preventing permission errors.
-    const appsQuery = useMemoFirebase(() => {
-        const isAuthorized = claims?.role && ['reviewer', 'admin', 'head-admin'].includes(claims.role);
-        if (!firestore || !isAuthorized) return null; // Return null to prevent the query
-        return query(collection(firestore, "applications"), where("status", "!=", "draft"));
-    }, [firestore, claims]); 
+    const mockUsers: MockUserProfile[] = [
+        {
+            id: 'mock-user-id-1',
+            displayName: 'John Pilot',
+            email: 'john.pilot@example.com',
+            role: 'user',
+            photoURL: 'https://picsum.photos/seed/101/200/200',
+            createdAt: { toDate: () => new Date(), seconds: 0, nanoseconds: 0 }
+        },
+        {
+            id: 'mock-user-id-2',
+            displayName: 'Jane Pilot',
+            email: 'jane.pilot@example.com',
+            role: 'user',
+            photoURL: 'https://picsum.photos/seed/105/200/200',
+            createdAt: { toDate: () => new Date(), seconds: 0, nanoseconds: 0 }
+        },
+        {
+            id: 'mock-user-id-3',
+            displayName: 'Captain Morgan',
+            email: 'captain.morgan@example.com',
+            role: 'user',
+            photoURL: 'https://picsum.photos/seed/106/200/200',
+            createdAt: { toDate: () => new Date(), seconds: 0, nanoseconds: 0 }
+        }
+    ];
 
-    const { data: applications, loading: appsLoading } = useCollection<Application>(appsQuery);
+    const mockApplications: Application[] = [
+        {
+            id: 'mock-app-1',
+            userId: 'mock-user-id-1',
+            licenseType: 'PPL Conversion',
+            status: 'in_review',
+            documents: [],
+            submittedAt: { toDate: () => subDays(new Date(), 5), seconds: 0, nanoseconds: 0 },
+            updatedAt: { toDate: () => subDays(new Date(), 1), seconds: 0, nanoseconds: 0 },
+        },
+        {
+            id: 'mock-app-2',
+            userId: 'mock-user-id-2',
+            licenseType: 'CPL Conversion',
+            status: 'needs_attention',
+            documents: [],
+            submittedAt: { toDate: () => subDays(new Date(), 12), seconds: 0, nanoseconds: 0 },
+            updatedAt: { toDate: () => subDays(new Date(), 2), seconds: 0, nanoseconds: 0 },
+        },
+        {
+            id: 'mock-app-3',
+            userId: 'mock-user-id-3',
+            licenseType: 'ATPL Conversion',
+            status: 'submitted',
+            documents: [],
+            submittedAt: { toDate: () => subHours(new Date(), 8), seconds: 0, nanoseconds: 0 },
+            updatedAt: { toDate: () => subHours(new Date(), 8), seconds: 0, nanoseconds: 0 },
+        }
+    ];
 
     const allApplications = useMemo(() => {
-        if (!applications || !users) return [];
-        return applications.map(app => {
-            const user = users.find((u) => u.id === app.userId);
-            return { ...app, user };
+        return mockApplications.map(app => {
+            const user = mockUsers.find((u) => u.id === app.userId);
+            const appWithUser = { ...app, user };
+            return appWithUser;
         });
-    }, [applications, users]);
+    }, []);
 
-    // If claims are still loading, appsQuery will be null, and appsLoading will be false.
-    // We rely on the parent component's loading screen.
-    const isLoading = usersLoading || appsLoading;
+    const isLoading = false;
 
     const handleSendReminder = (applicantName: string | undefined, licenseType: string) => {
         toast({
