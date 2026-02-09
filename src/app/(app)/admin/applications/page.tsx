@@ -1,7 +1,7 @@
 'use client';
 import Link from "next/link";
 import React from "react";
-import { useRouter } from "next/navigation";
+import { redirect } from "next/navigation";
 import { MoreHorizontal } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -189,15 +189,6 @@ function AdminApplicationsContent() {
     )
 }
 
-function RedirectToDashboard() {
-  const router = useRouter();
-  React.useEffect(() => {
-    router.push('/dashboard');
-  }, [router]);
-  return <LoadingScreen text="Access Denied. Redirecting..." />;
-}
-
-
 export default function AdminApplicationsPage() {
   const { claims, loading: claimsLoading } = useUser();
 
@@ -208,7 +199,7 @@ export default function AdminApplicationsPage() {
   const isAuthorized = claims?.role && ['reviewer', 'admin', 'head-admin'].includes(claims.role);
   
   if (!isAuthorized) {
-    return <RedirectToDashboard />;
+    redirect('/dashboard');
   }
 
   return (

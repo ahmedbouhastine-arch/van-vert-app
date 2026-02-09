@@ -1,7 +1,6 @@
-
 'use client';
 
-import { notFound, useParams, useRouter } from "next/navigation";
+import { notFound, useParams, redirect } from "next/navigation";
 import { AdminApplicationClient } from "./_components/AdminApplicationClient";
 import { useFirestore, useDoc, useUser, useMemoFirebase } from "@/firebase";
 import { doc } from "firebase/firestore";
@@ -79,15 +78,6 @@ function AdminApplicationDetailContent() {
     )
 }
 
-function RedirectToDashboard() {
-  const router = useRouter();
-  React.useEffect(() => {
-    router.push('/dashboard');
-  }, [router]);
-  return <LoadingScreen text="Access Denied. Redirecting..." />;
-}
-
-
 export default function AdminApplicationDetailPage() {
   const { claims, loading: claimsLoading } = useUser();
 
@@ -98,7 +88,7 @@ export default function AdminApplicationDetailPage() {
   const isAuthorized = claims?.role && ['reviewer', 'admin', 'head-admin'].includes(claims.role);
   
   if (!isAuthorized) {
-      return <RedirectToDashboard />;
+      redirect('/dashboard');
   }
   
   return <AdminApplicationDetailContent />;

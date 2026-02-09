@@ -1,8 +1,7 @@
-
 'use client';
 
 import { useUser } from "@/firebase";
-import { useRouter } from "next/navigation";
+import { redirect } from "next/navigation";
 import React from "react";
 import { LoadingScreen } from "@/components/LoadingScreen";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -31,15 +30,6 @@ const safeFormatDate = (date: FirebaseTimestamp | Date | string | undefined | nu
     return "Invalid Date";
   }
 };
-
-function RedirectToAdminDashboard() {
-    const router = useRouter();
-    React.useEffect(() => {
-        router.push('/admin');
-    }, [router]);
-    return <LoadingScreen text="Access Denied. Redirecting..." />;
-}
-
 
 export default function AuditLogPage() {
     const { loading, claims } = useUser();
@@ -91,7 +81,7 @@ export default function AuditLogPage() {
     }
 
     if (claims?.role !== 'head-admin') {
-        return <RedirectToAdminDashboard />;
+        redirect('/admin');
     }
     
     return (
