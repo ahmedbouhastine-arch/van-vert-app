@@ -1,4 +1,3 @@
-
 'use client';
 import { useState } from "react";
 import type { UserProfile } from "@/types";
@@ -10,7 +9,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { useToast } from "@/hooks/use-toast";
 import { type User } from "firebase/auth";
 import { Loader2 } from "lucide-react";
-import { useFirestore, useCollection, useMemoFirebase, errorEmitter, FirestorePermissionError } from "@/firebase";
+import { useFirestore, useCollection, useMemoFirebase, errorEmitter, FirestorePermissionError, useUser } from "@/firebase";
 import { collection, doc, updateDoc } from "firebase/firestore";
 
 type UserWithProfile = UserProfile & { id: string; photoURL?: string; };
@@ -107,10 +106,11 @@ export function UserManagementClient({ currentUser, currentUserClaims }: { curre
     const { toast } = useToast();
     const [isUpdating, setIsUpdating] = useState<string | null>(null);
     const firestore = useFirestore();
+    const isAuthorized = currentUserClaims?.role === 'head-admin';
 
     const usersQuery = useMemoFirebase(() =>
-        firestore ? collection(firestore, 'users') as any : null
-    , [firestore]);
+        (firestore && isAuthorized) ? collection(firestore, 'users') as any : null
+    , [firestore, isAuthorized]);
 
     const { data: users, isLoading: loading } = useCollection<UserWithProfile>(usersQuery);
 

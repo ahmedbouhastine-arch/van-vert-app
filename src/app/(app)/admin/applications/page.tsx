@@ -1,4 +1,3 @@
-
 'use client';
 import Link from "next/link";
 import React from "react";
@@ -141,10 +140,12 @@ function ApplicationTableRow({ application }: { application: Application }) {
 
 function AdminApplicationsContent() {
     const firestore = useFirestore();
+    const { claims } = useUser();
+    const isAuthorized = claims?.role && ['reviewer', 'admin', 'head-admin'].includes(claims.role);
     
     const applicationsQuery = useMemoFirebase(() =>
-        firestore ? query(collection(firestore, "applications"), orderBy("submittedAt", "desc")) as any : null
-    , [firestore]);
+        (firestore && isAuthorized) ? query(collection(firestore, "applications"), orderBy("submittedAt", "desc")) as any : null
+    , [firestore, isAuthorized]);
 
     const { data: allApplications, isLoading } = useCollection<Application>(applicationsQuery);
 
