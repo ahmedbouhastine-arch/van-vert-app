@@ -1,4 +1,3 @@
-
 'use client';
 
 import { AnalyticsClient } from "./_components/AnalyticsClient";
@@ -6,6 +5,28 @@ import { useUser } from "@/firebase";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 import { LoadingScreen } from "@/components/LoadingScreen";
+import { subMonths, format } from "date-fns";
+import type { AnalyticsDataPoint } from "@/types";
+
+// Helper function to generate mock data
+const generateMockChartData = (): AnalyticsDataPoint[] => {
+    const data: AnalyticsDataPoint[] = [];
+    const now = new Date();
+    for (let i = 5; i >= 0; i--) {
+        const date = subMonths(now, i);
+        const submitted = Math.floor(Math.random() * 30) + 10;
+        const approved = Math.floor(submitted * (0.6 + Math.random() * 0.3));
+        const rejected = Math.floor(submitted * (0.1 + Math.random() * 0.1));
+        data.push({
+            date: format(date, 'MMM'),
+            submitted,
+            approved,
+            rejected
+        });
+    }
+    return data;
+}
+
 
 export default function AnalyticsPage() {
     const { user, loading, claims } = useUser();
@@ -19,13 +40,13 @@ export default function AnalyticsPage() {
 
     // In a real app, you'd fetch this data from a collection aggregated for analytics.
     const kpiData = {
-        totalApplications: 0,
-        avgProcessingTime: 0, 
-        approvalRate: 0,
-        pendingReview: 0,
+        totalApplications: 125,
+        avgProcessingTime: 14, 
+        approvalRate: 82,
+        pendingReview: 15,
     };
     
-    const chartData = [];
+    const chartData = generateMockChartData();
 
     if (loading || !user || (claims?.role !== 'admin' && claims?.role !== 'head-admin')) {
         return <LoadingScreen text="Verifying Access..." />;
