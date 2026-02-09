@@ -97,8 +97,9 @@ export default function RegisterPage() {
                 title: "Registration successful!",
                 description: "You are now logged in and will be redirected.",
             });
-
+            // The useEffect will handle the redirect, keep submitting true
         } catch (error: any) {
+            // If the user was created in auth but the DB write failed, delete the auth user
             if (userCredential) {
                 await deleteUser(userCredential.user).catch(deleteError => {
                     console.error("Failed to clean up orphaned user:", deleteError);
@@ -117,7 +118,7 @@ export default function RegisterPage() {
                 title: 'Registration Failed',
                 description: description,
             });
-            setIsSubmitting(false);
+            setIsSubmitting(false); // Only re-enable form on failure
         }
     }
 
@@ -133,7 +134,7 @@ export default function RegisterPage() {
         await signInWithGoogle(auth, firestore);
     }
 
-    if (loading || user) {
+    if (loading || (user && !claims)) {
         return <LoadingScreen text="Finalizing account setup..."/>;
     }
 

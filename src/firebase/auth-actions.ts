@@ -34,7 +34,7 @@ export const signInWithGoogle = async (auth: Auth, firestore: Firestore) => {
                 createdAt: serverTimestamp(),
             });
         }
-        
+        // The useUser hook and useEffects in the layout/pages will handle redirection.
     } catch (error: any) {
         // The user closing the popup is a normal flow, not an error to show.
         if (error.code === 'auth/popup-closed-by-user') {
