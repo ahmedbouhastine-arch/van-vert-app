@@ -3,7 +3,7 @@
 
 import { useUser } from "@/firebase";
 import { useRouter } from "next/navigation";
-import { useEffect } from "react";
+import React from "react";
 import { LoadingScreen } from "@/components/LoadingScreen";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -32,16 +32,17 @@ const safeFormatDate = (date: FirebaseTimestamp | Date | string | undefined | nu
   }
 };
 
+function RedirectToAdminDashboard() {
+    const router = useRouter();
+    React.useEffect(() => {
+        router.push('/admin');
+    }, [router]);
+    return <LoadingScreen text="Access Denied. Redirecting..." />;
+}
+
 
 export default function AuditLogPage() {
-    const { user, loading, claims } = useUser();
-    const router = useRouter();
-
-    useEffect(() => {
-        if (!loading && claims?.role !== 'head-admin') {
-            router.push('/admin');
-        }
-    }, [user, loading, claims, router]);
+    const { loading, claims } = useUser();
 
     // In a real app, this data would be fetched from a Firestore collection.
     // Mock data for demonstration
@@ -85,8 +86,12 @@ export default function AuditLogPage() {
         }
     ];
 
-    if (loading || !user || claims?.role !== 'head-admin') {
+    if (loading) {
         return <LoadingScreen text="Verifying Access..." />;
+    }
+
+    if (claims?.role !== 'head-admin') {
+        return <RedirectToAdminDashboard />;
     }
     
     return (

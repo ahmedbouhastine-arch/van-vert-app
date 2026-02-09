@@ -1,6 +1,8 @@
 
 'use client';
 import Link from "next/link";
+import React from "react";
+import { useRouter } from "next/navigation";
 import { MoreHorizontal } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -29,10 +31,8 @@ import { StatusBadge } from "@/components/StatusBadge";
 import { format } from "date-fns";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useUser, useFirestore, useCollection, useDoc, useMemoFirebase } from "@/firebase";
-import React from "react";
 import type { Application, UserProfile, FirebaseTimestamp } from "@/types";
 import { useToast } from "@/hooks/use-toast";
-import { useRouter } from "next/navigation";
 import { LoadingScreen } from "@/components/LoadingScreen";
 import { collection, query, orderBy, doc } from "firebase/firestore";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -205,8 +205,12 @@ export default function AdminApplicationsPage() {
   }
 
   const isAuthorized = claims?.role && ['reviewer', 'admin', 'head-admin'].includes(claims.role);
+  
+  if (!isAuthorized) {
+    return <RedirectToDashboard />;
+  }
 
-  const PageContent = () => (
+  return (
      <div className="flex flex-col gap-4">
        <div className="flex flex-col gap-1">
         <div className="flex justify-between items-center">
@@ -249,7 +253,4 @@ export default function AdminApplicationsPage() {
       </Card>
     </div>
   );
-
-  // Render content only if authorized, otherwise redirect. This prevents child components
-  // from attempting to fetch data before the authorization check is complete.
-  return isAuthorized ? <PageContent /> : <RedirectToDashboard />;}
+}

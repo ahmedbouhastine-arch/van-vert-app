@@ -4,7 +4,7 @@
 import { AnalyticsClient } from "./_components/AnalyticsClient";
 import { useUser } from "@/firebase";
 import { useRouter } from "next/navigation";
-import { useEffect } from "react";
+import React from "react";
 import { LoadingScreen } from "@/components/LoadingScreen";
 import { subMonths, format } from "date-fns";
 import type { AnalyticsDataPoint } from "@/types";
@@ -28,16 +28,17 @@ const generateMockChartData = (): AnalyticsDataPoint[] => {
     return data;
 }
 
+function RedirectToAdminDashboard() {
+    const router = useRouter();
+    React.useEffect(() => {
+        router.push('/admin');
+    }, [router]);
+    return <LoadingScreen text="Access Denied. Redirecting..." />;
+}
+
 
 export default function AnalyticsPage() {
-    const { user, loading, claims } = useUser();
-    const router = useRouter();
-
-    useEffect(() => {
-        if (!loading && (claims?.role !== 'admin' && claims?.role !== 'head-admin')) {
-            router.push('/admin');
-        }
-    }, [user, loading, claims, router]);
+    const { loading, claims } = useUser();
 
     // In a real app, you'd fetch this data from a collection aggregated for analytics.
     const kpiData = {
@@ -49,8 +50,14 @@ export default function AnalyticsPage() {
     
     const chartData = generateMockChartData();
 
-    if (loading || !user || (claims?.role !== 'admin' && claims?.role !== 'head-admin')) {
+    if (loading) {
         return <LoadingScreen text="Verifying Access..." />;
+    }
+
+    const isAuthorized = claims?.role && ['admin', 'head-admin'].includes(claims.role);
+
+    if (!isAuthorized) {
+        return <RedirectToAdminDashboard />;
     }
 
     return (
