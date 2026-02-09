@@ -95,7 +95,7 @@ export type Notification = {
   userId: string;
   title: string;
   body: string;
-  href: string;
+  href?: string;
   isRead: boolean;
   createdAt: FirebaseTimestamp;
 };

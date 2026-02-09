@@ -32,7 +32,7 @@ import { format } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
 import { flagExpiringDocuments } from "@/ai/flows/flag-expiring-documents";
 import { checkRecency, type CheckRecencyOutput } from "@/ai/flows/check-recency";
-import { useFirestore, useStorage } from "@/firebase";
+import { useFirestore, useStorage, errorEmitter, FirestorePermissionError } from "@/firebase";
 import { doc, serverTimestamp, updateDoc, collection, addDoc } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { Textarea } from "@/components/ui/textarea";
@@ -161,12 +161,35 @@ export function ApplicationClient({
   const [newLog, setNewLog] = useState({ date: '', duration: '', aircraft: '', remarks: '' });
   const [showLogForm, setShowLogForm] = useState(false);
   
-  const handlePersistChanges = async (updates: Partial<Application>) => {
+  const handlePersistChanges = (updates: Partial<Application>, successToast: {title: string, description?: string} | null) => {
     if (!firestore) return;
     const appRef = doc(firestore, 'applications', appState.id);
-    await updateDoc(appRef, {
+
+    const dataToUpdate = {
         ...updates,
         updatedAt: serverTimestamp(),
+    };
+
+    updateDoc(appRef, dataToUpdate)
+    .then(() => {
+        if (successToast) {
+            toast(successToast);
+        }
+    })
+    .catch((error) => {
+        const permissionError = new FirestorePermissionError({
+            path: appRef.path,
+            operation: 'update',
+            requestResourceData: dataToUpdate,
+        });
+        errorEmitter.emit('permission-error', permissionError);
+        toast({
+            variant: 'destructive',
+            title: "Save Failed",
+            description: "Your changes could not be saved. Please try again.",
+        });
+        // Revert to initial state on failure
+        setAppState(initialApplication);
     });
   };
 
@@ -177,7 +200,7 @@ export function ApplicationClient({
 
   const handleFileSelected = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
-    if (!file || !activeUploadDocId || !storage) return;
+    if (!file || !activeUploadDocId || !storage || !firestore) return;
 
     setUploadingDocId(activeUploadDocId);
 
@@ -198,19 +221,18 @@ export function ApplicationClient({
             : doc
         );
         
-        await handlePersistChanges({ documents: newDocuments });
-
         setAppState((prev) => ({ ...prev, documents: newDocuments }));
         
-        toast({ title: "Upload Successful", description: `${file.name} has been uploaded and saved.` });
+        handlePersistChanges({ documents: newDocuments }, { title: "Upload Successful", description: `${file.name} has been uploaded and saved.` });
 
     } catch (error) {
         console.error("Upload failed:", error);
         toast({
             variant: "destructive",
             title: "Upload Failed",
-            description: "There was an error uploading and saving your file.",
+            description: "There was an error uploading your file.",
         });
+        setAppState(initialApplication);
     } finally {
         setUploadingDocId(null);
         setActiveUploadDocId(null);
@@ -221,27 +243,17 @@ export function ApplicationClient({
   };
 
 
-  const handleDateChange = async (docId: string, date: string) => {
+  const handleDateChange = (docId: string, date: string) => {
     const newDocuments = appState.documents.map((doc) =>
         doc.id === docId ? { ...doc, expiryDate: date } : doc
     );
 
     setAppState((prev) => ({ ...prev, documents: newDocuments }));
 
-    try {
-        await handlePersistChanges({ documents: newDocuments });
-        toast({
-            title: "Expiry Date Saved",
-            description: "The expiry date has been updated.",
-        });
-    } catch (error: any) {
-        toast({
-            variant: 'destructive',
-            title: "Save Failed",
-            description: "Could not save the expiry date. Please try again.",
-        });
-        setAppState(initialApplication);
-    }
+    handlePersistChanges(
+        { documents: newDocuments }, 
+        { title: "Expiry Date Saved", description: "The expiry date has been updated." }
+    );
   };
   
   const handleCheckExpiry = () => {
@@ -273,51 +285,59 @@ export function ApplicationClient({
   };
 
   const handleSaveDraft = () => {
-    startTransition(async () => {
-        try {
-            await handlePersistChanges({ documents: appState.documents, flightLogs: appState.flightLogs });
-            toast({
-                title: "Draft Saved!",
-                description: "Your changes have been saved.",
-            });
-        } catch (e: any) {
-            toast({ variant: 'destructive', title: "Save failed", description: e.message });
-        }
+    startTransition(() => {
+        handlePersistChanges(
+            { documents: appState.documents, flightLogs: appState.flightLogs },
+            { title: "Draft Saved!", description: "Your changes have been saved." }
+        );
     });
   }
 
   const handleSubmit = () => {
-    startTransition(async () => {
-        try {
-            const finalState = {
-                ...appState,
-                status: 'submitted' as const,
-                submittedAt: serverTimestamp(),
-            };
-            await handlePersistChanges(finalState);
-            setAppState(finalState);
-             if (firestore) {
-                const notificationsRef = collection(firestore, 'users', appState.userId, 'notifications');
-                await addDoc(notificationsRef, {
-                    userId: appState.userId,
-                    title: `Application Submitted`,
-                    body: `Your '${appState.licenseType}' application has been submitted for review.`,
-                    href: `/applications/${appState.id}`,
-                    isRead: false,
-                    createdAt: serverTimestamp(),
-                });
-            }
+    startTransition(() => {
+        if (!firestore) return;
+        const finalState = {
+            ...appState,
+            status: 'submitted' as const,
+            submittedAt: serverTimestamp(),
+            updatedAt: serverTimestamp(),
+        };
+
+        const appRef = doc(firestore, 'applications', appState.id);
+        
+        updateDoc(appRef, finalState)
+        .then(() => {
+            setAppState(prev => ({...prev, ...finalState}));
+
+            const notificationsRef = collection(firestore, 'users', appState.userId, 'notifications');
+            addDoc(notificationsRef, {
+                userId: appState.userId,
+                title: `Application Submitted`,
+                body: `Your '${appState.licenseType}' application has been submitted for review.`,
+                href: `/applications/${appState.id}`,
+                isRead: false,
+                createdAt: serverTimestamp(),
+            }).catch(notifError => console.error("Failed to create notification:", notifError));
+
             toast({
                 title: "Application Submitted!",
                 description: "Your application has been submitted for review.",
             });
-        } catch (e: any) {
-            toast({ variant: 'destructive', title: "Submission failed", description: e.message });
-        }
+        })
+        .catch(e => {
+            const permissionError = new FirestorePermissionError({
+                path: appRef.path,
+                operation: 'update',
+                requestResourceData: finalState,
+            });
+            errorEmitter.emit('permission-error', permissionError);
+            toast({ variant: 'destructive', title: "Submission failed", description: "Could not submit your application." });
+            setAppState(initialApplication);
+        });
     });
   }
 
-  const handleAddLogEntry = async () => {
+  const handleAddLogEntry = () => {
     const duration = parseFloat(newLog.duration);
     if (!newLog.date || !newLog.duration || isNaN(duration) || duration <= 0) {
         toast({ variant: 'destructive', title: 'Invalid Entry', description: 'Please provide a valid date and positive duration.' });
@@ -330,27 +350,17 @@ export function ApplicationClient({
     };
     const newLogs = [...(appState.flightLogs || []), newEntry];
     setAppState(prev => ({ ...prev, flightLogs: newLogs }));
-    try {
-      await handlePersistChanges({ flightLogs: newLogs });
-      toast({ title: "Flight Log Added" });
-      setNewLog({ date: '', duration: '', aircraft: '', remarks: '' });
-      setShowLogForm(false);
-    } catch (e: any) {
-      toast({ variant: 'destructive', title: "Save failed", description: e.message });
-      setAppState(initialApplication);
-    }
+    
+    handlePersistChanges({ flightLogs: newLogs }, { title: "Flight Log Added" });
+
+    setNewLog({ date: '', duration: '', aircraft: '', remarks: '' });
+    setShowLogForm(false);
   };
 
-  const handleDeleteLogEntry = async (logId: string) => {
+  const handleDeleteLogEntry = (logId: string) => {
     const newLogs = appState.flightLogs?.filter(log => log.id !== logId);
     setAppState(prev => ({ ...prev, flightLogs: newLogs }));
-    try {
-        await handlePersistChanges({ flightLogs: newLogs });
-        toast({ title: "Flight Log Removed" });
-    } catch (e: any) {
-        toast({ variant: 'destructive', title: "Save failed", description: e.message });
-        setAppState(initialApplication);
-    }
+    handlePersistChanges({ flightLogs: newLogs }, { title: "Flight Log Removed" });
   }
   
   useEffect(() => {
@@ -480,7 +490,6 @@ export function ApplicationClient({
                         </TableRow>
                     )}
                 </TableBody>
-            </Table>
              {!isSubmitted && showLogForm && (
                 <TableBody>
                     <TableRow className="bg-muted/50">

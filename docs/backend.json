@@ -19,12 +19,27 @@
         "role": {
           "type": "string",
           "description": "User's role (e.g., user, reviewer, admin, head-admin)."
+        },
+        "displayName": {
+          "type": "string",
+          "description": "User's display name."
+        },
+        "photoURL": {
+          "type": "string",
+          "description": "URL for user's profile photo.",
+          "format": "uri"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Timestamp when the user was created."
         }
       },
       "required": [
         "id",
         "email",
-        "role"
+        "role",
+        "createdAt"
       ]
     },
     "Application": {
@@ -59,9 +74,29 @@
           "description": "Timestamp when the application was last updated.",
           "format": "date-time"
         },
-        "adminNotes": {
+        "createdAt": {
+          "type": "string",
+          "description": "Timestamp when the application was created.",
+          "format": "date-time"
+        },
+        "feedback": {
           "type": "string",
           "description": "Internal notes from admins, visible to the user."
+        },
+        "flightLogs": {
+          "type": "array",
+          "description": "A list of flight logs submitted by the applicant.",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": { "type": "string" },
+              "date": { "type": "string", "format": "date" },
+              "duration": { "type": "number" },
+              "aircraft": { "type": "string" },
+              "remarks": { "type": "string" }
+            },
+            "required": ["id", "date", "duration", "aircraft"]
+          }
         }
       },
       "required": [
@@ -81,11 +116,19 @@
           "type": "string",
           "description": "Unique identifier for the document entity."
         },
-        "applicationId": {
+        "docRequirementId": {
           "type": "string",
-          "description": "Reference to Application. (Relationship: Application 1:N Document)"
+          "description": "Reference to the requirement definition."
         },
-        "filename": {
+        "name": {
+          "type": "string",
+          "description": "Name of the document requirement."
+        },
+        "description": {
+          "type": "string",
+          "description": "Description of the document requirement."
+        },
+        "fileName": {
           "type": "string",
           "description": "Name of the uploaded file."
         },
@@ -104,21 +147,33 @@
         "expiryDate": {
           "type": "string",
           "description": "Expiry date of the document, if applicable.",
-          "format": "date-time"
+          "format": "date"
         },
         "status": {
           "type": "string",
           "description": "Document status (e.g., missing, uploaded, needs attention)."
+        },
+        "uploadedAt": {
+          "type": "string",
+          "description": "Timestamp when the document was uploaded.",
+          "format": "date-time"
+        },
+        "isExpiringSoon": {
+          "type": "boolean",
+          "description": "Flag indicating if the document is expiring soon."
+        },
+        "requiresExpiry": {
+            "type": "boolean",
+            "description": "Whether this document requires an expiry date."
         }
       },
       "required": [
         "id",
-        "applicationId",
-        "filename",
-        "fileType",
-        "fileSize",
-        "storagePath",
-        "status"
+        "docRequirementId",
+        "name",
+        "description",
+        "status",
+        "requiresExpiry"
       ]
     },
     "Notification": {

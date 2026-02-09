@@ -1,3 +1,4 @@
+
 'use client';
 
 import {
@@ -19,7 +20,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { useUser, useFirestore } from "@/firebase"
+import { useUser, useFirestore, errorEmitter, FirestorePermissionError } from "@/firebase"
 import { LoadingScreen } from "@/components/LoadingScreen";
 import { doc, updateDoc } from "firebase/firestore";
 import { updateProfile } from "firebase/auth";
@@ -56,13 +57,29 @@ export default function SettingsPage() {
             
             const userRef = doc(firestore, "users", user.uid);
             try {
-                // Update auth profile
+                // Auth profile update should be awaited as it's not a simple DB write
                 await updateProfile(user, { displayName });
-                // Update firestore profile
-                await updateDoc(userRef, { displayName });
+
+                // Firestore update is made non-blocking with optimistic UI
+                updateDoc(userRef, { displayName })
+                    .catch((error) => {
+                        const permissionError = new FirestorePermissionError({
+                            path: userRef.path,
+                            operation: 'update',
+                            requestResourceData: { displayName },
+                        });
+                        errorEmitter.emit('permission-error', permissionError);
+                        // The global error handler will show the issue. We'll show a toast here too.
+                        toast({
+                            variant: 'destructive',
+                            title: 'Database update failed',
+                            description: 'Your name was updated for login, but failed to save to your profile page.',
+                        });
+                    });
+
                 toast({
-                    title: "Profile Updated",
-                    description: "Your name has been successfully updated.",
+                    title: "Profile Update Saved",
+                    description: "Your changes will be reflected shortly.",
                 });
             } catch (error: any) {
                 toast({
