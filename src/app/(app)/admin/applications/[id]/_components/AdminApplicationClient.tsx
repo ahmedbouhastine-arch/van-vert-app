@@ -32,7 +32,7 @@ import { flagExpiringDocuments } from "@/ai/flows/flag-expiring-documents";
 import { checkRecency } from "@/ai/flows/check-recency";
 import type { CheckRecencyOutput } from "@/ai/flows/check-recency";
 import { cn } from "@/lib/utils";
-import { useFirestore, useStorage } from "@/firebase";
+import { useFirestore, useStorage, errorEmitter, FirestorePermissionError } from "@/firebase";
 import { doc, serverTimestamp, updateDoc, addDoc, collection } from "firebase/firestore";
 import { getDownloadURL, ref } from "firebase/storage";
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
@@ -269,29 +269,31 @@ export function AdminApplicationClient({
   };
 
   const handleSaveChanges = () => {
-    startTransition(async () => {
+    startTransition(() => {
         if (!firestore) return;
         const appRef = doc(firestore, 'applications', appState.id);
         const originalStatus = initialApplication.status;
 
-        try {
-            await updateDoc(appRef, {
-                status: status,
-                feedback: feedback,
-                documents: appState.documents,
-                updatedAt: serverTimestamp()
-            });
+        const updatedData = {
+            status: status,
+            feedback: feedback,
+            documents: appState.documents,
+            updatedAt: serverTimestamp()
+        };
 
-            // If the status has changed, create a notification for the user
+        updateDoc(appRef, updatedData)
+        .then(() => {
             if (originalStatus !== status && appState.userId) {
                  const notificationsRef = collection(firestore, 'users', appState.userId, 'notifications');
-                 await addDoc(notificationsRef, {
+                 addDoc(notificationsRef, {
                      userId: appState.userId,
                      title: `Application Updated`,
                      body: `Your '${appState.licenseType}' application is now ${status.replace(/_/g, ' ')}.`,
                      href: `/applications/${appState.id}`,
                      isRead: false,
                      createdAt: serverTimestamp(),
+                 }).catch(notifError => {
+                    console.error("Failed to create notification:", notifError);
                  });
             }
 
@@ -300,13 +302,26 @@ export function AdminApplicationClient({
                 title: "Changes Saved",
                 description: "Application status and document statuses have been updated.",
             });
-        } catch(e: any) {
+        })
+        .catch((e: any) => {
+            const permissionError = new FirestorePermissionError({
+                path: appRef.path,
+                operation: 'update',
+                requestResourceData: updatedData,
+            });
+            errorEmitter.emit('permission-error', permissionError);
+
             toast({
                 variant: 'destructive',
                 title: "Save Failed",
-                description: e.message,
+                description: "You might not have permissions to perform this action.",
             });
-        }
+            
+            // Revert optimistic state changes
+            setAppState(initialApplication);
+            setStatus(initialApplication.status);
+            setFeedback(initialApplication.feedback || "");
+        });
     });
   }
 

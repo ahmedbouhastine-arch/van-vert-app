@@ -1,3 +1,4 @@
+
 'use client';
 import { useState } from "react";
 import type { UserProfile } from "@/types";
@@ -9,7 +10,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { useToast } from "@/hooks/use-toast";
 import { type User } from "firebase/auth";
 import { Loader2 } from "lucide-react";
-import { useFirestore, useCollection, useMemoFirebase } from "@/firebase";
+import { useFirestore, useCollection, useMemoFirebase, errorEmitter, FirestorePermissionError } from "@/firebase";
 import { collection, doc, updateDoc } from "firebase/firestore";
 
 type UserWithProfile = UserProfile & { id: string; photoURL?: string; };
@@ -117,21 +118,30 @@ export function UserManagementClient({ currentUser, currentUserClaims }: { curre
         if (!firestore) return;
         setIsUpdating(userId);
         const userRef = doc(firestore, 'users', userId);
-        try {
-            await updateDoc(userRef, { role: newRole });
-            toast({
-                title: "Role Updated",
-                description: `User role has been successfully changed to ${newRole}.`,
+
+        updateDoc(userRef, { role: newRole })
+            .then(() => {
+                toast({
+                    title: "Role Updated",
+                    description: `User role has been successfully changed to ${newRole}.`,
+                });
+            })
+            .catch((error: any) => {
+                const permissionError = new FirestorePermissionError({
+                    path: userRef.path,
+                    operation: 'update',
+                    requestResourceData: { role: newRole },
+                });
+                errorEmitter.emit('permission-error', permissionError);
+                toast({
+                    variant: 'destructive',
+                    title: "Update Failed",
+                    description: "You may not have permission to perform this action.",
+                });
+            })
+            .finally(() => {
+                setIsUpdating(null);
             });
-        } catch (error: any) {
-            toast({
-                variant: 'destructive',
-                title: "Update Failed",
-                description: error.message,
-            });
-        } finally {
-            setIsUpdating(null);
-        }
     };
     
     return (
