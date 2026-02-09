@@ -1,3 +1,4 @@
+
 "use client";
 
 import Link from "next/link";
@@ -33,7 +34,7 @@ export default function LoginPage() {
     const [isSubmitting, setIsSubmitting] = useState(false);
 
     useEffect(() => {
-        if (!loading && user) {
+        if (!loading && user && claims) {
             const isAdmin = claims?.role === 'admin' || claims?.role === 'head-admin' || claims?.role === 'reviewer';
             const homePath = isAdmin ? '/admin' : '/dashboard';
             router.push(homePath);
@@ -49,6 +50,7 @@ export default function LoginPage() {
         
         try {
             await signInWithEmailAndPassword(auth, email, password);
+            // On success, the useEffect hook will handle the redirect.
         } catch (error: any) {
             let description = error.message;
             if (error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password' || error.code === 'auth/invalid-credential') {
@@ -77,7 +79,7 @@ export default function LoginPage() {
     }
 
     if (loading || user) {
-      return <LoadingScreen />;
+      return <LoadingScreen text="Authenticating..." />;
     }
 
   return (
@@ -98,6 +100,7 @@ export default function LoginPage() {
               type="email"
               placeholder="pilot@example.com"
               required
+              disabled={isSubmitting}
             />
           </div>
           <div className="grid gap-2">
@@ -117,12 +120,14 @@ export default function LoginPage() {
                 type={showPassword ? "text" : "password"}
                 required
                 className="pr-10"
+                disabled={isSubmitting}
               />
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
                 className="absolute inset-y-0 right-0 flex items-center px-3 text-muted-foreground hover:text-foreground"
                 aria-label={showPassword ? 'Hide password' : 'Show password'}
+                disabled={isSubmitting}
               >
                 {showPassword ? (
                   <EyeOff className="h-5 w-5" />
@@ -138,7 +143,7 @@ export default function LoginPage() {
           </Button>
         </form>
          <Separator className="my-6" />
-        <Button variant="outline" className="w-full" onClick={handleGoogleLogin}>
+        <Button variant="outline" className="w-full" onClick={handleGoogleLogin} disabled={isSubmitting}>
             <GoogleIcon className="mr-2 h-4 w-4" />
           Login with Google
         </Button>

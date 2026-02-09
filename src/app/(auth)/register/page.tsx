@@ -3,7 +3,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -15,15 +15,13 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
-import { CheckCircle2, XCircle, Eye, EyeOff, Camera, Loader2 } from "lucide-react";
+import { CheckCircle2, XCircle, Eye, EyeOff, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { getAuth, createUserWithEmailAndPassword, updateProfile, deleteUser } from "firebase/auth";
-import { useFirebaseApp, useFirestore, useUser, useStorage } from "@/firebase";
+import { useFirebaseApp, useFirestore, useUser } from "@/firebase";
 import { doc, setDoc, serverTimestamp } from "firebase/firestore";
-import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { GoogleIcon } from "@/components/GoogleIcon";
 import { LoadingScreen } from "@/components/LoadingScreen";
-import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { signInWithGoogle } from "@/firebase/auth-actions";
 
 
@@ -39,19 +37,15 @@ export default function RegisterPage() {
     const { toast } = useToast();
     const [password, setPassword] = useState("");
     const [showPassword, setShowPassword] = useState(false);
-    const [profilePic, setProfilePic] = useState<File | null>(null);
-    const [previewUrl, setPreviewUrl] = useState<string | null>(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
-    const fileInputRef = useRef<HTMLInputElement>(null);
 
     const app = useFirebaseApp();
     const auth = getAuth(app);
     const firestore = useFirestore();
-    const storage = useStorage();
     const { user, loading, claims } = useUser();
 
     useEffect(() => {
-        if (!loading && user) {
+        if (!loading && user && claims) {
             const isAdmin = claims?.role === 'admin' || claims?.role === 'head-admin' || claims?.role === 'reviewer';
             const homePath = isAdmin ? '/admin' : '/dashboard';
             router.push(homePath);
@@ -65,18 +59,6 @@ export default function RegisterPage() {
 
     const allRequirementsMet = validatedRequirements.every(req => req.isValid);
 
-    const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-        const file = event.target.files?.[0];
-        if (file) {
-            setProfilePic(file);
-            const reader = new FileReader();
-            reader.onloadend = () => {
-                setPreviewUrl(reader.result as string);
-            };
-            reader.readAsDataURL(file);
-        }
-    };
-
     const handleRegister = async (event: React.FormEvent<HTMLFormElement>) => {
         event.preventDefault();
         if (!allRequirementsMet) {
@@ -84,14 +66,6 @@ export default function RegisterPage() {
                 variant: 'destructive',
                 title: 'Invalid Password',
                 description: 'Please ensure your password meets all requirements.',
-            });
-            return;
-        }
-        if (!profilePic) {
-            toast({
-                variant: 'destructive',
-                title: 'Profile Picture Required',
-                description: 'Please upload a profile picture to continue.',
             });
             return;
         }
@@ -103,40 +77,39 @@ export default function RegisterPage() {
 
         let userCredential;
         try {
+            // 1. Create the user in Firebase Auth
             userCredential = await createUserWithEmailAndPassword(auth, email, password);
             const user = userCredential.user;
 
             try {
-                let photoURL = "";
-                if (storage && profilePic) {
-                    const storageRef = ref(storage, `profile-pictures/${user.uid}`);
-                    await uploadBytes(storageRef, profilePic);
-                    photoURL = await getDownloadURL(storageRef);
-                }
-                
-                await updateProfile(user, { displayName: fullName, photoURL });
+                // 2. Update their Auth profile
+                await updateProfile(user, { displayName: fullName });
 
+                // 3. Create their user document in Firestore
                 if (firestore) {
                     const userRef = doc(firestore, "users", user.uid);
                     await setDoc(userRef, {
                         displayName: fullName,
                         email: user.email,
-                        role: email === 'head-admin@test.va' ? 'head-admin' : 'user',
+                        photoURL: user.photoURL, // Initially null, can be updated later
+                        role: email === 'head-admin@test.va' ? 'head-admin' : 'user', // Special role for demo purposes
                         createdAt: serverTimestamp(),
-                        photoURL: photoURL
                     });
                 }
             } catch (innerError) {
+                // If creating the profile or Firestore doc fails, delete the Auth user
+                // to prevent an inconsistent state.
                 await deleteUser(user);
-                throw innerError;
+                throw innerError; // Rethrow to be caught by the outer catch block
             }
 
             toast({
                 title: "Registration successful!",
                 description: "You are now logged in and will be redirected.",
-              });
+            });
               
-            // After registration, onAuthStateChanged will handle the redirect via useEffect
+            // After registration, the onAuthStateChanged listener in the provider
+            // will detect the new user and claims, and the useEffect hook will redirect.
 
         } catch (error: any) {
             let description = error.message;
@@ -144,7 +117,7 @@ export default function RegisterPage() {
                 description = "An account with this email already exists. Please log in.";
             } else {
                 console.error("Registration Error: ", error); 
-                description = "An unexpected error occurred during registration. Please try again.";
+                description = "An unexpected error occurred. Please try again.";
             }
             toast({
                 variant: 'destructive',
@@ -169,7 +142,7 @@ export default function RegisterPage() {
     }
 
     if (loading || user) {
-        return <LoadingScreen />;
+        return <LoadingScreen text="Finalizing account setup..."/>;
     }
 
   return (
@@ -182,30 +155,9 @@ export default function RegisterPage() {
       </CardHeader>
       <CardContent>
         <form onSubmit={handleRegister} className="grid gap-4">
-          <div className="grid gap-4 justify-center">
-            <Label htmlFor="profile-pic-input">
-                <Avatar className="h-24 w-24 cursor-pointer">
-                    <AvatarImage src={previewUrl || undefined} alt="Profile preview" />
-                    <AvatarFallback className="bg-muted hover:bg-muted/80 transition-colors">
-                        <Camera className="h-8 w-8 text-muted-foreground" />
-                    </AvatarFallback>
-                </Avatar>
-            </Label>
-            <Input 
-                id="profile-pic-input" 
-                ref={fileInputRef}
-                type="file" 
-                className="hidden" 
-                accept="image/png, image/jpeg"
-                onChange={handleFileChange}
-            />
-            <p className="text-center text-xs text-muted-foreground">
-                Please upload a clear, forward-facing picture of the pilot.
-            </p>
-          </div>
           <div className="grid gap-2">
             <Label htmlFor="full-name">Full Name</Label>
-            <Input id="full-name" name="full-name" placeholder="John Pilot" required />
+            <Input id="full-name" name="full-name" placeholder="John Pilot" required disabled={isSubmitting} />
           </div>
           <div className="grid gap-2">
             <Label htmlFor="email">Email</Label>
@@ -215,6 +167,7 @@ export default function RegisterPage() {
               type="email"
               placeholder="pilot@example.com"
               required
+              disabled={isSubmitting}
             />
           </div>
           <div className="grid gap-2">
@@ -227,12 +180,14 @@ export default function RegisterPage() {
                   onChange={(e) => setPassword(e.target.value)}
                   required
                   className="pr-10"
+                  disabled={isSubmitting}
               />
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
                 className="absolute inset-y-0 right-0 flex items-center px-3 text-muted-foreground hover:text-foreground"
                 aria-label={showPassword ? 'Hide password' : 'Show password'}
+                disabled={isSubmitting}
               >
                 {showPassword ? (
                   <EyeOff className="h-5 w-5" />
@@ -254,13 +209,13 @@ export default function RegisterPage() {
                     </div>
                 ))}
             </div>
-          <Button type="submit" className="w-full" disabled={(isSubmitting || (!allRequirementsMet && password.length > 0))}>
+          <Button type="submit" className="w-full" disabled={isSubmitting || (password.length > 0 && !allRequirementsMet)}>
             {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             Create an account
           </Button>
         </form>
          <Separator className="my-6" />
-        <Button variant="outline" className="w-full" onClick={handleGoogleLogin}>
+        <Button variant="outline" className="w-full" onClick={handleGoogleLogin} disabled={isSubmitting}>
              <GoogleIcon className="mr-2 h-4 w-4" />
           Sign up with Google
         </Button>
