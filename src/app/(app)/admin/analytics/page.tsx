@@ -1,3 +1,4 @@
+
 'use client';
 
 import { AnalyticsClient } from "./_components/AnalyticsClient";
