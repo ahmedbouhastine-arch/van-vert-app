@@ -12,7 +12,7 @@ export default function VerifyEmailPage() {
 
     useEffect(() => {
         if (loading) {
-            return; // Wait for user state to be determined
+            return; // Wait for user and claims state to be determined
         }
 
         if (!user) {
@@ -20,13 +20,17 @@ export default function VerifyEmailPage() {
             return;
         }
 
-        // Redirect based on role, effectively bypassing verification
-        const isAdmin = claims?.role && ['admin', 'head-admin', 'reviewer'].includes(claims.role);
-        const homePath = isAdmin ? '/admin' : '/dashboard';
-        router.push(homePath);
+        // IMPORTANT: Wait for claims to be loaded before deciding where to redirect.
+        // This prevents race conditions on new user registration.
+        if (claims) {
+            const isAdmin = ['admin', 'head-admin', 'reviewer'].includes(claims.role);
+            const homePath = isAdmin ? '/admin' : '/dashboard';
+            router.push(homePath);
+        }
+        // If claims are not yet loaded, this effect does nothing and will re-run when they are.
 
     }, [user, loading, claims, router]);
 
-    // Show a loading screen while the redirect is happening
-    return <LoadingScreen text="Finalizing login..." />;
+    // Show a loading screen while waiting for the redirect.
+    return <LoadingScreen text="Finalizing account setup..." />;
 }
