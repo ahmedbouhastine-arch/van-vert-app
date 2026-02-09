@@ -2,7 +2,8 @@
 'use client';
 
 import Link from "next/link";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { PlusCircle, MoreHorizontal } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -41,7 +42,7 @@ import { format } from "date-fns";
 import { useUser, useFirestore, useCollection, useMemoFirebase } from "@/firebase";
 import { collection, query, where } from "firebase/firestore";
 import type { Application, FirebaseTimestamp } from "@/types";
-import { mockApplications } from "@/lib/mock-data";
+import { LoadingScreen } from "@/components/LoadingScreen";
 
 // Helper function to safely format dates, whether they are Timestamps or strings
 const safeFormatDate = (date: FirebaseTimestamp | Date | string | undefined | null, formatString: string) => {
@@ -59,47 +60,29 @@ const safeFormatDate = (date: FirebaseTimestamp | Date | string | undefined | nu
 
 export default function MyApplicationsPage() {
   const { user, claims, loading: userLoading } = useUser();
+  const router = useRouter();
   const [selectedFeedback, setSelectedFeedback] = useState<string | null>(null);
   const firestore = useFirestore();
 
-  const isReviewer = claims?.role && ['reviewer', 'admin', 'head-admin'].includes(claims.role);
-
-  // --- Data Fetching Logic ---
-  // Use mock data for reviewer roles for presentation purposes
-  const mockAdminApplications = useMemo(() => {
-    if (!isReviewer || !user) return [];
-    
-    const cplBaseApplication = mockApplications.find(app => app.licenseType === 'CPL Conversion');
-
-    if (!cplBaseApplication) {
-        // This case should not happen with current mock data, but it's a good safeguard.
-        console.error("Could not find base CPL Conversion mock application.");
-        return [];
+  useEffect(() => {
+    if (!userLoading && claims && ['reviewer', 'admin', 'head-admin'].includes(claims.role)) {
+      router.push('/admin');
     }
-
-    // Create a mock application for the admin to see in their "My Applications" view
-    const adminApp: Application = {
-      ...cplBaseApplication,
-      id: 'mock-admin-app-1',
-      userId: user.uid,
-      status: 'draft',
-      updatedAt: { toDate: () => new Date(), seconds: new Date().getTime() / 1000, nanoseconds: 0 },
-    };
-    return [adminApp];
-  }, [isReviewer, user]);
+  }, [userLoading, claims, router]);
 
   // Use live data for regular users
   const appsQuery = useMemoFirebase(() => {
-    if (!firestore || !user || isReviewer) return null;
+    if (!firestore || !user) return null;
     return query(collection(firestore, "applications"), where("userId", "==", user.uid));
-  }, [firestore, user, isReviewer]);
+  }, [firestore, user]);
   
-  const { data: liveUserApplications, loading: appsLoading } = useCollection<Application>(appsQuery);
+  const { data: userApplications, loading: appsLoading } = useCollection<Application>(appsQuery);
   
-  const userApplications = isReviewer ? mockAdminApplications : liveUserApplications;
-  const isLoading = userLoading || (!isReviewer && appsLoading);
-  // --- End Data Fetching Logic ---
+  const isLoading = userLoading || appsLoading;
 
+  if (isLoading || (claims && ['reviewer', 'admin', 'head-admin'].includes(claims.role))) {
+    return <LoadingScreen text="Loading applications..." />;
+  }
 
   return (
     <div className="flex flex-col gap-4">
