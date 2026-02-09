@@ -1,4 +1,3 @@
-All right, last question. 
 'use client';
 
 import {
