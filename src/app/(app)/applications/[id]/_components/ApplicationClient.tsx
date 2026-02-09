@@ -489,23 +489,22 @@ export function ApplicationClient({
                             <TableCell colSpan={5} className="h-24 text-center">No flight logs added yet.</TableCell>
                         </TableRow>
                     )}
+                    {!isSubmitted && showLogForm && (
+                      <TableRow className="bg-muted/50">
+                          <TableCell><Input type="date" value={newLog.date} onChange={e => setNewLog({...newLog, date: e.target.value})} /></TableCell>
+                          <TableCell><Input placeholder="e.g., C172" value={newLog.aircraft} onChange={e => setNewLog({...newLog, aircraft: e.target.value})} /></TableCell>
+                          <TableCell><Input type="number" placeholder="e.g., 1.5" className="text-right" value={newLog.duration} onChange={e => setNewLog({...newLog, duration: e.target.value})} /></TableCell>
+                          <TableCell className="hidden md:table-cell"><Textarea placeholder="e.g., Cross-country flight" value={newLog.remarks} onChange={e => setNewLog({...newLog, remarks: e.target.value})} rows={1} /></TableCell>
+                          <TableCell className="text-right">
+                              <div className="flex gap-2 justify-end">
+                                  <Button size="sm" onClick={handleAddLogEntry}>Save</Button>
+                                  <Button size="sm" variant="ghost" onClick={() => setShowLogForm(false)}>Cancel</Button>
+                              </div>
+                          </TableCell>
+                      </TableRow>
+                    )}
                 </TableBody>
-             {!isSubmitted && showLogForm && (
-                <TableBody>
-                    <TableRow className="bg-muted/50">
-                        <TableCell><Input type="date" value={newLog.date} onChange={e => setNewLog({...newLog, date: e.target.value})} /></TableCell>
-                        <TableCell><Input placeholder="e.g., C172" value={newLog.aircraft} onChange={e => setNewLog({...newLog, aircraft: e.target.value})} /></TableCell>
-                        <TableCell><Input type="number" placeholder="e.g., 1.5" className="text-right" value={newLog.duration} onChange={e => setNewLog({...newLog, duration: e.target.value})} /></TableCell>
-                        <TableCell className="hidden md:table-cell"><Textarea placeholder="e.g., Cross-country flight" value={newLog.remarks} onChange={e => setNewLog({...newLog, remarks: e.target.value})} rows={1} /></TableCell>
-                        <TableCell className="text-right">
-                            <div className="flex gap-2 justify-end">
-                                <Button size="sm" onClick={handleAddLogEntry}>Save</Button>
-                                <Button size="sm" variant="ghost" onClick={() => setShowLogForm(false)}>Cancel</Button>
-                            </div>
-                        </TableCell>
-                    </TableRow>
-                </TableBody>
-             )}
+            </Table>
         </CardContent>
         <CardFooter>
             {!isSubmitted && !showLogForm && (
@@ -544,3 +543,5 @@ export function ApplicationClient({
     </div>
   );
 }
+
+    
