@@ -1,3 +1,4 @@
+
 import type { Application, UserProfile, DocumentRequirement, ApplicationDocument } from "@/types";
 import { licenseTypes } from "@/lib/licensing";
 
@@ -25,7 +26,7 @@ const getDocsForLicense = (licenseId: 'ppl' | 'cpl' | 'atpl'): ApplicationDocume
 }
 
 
-export const mockApplications: (Application & { user: UserProfile })[] = [
+export const mockApplications: (Omit<Application, 'user'> & { user?: UserProfile })[] = [
     { 
         id: 'mock-app1', 
         userId: 'user1', 

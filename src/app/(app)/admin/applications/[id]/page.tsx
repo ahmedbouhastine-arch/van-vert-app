@@ -1,3 +1,4 @@
+
 'use client';
 
 import { notFound, useParams, useRouter } from "next/navigation";
@@ -7,7 +8,7 @@ import { doc } from "firebase/firestore";
 import { LoadingScreen } from "@/components/LoadingScreen";
 import type { Application, UserProfile } from "@/types";
 import React from "react";
-import { mockApplications } from "@/lib/mock-data";
+import { mockApplications, mockUsers } from "@/lib/mock-data";
 
 function AdminApplicationDetailContent() {
     const params = useParams<{ id: string }>();
@@ -24,7 +25,9 @@ function AdminApplicationDetailContent() {
     // Use mock data if the ID indicates it's a mock application
     if (isMock) {
         application = mockApplications.find(app => app.id === params.id);
-        user = application ? (application as any).user : undefined;
+        if (application) {
+            user = mockUsers[application.userId];
+        }
     } 
     
     // --- Firestore hooks for live data (will only run if not a mock) ---
