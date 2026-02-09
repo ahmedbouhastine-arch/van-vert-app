@@ -25,14 +25,15 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { StatusBadge } from "@/components/StatusBadge";
-import { format, subDays, subHours } from "date-fns";
+import { format } from "date-fns";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { useUser } from "@/firebase";
+import { useUser, useFirestore, useCollection, useMemoFirebase } from "@/firebase";
 import React, { useMemo } from "react";
 import type { Application, UserProfile, FirebaseTimestamp } from "@/types";
 import { useToast } from "@/hooks/use-toast";
 import { useRouter } from "next/navigation";
 import { LoadingScreen } from "@/components/LoadingScreen";
+import { collection, query, orderBy } from "firebase/firestore";
 
 // Helper function to safely format dates, whether they are Timestamps or strings
 const safeFormatDate = (date: FirebaseTimestamp | Date | string | undefined | null, formatString: string) => {
@@ -50,75 +51,32 @@ const safeFormatDate = (date: FirebaseTimestamp | Date | string | undefined | nu
 
 function AdminApplicationsContent() {
     const { toast } = useToast();
+    const firestore = useFirestore();
+
+    const appsQuery = useMemoFirebase(() => {
+        if (!firestore) return null;
+        return query(collection(firestore, "applications"), orderBy("updatedAt", "desc"));
+    }, [firestore]);
+
+    const { data: applications, isLoading: appsLoading } = useCollection<Application>(appsQuery);
     
-    type MockUserProfile = UserProfile & { id: string };
+    const usersQuery = useMemoFirebase(() => {
+        if (!firestore) return null;
+        return collection(firestore, "users");
+    }, [firestore]);
 
-    const mockUsers: MockUserProfile[] = [
-        {
-            id: 'mock-user-id-1',
-            displayName: 'John Pilot',
-            email: 'john.pilot@example.com',
-            role: 'user',
-            photoURL: 'https://picsum.photos/seed/101/200/200',
-            createdAt: { toDate: () => new Date(), seconds: 0, nanoseconds: 0 }
-        },
-        {
-            id: 'mock-user-id-2',
-            displayName: 'Jane Pilot',
-            email: 'jane.pilot@example.com',
-            role: 'user',
-            photoURL: 'https://picsum.photos/seed/105/200/200',
-            createdAt: { toDate: () => new Date(), seconds: 0, nanoseconds: 0 }
-        },
-        {
-            id: 'mock-user-id-3',
-            displayName: 'Captain Morgan',
-            email: 'captain.morgan@example.com',
-            role: 'user',
-            photoURL: 'https://picsum.photos/seed/106/200/200',
-            createdAt: { toDate: () => new Date(), seconds: 0, nanoseconds: 0 }
-        }
-    ];
-
-    const mockApplications: Application[] = [
-        {
-            id: 'mock-app-1',
-            userId: 'mock-user-id-1',
-            licenseType: 'PPL Conversion',
-            status: 'in_review',
-            documents: [],
-            submittedAt: { toDate: () => subDays(new Date(), 5), seconds: 0, nanoseconds: 0 },
-            updatedAt: { toDate: () => subDays(new Date(), 1), seconds: 0, nanoseconds: 0 },
-        },
-        {
-            id: 'mock-app-2',
-            userId: 'mock-user-id-2',
-            licenseType: 'CPL Conversion',
-            status: 'needs_attention',
-            documents: [],
-            submittedAt: { toDate: () => subDays(new Date(), 12), seconds: 0, nanoseconds: 0 },
-            updatedAt: { toDate: () => subDays(new Date(), 2), seconds: 0, nanoseconds: 0 },
-        },
-        {
-            id: 'mock-app-3',
-            userId: 'mock-user-id-3',
-            licenseType: 'ATPL Conversion',
-            status: 'submitted',
-            documents: [],
-            submittedAt: { toDate: () => subHours(new Date(), 8), seconds: 0, nanoseconds: 0 },
-            updatedAt: { toDate: () => subHours(new Date(), 8), seconds: 0, nanoseconds: 0 },
-        }
-    ];
+    const { data: users, isLoading: usersLoading } = useCollection<UserProfile>(usersQuery);
 
     const allApplications = useMemo(() => {
-        return mockApplications.map(app => {
-            const user = mockUsers.find((u) => u.id === app.userId);
+        if (!applications || !users) return [];
+        return applications.map(app => {
+            const user = users.find((u) => u.id === app.userId);
             const appWithUser = { ...app, user };
             return appWithUser;
         });
-    }, []);
+    }, [applications, users]);
 
-    const isLoading = false;
+    const isLoading = appsLoading || usersLoading;
 
     const handleSendReminder = (applicantName: string | undefined, licenseType: string) => {
         toast({
@@ -152,7 +110,7 @@ function AdminApplicationsContent() {
                 <TableCell className="hidden sm:table-cell">
                 <div className="flex items-center gap-2">
                     <Avatar className="h-8 w-8">
-                        <AvatarImage src={app.user?.photoURL} alt={app.user?.displayName} data-ai-hint="person portrait" />
+                        {app.user?.photoURL && <AvatarImage src={app.user?.photoURL} alt={app.user?.displayName} data-ai-hint="person portrait" />}
                         <AvatarFallback>{app.user?.displayName?.charAt(0)}</AvatarFallback>
                     </Avatar>
                     <div>

@@ -1,5 +1,5 @@
 'use client';
-import { useState, useMemo } from "react";
+import { useState } from "react";
 import type { UserProfile } from "@/types";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -8,6 +8,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
 import { type User } from "firebase/auth";
+import { useFirestore, useCollection, useMemoFirebase } from "@/firebase";
+import { collection, doc, updateDoc } from "firebase/firestore";
+import { Loader2 } from "lucide-react";
 
 type UserWithProfile = UserProfile & { id: string; photoURL?: string; };
 
@@ -15,12 +18,14 @@ function UserRow({
     user, 
     currentUser,
     currentUserClaims,
-    onRoleChange
+    onRoleChange,
+    isUpdating
 }: { 
     user: UserWithProfile, 
     currentUser: User,
     currentUserClaims: any,
-    onRoleChange: (userId: string, newRole: 'user' | 'admin' | 'head-admin' | 'reviewer') => void
+    onRoleChange: (userId: string, newRole: 'user' | 'admin' | 'head-admin' | 'reviewer') => void,
+    isUpdating: boolean
 }) {
     const [selectedRole, setSelectedRole] = useState(user.role);
 
@@ -81,7 +86,10 @@ function UserRow({
             <TableCell className="text-right">
                 {canPerformActions ? (
                     <div className="flex items-center justify-end gap-2">
-                        <Button onClick={handleUpdate} disabled={selectedRole === user.role}>Update Role</Button>
+                        <Button onClick={handleUpdate} disabled={selectedRole === user.role || isUpdating}>
+                            {isUpdating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                            Update Role
+                        </Button>
                     </div>
                 ) : isCurrentUser ? (
                      <span className="text-sm text-muted-foreground pr-4">Cannot edit self</span>
@@ -96,52 +104,35 @@ function UserRow({
 
 export function UserManagementClient({ currentUser, currentUserClaims }: { currentUser: User, currentUserClaims: any }) {
     const { toast } = useToast();
-    
-    const mockUsers: UserWithProfile[] = useMemo(() => [
-        {
-            id: currentUser.uid,
-            displayName: currentUser.displayName || 'Head Admin',
-            email: currentUser.email || 'head-admin@test.va',
-            role: 'head-admin',
-            photoURL: currentUser.photoURL || 'https://picsum.photos/seed/104/200/200',
-            createdAt: { toDate: () => new Date(), seconds: 0, nanoseconds: 0 }
-        },
-        {
-            id: 'mock-admin-id',
-            displayName: 'Adam Admin',
-            email: 'adam.admin@test.va',
-            role: 'admin',
-            photoURL: 'https://picsum.photos/seed/103/200/200',
-            createdAt: { toDate: () => new Date(), seconds: 0, nanoseconds: 0 }
-        },
-        {
-            id: 'mock-reviewer-id',
-            displayName: 'Sarah Reviewer',
-            email: 'sarah.reviewer@test.va',
-            role: 'reviewer',
-            photoURL: 'https://picsum.photos/seed/102/200/200',
-            createdAt: { toDate: () => new Date(), seconds: 0, nanoseconds: 0 }
-        },
-        {
-            id: 'mock-user-id',
-            displayName: 'John Pilot',
-            email: 'john.pilot@example.com',
-            role: 'user',
-            photoURL: 'https://picsum.photos/seed/101/200/200',
-            createdAt: { toDate: () => new Date(), seconds: 0, nanoseconds: 0 }
-        }
-    ], [currentUser]);
-    
-    const [users, setUsers] = useState<UserWithProfile[]>(mockUsers);
-    const loading = false;
+    const firestore = useFirestore();
+    const [isUpdating, setIsUpdating] = useState<string | null>(null);
+
+    const usersQuery = useMemoFirebase(() => {
+        if (!firestore) return null;
+        return collection(firestore, 'users');
+    }, [firestore]);
+
+    const { data: users, isLoading: loading } = useCollection<UserWithProfile>(usersQuery);
 
     const handleRoleChange = async (userId: string, newRole: 'user' | 'admin' | 'head-admin' | 'reviewer') => {
-        setUsers(currentUsers => currentUsers.map(u => u.id === userId ? { ...u, role: newRole } : u));
-        
-        toast({
-            title: "Mock Data",
-            description: `This is for demonstration and is not saved to the database.`,
-        });
+        if (!firestore) return;
+        setIsUpdating(userId);
+        const userRef = doc(firestore, 'users', userId);
+        try {
+            await updateDoc(userRef, { role: newRole });
+            toast({
+                title: "Role Updated",
+                description: `User role has been successfully changed to ${newRole}.`,
+            });
+        } catch (error: any) {
+            toast({
+                variant: 'destructive',
+                title: "Update Failed",
+                description: error.message,
+            });
+        } finally {
+            setIsUpdating(null);
+        }
     };
     
     return (
@@ -163,7 +154,14 @@ export function UserManagementClient({ currentUser, currentUserClaims }: { curre
                         {loading && <TableRow><TableCell colSpan={3} className="text-center">Loading users...</TableCell></TableRow>}
                         {!loading && users?.length === 0 && <TableRow><TableCell colSpan={3} className="text-center h-24">No users found.</TableCell></TableRow>}
                         {users?.sort((a, b) => (a.displayName || '').localeCompare(b.displayName || '')).map(user => (
-                            <UserRow key={user.id} user={user} currentUser={currentUser} currentUserClaims={currentUserClaims} onRoleChange={handleRoleChange} />
+                            <UserRow 
+                                key={user.id} 
+                                user={user} 
+                                currentUser={currentUser} 
+                                currentUserClaims={currentUserClaims} 
+                                onRoleChange={handleRoleChange} 
+                                isUpdating={isUpdating === user.id}
+                            />
                         ))}
                     </TableBody>
                 </Table>
