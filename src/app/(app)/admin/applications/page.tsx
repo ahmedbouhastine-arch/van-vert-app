@@ -27,13 +27,13 @@ import {
 import { StatusBadge } from "@/components/StatusBadge";
 import { format } from "date-fns";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { useUser, useFirestore, useCollection, useMemoFirebase } from "@/firebase";
-import React, { useMemo } from "react";
+import { useUser } from "@/firebase";
+import React from "react";
 import type { Application, UserProfile, FirebaseTimestamp } from "@/types";
 import { useToast } from "@/hooks/use-toast";
 import { useRouter } from "next/navigation";
 import { LoadingScreen } from "@/components/LoadingScreen";
-import { collection, query, orderBy } from "firebase/firestore";
+import { mockApplications } from "@/lib/mock-data";
 
 // Helper function to safely format dates, whether they are Timestamps or strings
 const safeFormatDate = (date: FirebaseTimestamp | Date | string | undefined | null, formatString: string) => {
@@ -51,36 +51,14 @@ const safeFormatDate = (date: FirebaseTimestamp | Date | string | undefined | nu
 
 function AdminApplicationsContent() {
     const { toast } = useToast();
-    const firestore = useFirestore();
-
-    const appsQuery = useMemoFirebase(() => {
-        if (!firestore) return null;
-        return query(collection(firestore, "applications"), orderBy("updatedAt", "desc"));
-    }, [firestore]);
-
-    const { data: applications, isLoading: appsLoading } = useCollection<Application>(appsQuery);
     
-    const usersQuery = useMemoFirebase(() => {
-        if (!firestore) return null;
-        return collection(firestore, "users");
-    }, [firestore]);
-
-    const { data: users, isLoading: usersLoading } = useCollection<UserProfile>(usersQuery);
-
-    const allApplications = useMemo(() => {
-        if (!applications || !users) return [];
-        return applications.map(app => {
-            const user = users.find((u) => u.id === app.userId);
-            const appWithUser = { ...app, user };
-            return appWithUser;
-        });
-    }, [applications, users]);
-
-    const isLoading = appsLoading || usersLoading;
+    // For presentation, we are using mock data.
+    const allApplications = mockApplications;
+    const isLoading = false;
 
     const handleSendReminder = (applicantName: string | undefined, licenseType: string) => {
         toast({
-            title: "Reminder Sent",
+            title: "Reminder Sent (Mock)",
             description: `A reminder email has been sent to ${applicantName || 'the applicant'} for their ${licenseType} application.`,
         })
     }
@@ -110,7 +88,7 @@ function AdminApplicationsContent() {
                 <TableCell className="hidden sm:table-cell">
                 <div className="flex items-center gap-2">
                     <Avatar className="h-8 w-8">
-                        {app.user?.photoURL && <AvatarImage src={app.user?.photoURL} alt={app.user?.displayName} data-ai-hint="person portrait" />}
+                        {app.user?.photoURL && <AvatarImage src={app.user.photoURL} alt={app.user.displayName} data-ai-hint="person portrait" />}
                         <AvatarFallback>{app.user?.displayName?.charAt(0)}</AvatarFallback>
                     </Avatar>
                     <div>
