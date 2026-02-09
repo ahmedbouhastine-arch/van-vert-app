@@ -23,7 +23,7 @@ export default function VerifyEmailPage() {
         // IMPORTANT: Wait for claims to be loaded before deciding where to redirect.
         // This prevents race conditions on new user registration.
         if (claims) {
-            const isAdmin = ['admin', 'head-admin', 'reviewer'].includes(claims.role);
+            const isAdmin = ['reviewer', 'admin', 'head-admin'].includes(claims.role);
             const homePath = isAdmin ? '/admin' : '/dashboard';
             router.push(homePath);
         }
