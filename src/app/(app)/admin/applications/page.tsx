@@ -138,17 +138,16 @@ function ApplicationTableRow({ application }: { application: Application }) {
     )
 }
 
-function AdminApplicationsContent() {
+function AdminApplicationsTableBody() {
     const firestore = useFirestore();
-    const { claims } = useUser();
-    const isAuthorized = claims?.role && ['reviewer', 'admin', 'head-admin'].includes(claims.role);
     
+    // This component assumes it is rendered by an authorized user.
+    // The query is safe to create here.
     const applicationsQuery = useMemoFirebase(() =>
-        (firestore && isAuthorized) ? query(collection(firestore, "applications"), orderBy("submittedAt", "desc")) as any : null
-    , [firestore, isAuthorized]);
+        firestore ? query(collection(firestore, "applications"), orderBy("submittedAt", "desc")) as any : null
+    , [firestore]);
 
     const { data: allApplications, isLoading } = useCollection<Application>(applicationsQuery);
-
 
     if (isLoading) {
         return (
@@ -200,6 +199,7 @@ export default function AdminApplicationsPage() {
   
   if (!isAuthorized) {
     redirect('/dashboard');
+    return null; // Stop rendering immediately
   }
 
   return (
@@ -235,7 +235,7 @@ export default function AdminApplicationsPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-                <AdminApplicationsContent />
+                <AdminApplicationsTableBody />
             </TableBody>
           </Table>
         </CardContent>
