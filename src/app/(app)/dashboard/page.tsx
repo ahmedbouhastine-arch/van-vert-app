@@ -1,3 +1,4 @@
+
 'use client';
 
 import Link from "next/link";
@@ -40,9 +41,13 @@ function ApplicationCardSkeleton() {
         <Card>
             <CardHeader>
                 <Skeleton className="h-6 w-3/4" />
+                <Skeleton className="h-4 w-1/2" />
             </CardHeader>
             <CardContent>
-                <Skeleton className="h-4 w-1/2" />
+                <div className="flex items-center justify-between">
+                    <Skeleton className="h-4 w-24" />
+                    <Skeleton className="h-6 w-20" />
+                </div>
             </CardContent>
             <CardFooter>
                 <Skeleton className="h-10 w-full" />
@@ -57,37 +62,35 @@ export default function DashboardPage() {
   const router = useRouter();
   const firestore = useFirestore();
 
+  const isUserAnAdmin = !userLoading && claims && ['reviewer', 'admin', 'head-admin'].includes(claims.role);
+
   useEffect(() => {
     // Redirect admins to their own dashboard to prevent confusion
-    if (!userLoading && claims && ['reviewer', 'admin', 'head-admin'].includes(claims.role)) {
+    if (isUserAnAdmin) {
       router.push('/admin');
     }
-  }, [userLoading, claims, router]);
+  }, [isUserAnAdmin, router]);
 
   const appsQuery = useMemoFirebase(() => {
-    if (!firestore || !user) return null;
+    if (!firestore || !user || isUserAnAdmin) return null;
     return query(
         collection(firestore, "applications"), 
         where("userId", "==", user.uid),
         orderBy("updatedAt", "desc"),
         limit(3)
     );
-  }, [firestore, user]);
+  }, [firestore, user, isUserAnAdmin]);
 
   const { data: recentApplications, loading: appsLoading } = useCollection<Application>(appsQuery);
 
   const isLoading = userLoading || appsLoading;
-  const isUserAnAdmin = !userLoading && claims && ['reviewer', 'admin', 'head-admin'].includes(claims.role);
 
   // While redirecting or loading, show a loading screen.
-  if (userLoading || isUserAnAdmin) {
-    return <LoadingScreen text="Loading Dashboard..." />;
+  if (isLoading || isUserAnAdmin) {
+    return <LoadingScreen text={isUserAnAdmin ? "Redirecting to Admin Dashboard..." : "Loading Dashboard..."} />;
   }
 
   const renderContent = () => {
-    if (isLoading) {
-        return Array.from({ length: 3 }).map((_, i) => <ApplicationCardSkeleton key={i} />);
-    }
     if (!recentApplications || recentApplications.length === 0) {
         return (
             <div className="text-center text-muted-foreground py-8 col-span-full">
@@ -148,7 +151,11 @@ export default function DashboardPage() {
           </CardDescription>
         </CardHeader>
         <CardContent className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {renderContent()}
+            {isLoading ? (
+                Array.from({ length: recentApplications?.length || 3 }).map((_, i) => <ApplicationCardSkeleton key={i} />)
+            ) : (
+                renderContent()
+            )}
         </CardContent>
         {!isLoading && recentApplications && recentApplications.length > 0 && (
             <CardFooter className="border-t pt-6">
