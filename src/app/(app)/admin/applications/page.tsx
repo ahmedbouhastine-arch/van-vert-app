@@ -1,3 +1,4 @@
+
 'use client';
 import Link from "next/link";
 import { MoreHorizontal } from "lucide-react";
@@ -27,13 +28,14 @@ import {
 import { StatusBadge } from "@/components/StatusBadge";
 import { format } from "date-fns";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { useUser } from "@/firebase";
+import { useUser, useFirestore, useCollection, useDoc, useMemoFirebase } from "@/firebase";
 import React from "react";
 import type { Application, UserProfile, FirebaseTimestamp } from "@/types";
 import { useToast } from "@/hooks/use-toast";
 import { useRouter } from "next/navigation";
 import { LoadingScreen } from "@/components/LoadingScreen";
-import { mockApplications } from "@/lib/mock-data";
+import { collection, query, orderBy, doc } from "firebase/firestore";
+import { Skeleton } from "@/components/ui/skeleton";
 
 // Helper function to safely format dates, whether they are Timestamps or strings
 const safeFormatDate = (date: FirebaseTimestamp | Date | string | undefined | null, formatString: string) => {
@@ -49,19 +51,103 @@ const safeFormatDate = (date: FirebaseTimestamp | Date | string | undefined | nu
   }
 };
 
-function AdminApplicationsContent() {
+
+function ApplicationTableRow({ application }: { application: Application }) {
+    const firestore = useFirestore();
     const { toast } = useToast();
-    
-    // For presentation, we are using mock data.
-    const allApplications = mockApplications;
-    const isLoading = false;
+
+    const userRef = useMemoFirebase(() => 
+        firestore ? doc(firestore, 'users', application.userId) as any : null,
+        [firestore, application.userId]
+    );
+    const { data: user, isLoading: userLoading } = useDoc<UserProfile>(userRef);
 
     const handleSendReminder = (applicantName: string | undefined, licenseType: string) => {
         toast({
-            title: "Reminder Sent (Mock)",
+            title: "Reminder Sent",
             description: `A reminder email has been sent to ${applicantName || 'the applicant'} for their ${licenseType} application.`,
         })
     }
+
+    if (userLoading) {
+        return (
+            <TableRow>
+                <TableCell className="hidden sm:table-cell">
+                    <div className="flex items-center gap-2">
+                        <Skeleton className="h-8 w-8 rounded-full" />
+                        <div>
+                            <Skeleton className="h-4 w-24" />
+                            <Skeleton className="h-3 w-32 mt-1" />
+                        </div>
+                    </div>
+                </TableCell>
+                <TableCell><Skeleton className="h-4 w-20" /></TableCell>
+                <TableCell><Skeleton className="h-6 w-24" /></TableCell>
+                <TableCell className="hidden md:table-cell"><Skeleton className="h-4 w-28" /></TableCell>
+                <TableCell><Skeleton className="h-8 w-8" /></TableCell>
+            </TableRow>
+        );
+    }
+    
+    return (
+        <TableRow>
+            <TableCell className="hidden sm:table-cell">
+            <div className="flex items-center gap-2">
+                <Avatar className="h-8 w-8">
+                    {user?.photoURL && <AvatarImage src={user.photoURL} alt={user.displayName} data-ai-hint="person portrait" />}
+                    <AvatarFallback>{user?.displayName?.charAt(0)}</AvatarFallback>
+                </Avatar>
+                <div>
+                    <div className="font-medium">{user?.displayName}</div>
+                    <div className="text-xs text-muted-foreground">{user?.email}</div>
+                </div>
+            </div>
+            </TableCell>
+            <TableCell className="font-medium">
+            <Link href={`/admin/applications/${application.id}`} className="hover:underline">
+            {application.licenseType}
+            </Link>
+            </TableCell>
+            <TableCell>
+            <StatusBadge status={application.status} />
+            </TableCell>
+            <TableCell className="hidden md:table-cell">
+            {safeFormatDate(application.submittedAt, "MMMM d, yyyy")}
+            </TableCell>
+            <TableCell>
+            <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                <Button
+                    aria-haspopup="true"
+                    size="icon"
+                    variant="ghost"
+                >
+                    <MoreHorizontal className="h-4 w-4" />
+                    <span className="sr-only">Toggle menu</span>
+                </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                    <DropdownMenuItem asChild>
+                    <Link href={`/admin/applications/${application.id}`}>Review Application</Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem onSelect={() => handleSendReminder(user?.displayName, application.licenseType)}>Send Reminder</DropdownMenuItem>
+                </DropdownMenuContent>
+            </DropdownMenu>
+            </TableCell>
+        </TableRow>
+    )
+}
+
+function AdminApplicationsContent() {
+    const firestore = useFirestore();
+    
+    const applicationsQuery = useMemoFirebase(() =>
+        firestore ? query(collection(firestore, "applications"), orderBy("submittedAt", "desc")) as any : null
+    , [firestore]);
+
+    const { data: allApplications, isLoading } = useCollection<Application>(applicationsQuery);
+
 
     if (isLoading) {
         return (
@@ -73,7 +159,7 @@ function AdminApplicationsContent() {
         )
     }
 
-    if (allApplications.length === 0) {
+    if (!allApplications || allApplications.length === 0) {
         return (
             <TableRow>
                 <TableCell colSpan={5} className="text-center h-24">No submitted applications found.</TableCell>
@@ -84,52 +170,7 @@ function AdminApplicationsContent() {
     return (
         <>
             {allApplications.map((app) => (
-            <TableRow key={app.id}>
-                <TableCell className="hidden sm:table-cell">
-                <div className="flex items-center gap-2">
-                    <Avatar className="h-8 w-8">
-                        {app.user?.photoURL && <AvatarImage src={app.user.photoURL} alt={app.user.displayName} data-ai-hint="person portrait" />}
-                        <AvatarFallback>{app.user?.displayName?.charAt(0)}</AvatarFallback>
-                    </Avatar>
-                    <div>
-                        <div className="font-medium">{app.user?.displayName}</div>
-                        <div className="text-xs text-muted-foreground">{app.user?.email}</div>
-                    </div>
-                </div>
-                </TableCell>
-                <TableCell className="font-medium">
-                <Link href={`/admin/applications/${app.id}`} className="hover:underline">
-                {app.licenseType}
-                </Link>
-                </TableCell>
-                <TableCell>
-                <StatusBadge status={app.status} />
-                </TableCell>
-                <TableCell className="hidden md:table-cell">
-                {safeFormatDate(app.submittedAt, "MMMM d, yyyy")}
-                </TableCell>
-                <TableCell>
-                <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                    <Button
-                        aria-haspopup="true"
-                        size="icon"
-                        variant="ghost"
-                    >
-                        <MoreHorizontal className="h-4 w-4" />
-                        <span className="sr-only">Toggle menu</span>
-                    </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                    <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                        <DropdownMenuItem asChild>
-                        <Link href={`/admin/applications/${app.id}`}>Review Application</Link>
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onSelect={() => handleSendReminder(app.user?.displayName, app.licenseType)}>Send Reminder</DropdownMenuItem>
-                    </DropdownMenuContent>
-                </DropdownMenu>
-                </TableCell>
-            </TableRow>
+                <ApplicationTableRow key={app.id} application={app} />
             ))}
         </>
     )
