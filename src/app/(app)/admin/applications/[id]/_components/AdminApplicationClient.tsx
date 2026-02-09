@@ -75,12 +75,10 @@ async function checkExpiryAction(documents: ApplicationDocument[]) {
 function DocumentReviewCard({
   doc,
   onStatusChange,
-  isReviewer,
   onDownload,
 }: {
   doc: ApplicationDocument;
   onStatusChange: (docId: string, status: DocumentStatus) => void;
-  isReviewer: boolean;
   onDownload: (storagePath: string) => void;
 }) {
   const documentStatuses: DocumentStatus[] = [
@@ -104,7 +102,6 @@ function DocumentReviewCard({
             <Select
               value={doc.status}
               onValueChange={(val) => onStatusChange(doc.id, val as DocumentStatus)}
-              disabled={isReviewer}
             >
               <SelectTrigger
                 className={cn(
@@ -200,9 +197,11 @@ export function AdminApplicationClient({
   const [recencyResult, setRecencyResult] = useState<CheckRecencyOutput | null>(null);
   const [isRecencyChecking, setIsRecencyChecking] = useState(true);
   const { toast } = useToast();
-  const isReviewer = claims?.role === 'reviewer';
+  
   const firestore = useFirestore();
   const storage = useStorage();
+
+  const isAdminOrHigher = claims?.role === 'admin' || claims?.role === 'head-admin';
 
   useEffect(() => {
     const handleRecencyCheck = async () => {
@@ -240,17 +239,26 @@ export function AdminApplicationClient({
             return;
         }
 
-        setAppState(prev => ({
-            ...prev,
-            documents: prev.documents.map(doc => {
-                const checkResult = results.find(r => r.name === doc.name);
-                if (checkResult?.isExpiringSoon) {
-                    return { ...doc, isExpiringSoon: true, status: 'needs_attention' };
-                }
-                return doc;
-            })
-        }));
+        const updatedDocs = appState.documents.map(doc => {
+            const checkResult = results.find(r => r.name === doc.name);
+            if (checkResult?.isExpiringSoon) {
+                return { ...doc, isExpiringSoon: true, status: 'needs_attention' as const };
+            }
+            return doc;
+        });
+
+        setAppState(prev => ({ ...prev, documents: updatedDocs }));
         
+        if (firestore) {
+            const appRef = doc(firestore, 'applications', appState.id);
+            updateDoc(appRef, { documents: updatedDocs }).catch(e => {
+                 const permissionError = new FirestorePermissionError({ path: appRef.path, operation: 'update', requestResourceData: { documents: updatedDocs } });
+                 errorEmitter.emit('permission-error', permissionError);
+                 toast({ variant: 'destructive', title: 'Save Failed' });
+                 setAppState(initialApplication);
+            });
+        }
+
         toast({
             variant: "destructive",
             title: "Expiry Warning",
@@ -260,12 +268,29 @@ export function AdminApplicationClient({
   };
 
   const handleDocumentStatusChange = (docId: string, newStatus: DocumentStatus) => {
-    setAppState((prev) => ({
-      ...prev,
-      documents: prev.documents.map((doc) =>
-        doc.id === docId ? { ...doc, status: newStatus } : doc
-      ),
-    }));
+    const newDocuments = appState.documents.map((doc) =>
+      doc.id === docId ? { ...doc, status: newStatus } : doc
+    );
+    // Optimistic UI update
+    setAppState((prev) => ({ ...prev, documents: newDocuments }));
+
+    // Persist change to Firestore
+    if (!firestore) return;
+    const appRef = doc(firestore, 'applications', appState.id);
+    updateDoc(appRef, { documents: newDocuments })
+        .then(() => {
+            toast({ title: "Document Status Updated" });
+        })
+        .catch((e) => {
+            const permissionError = new FirestorePermissionError({
+                path: appRef.path,
+                operation: 'update',
+                requestResourceData: { documents: newDocuments },
+            });
+            errorEmitter.emit('permission-error', permissionError);
+            toast({ variant: 'destructive', title: "Update Failed", description: "Could not save document status." });
+            setAppState(initialApplication); // Revert on failure
+        });
   };
 
   const handleSaveChanges = () => {
@@ -277,7 +302,6 @@ export function AdminApplicationClient({
         const updatedData = {
             status: status,
             feedback: feedback,
-            documents: appState.documents,
             updatedAt: serverTimestamp()
         };
 
@@ -296,11 +320,11 @@ export function AdminApplicationClient({
                     console.error("Failed to create notification:", notifError);
                  });
             }
-
+            
             setAppState(prev => ({ ...prev, status, feedback }));
             toast({
                 title: "Changes Saved",
-                description: "Application status and document statuses have been updated.",
+                description: "Application status and feedback have been updated.",
             });
         })
         .catch((e: any) => {
@@ -317,8 +341,6 @@ export function AdminApplicationClient({
                 description: "You might not have permissions to perform this action.",
             });
             
-            // Revert optimistic state changes
-            setAppState(initialApplication);
             setStatus(initialApplication.status);
             setFeedback(initialApplication.feedback || "");
         });
@@ -361,7 +383,7 @@ export function AdminApplicationClient({
         <div className="grid gap-4 self-start">
             <h2 className="font-semibold text-lg">Uploaded Documents</h2>
             {appState.documents.map((doc) => (
-            <DocumentReviewCard key={doc.id} doc={doc} onStatusChange={handleDocumentStatusChange} isReviewer={isReviewer} onDownload={handleDownload} />
+            <DocumentReviewCard key={doc.id} doc={doc} onStatusChange={handleDocumentStatusChange} onDownload={handleDownload} />
             ))}
         </div>
         <div className="grid gap-6">
@@ -440,7 +462,7 @@ export function AdminApplicationClient({
                 <CardContent className="space-y-6">
                     <div>
                         <Label htmlFor="status" className="mb-2 block">Application Status</Label>
-                        <Select value={status} onValueChange={(val) => setStatus(val as ApplicationStatus)} disabled={isReviewer}>
+                        <Select value={status} onValueChange={(val) => setStatus(val as ApplicationStatus)} disabled={!isAdminOrHigher}>
                             <SelectTrigger id="status">
                                 <SelectValue placeholder="Change status..." />
                             </SelectTrigger>
@@ -457,17 +479,22 @@ export function AdminApplicationClient({
                             value={feedback}
                             onChange={(e) => setFeedback(e.target.value)}
                             rows={5}
-                            readOnly={isReviewer}
+                            readOnly={!isAdminOrHigher}
                         />
                     </div>
                     <Button onClick={handleCheckExpiry} disabled={isPending} variant="secondary" className="w-full">
                         {isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Bot className="mr-2 h-4 w-4" />}
                         AI Check Document Expiry
                     </Button>
-                    <Button onClick={handleSaveChanges} disabled={isPending || isReviewer} className="w-full">
+                    <Button onClick={handleSaveChanges} disabled={isPending || !isAdminOrHigher} className="w-full">
                         {isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
                         Save Changes
                     </Button>
+                     {!isAdminOrHigher && (
+                        <p className="text-xs text-center text-muted-foreground">
+                            You have reviewer permissions. You can change document statuses, but only Admins can change the overall application status or feedback.
+                        </p>
+                    )}
                 </CardContent>
             </Card>
         </div>

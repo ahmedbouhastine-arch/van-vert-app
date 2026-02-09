@@ -18,7 +18,8 @@
         },
         "role": {
           "type": "string",
-          "description": "User's role (e.g., user, reviewer, admin, head-admin)."
+          "description": "User's role, determining their access level.",
+          "enum": ["user", "reviewer", "admin", "head-admin"]
         },
         "displayName": {
           "type": "string",
@@ -97,13 +98,21 @@
             },
             "required": ["id", "date", "duration", "aircraft"]
           }
+        },
+        "documents": {
+          "type": "array",
+          "description": "An array of documents associated with the application.",
+          "items": {
+            "$ref": "#/entities/Document"
+          }
         }
       },
       "required": [
         "id",
         "userId",
         "licenseType",
-        "status"
+        "status",
+        "documents"
       ]
     },
     "Document": {
@@ -229,9 +238,9 @@
         "definition": {
           "entityName": "User",
           "schema": {
-            "$ref": "#/backend/entities/User"
+            "$ref": "#/entities/User"
           },
-          "description": "Stores user profiles and roles. This data is critical for role-based access control.",
+          "description": "Stores user profiles and roles. This data is critical for the Role-Based Access Control (RBAC) system. Head Admins can manage roles, while Admins have limited update capabilities.",
           "params": [
             {
               "name": "userId",
@@ -245,9 +254,9 @@
         "definition": {
           "entityName": "Application",
           "schema": {
-            "$ref": "#/backend/entities/Application"
+            "$ref": "#/entities/Application"
           },
-          "description": "Top-level collection for all applications. User-specific access is controlled by security rules based on the 'userId' field in the document. Admins have broader access.",
+          "description": "Top-level collection for all applications. Security rules ensure users can only access their own applications. Reviewers can view all applications and modify document statuses, while Admins can change the overall application status.",
           "params": [
             {
               "name": "applicationId",
@@ -260,8 +269,8 @@
         "path": "/users/{userId}/notifications/{notificationId}",
         "definition": {
           "entityName": "Notification",
-          "schema": { "$ref": "#/backend/entities/Notification" },
-          "description": "Subcollection storing notifications for a specific user. This ensures notifications are private and queries are efficient.",
+          "schema": { "$ref": "#/entities/Notification" },
+          "description": "Subcollection storing notifications for a specific user. Notifications are created by Admins when an application's status changes.",
           "params": [
              {
               "name": "userId",
@@ -275,6 +284,6 @@
         }
       }
     ],
-    "reasoning": "The Firestore data structure has been refactored to support administrative roles efficiently. Applications are now in a top-level collection to allow admins to query across all submissions, which is not feasible with a nested structure. Security is maintained through Firestore rules that check user roles and document ownership.\n\n*   **Users (Collection: `/users/{userId}`):** Stores user profiles and roles. This collection is the source of truth for role-based access control (RBAC).\n\n*   **Applications (Collection: `/applications/{applicationId}`):** A flat collection for all applications. A user can only access their own applications (verified via the `userId` field in the document). Admins can list and view all applications. Documents are stored as an array within each application document, simplifying data retrieval.\n\n* **Notifications (Subcollection: `/users/{userId}/notifications/{notificationId}`):** A subcollection under each user to store their personal notifications. This is a secure and scalable pattern for user-specific data."
+    "reasoning": "The Firestore data structure supports a granular, four-tier role-based access control system (User, Reviewer, Admin, Head Admin). Placing applications in a top-level collection allows privileged roles (Reviewer and above) to query across all submissions, a critical feature for the review process. Security is enforced through Firestore rules that check user roles and document ownership, ensuring a secure and scalable architecture.\n\n*   **Users (`/users/{userId}`):** The source of truth for user roles, essential for RBAC.\n*   **Applications (`/applications/{applicationId}`):** A flat collection enabling cross-user queries for admins/reviewers, while restricting regular users to their own data via security rules.\n* **Notifications (`/users/{userId}/notifications/{notificationId}`):** A secure, user-specific subcollection for private notifications."
   }
 }
