@@ -1,9 +1,8 @@
-
 'use client';
 
 import { AnalyticsClient } from "./_components/AnalyticsClient";
 import { useUser } from "@/firebase";
-import { useRouter } from "next/navigation";
+import { redirect } from "next/navigation";
 import React from "react";
 import { LoadingScreen } from "@/components/LoadingScreen";
 import { subMonths, format } from "date-fns";
@@ -28,15 +27,6 @@ const generateMockChartData = (): AnalyticsDataPoint[] => {
     return data;
 }
 
-function RedirectToAdminDashboard() {
-    const router = useRouter();
-    React.useEffect(() => {
-        router.push('/admin');
-    }, [router]);
-    return <LoadingScreen text="Access Denied. Redirecting..." />;
-}
-
-
 export default function AnalyticsPage() {
     const { loading, claims } = useUser();
 
@@ -57,7 +47,7 @@ export default function AnalyticsPage() {
     const isAuthorized = claims?.role && ['admin', 'head-admin'].includes(claims.role);
 
     if (!isAuthorized) {
-        return <RedirectToAdminDashboard />;
+        redirect('/admin');
     }
 
     return (

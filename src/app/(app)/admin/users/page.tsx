@@ -1,19 +1,10 @@
-
 'use client';
 
 import { useUser } from "@/firebase";
-import { useRouter } from "next/navigation";
+import { redirect } from "next/navigation";
 import React from "react";
 import { LoadingScreen } from "@/components/LoadingScreen";
 import { UserManagementClient } from "./_components/UserManagementClient";
-
-function RedirectToAdminDashboard() {
-    const router = useRouter();
-    React.useEffect(() => {
-        router.push('/admin');
-    }, [router]);
-    return <LoadingScreen text="Access Denied. Redirecting..." />;
-}
 
 export default function UserManagementPage() {
     const { user, loading, claims } = useUser();
@@ -23,7 +14,7 @@ export default function UserManagementPage() {
     }
 
     if (claims?.role !== 'head-admin') {
-        return <RedirectToAdminDashboard />;
+        redirect('/admin');
     }
     
     return (

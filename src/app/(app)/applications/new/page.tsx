@@ -1,4 +1,3 @@
-
 'use client';
 
 import {
@@ -9,8 +8,8 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { licenseTypes } from "@/lib/licensing";
-import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState } from 'react';
+import { redirect } from 'next/navigation';
 import { useFirestore, useUser } from '@/firebase';
 import { addDoc, collection, serverTimestamp } from 'firebase/firestore';
 import { Button } from '@/components/ui/button';
@@ -18,6 +17,7 @@ import { ArrowRight, Loader2 } from 'lucide-react';
 import type { LicenseType } from '@/lib/licensing';
 import { useToast } from '@/hooks/use-toast';
 import { LoadingScreen } from "@/components/LoadingScreen";
+import { useRouter } from "next/navigation";
 
 function NewApplicationButton({ licenseType }: { licenseType: LicenseType }) {
   const [isCreating, setIsCreating] = useState(false);
@@ -95,16 +95,13 @@ function NewApplicationButton({ licenseType }: { licenseType: LicenseType }) {
 
 export default function NewApplicationPage() {
   const { claims, loading: userLoading } = useUser();
-  const router = useRouter();
 
-  useEffect(() => {
-    if (!userLoading && claims && ['reviewer', 'admin', 'head-admin'].includes(claims.role)) {
-      router.push('/admin');
-    }
-  }, [userLoading, claims, router]);
-
-  if (userLoading || (claims && ['reviewer', 'admin', 'head-admin'].includes(claims.role))) {
+  if (userLoading) {
     return <LoadingScreen text="Verifying access..." />;
+  }
+
+  if (claims && ['reviewer', 'admin', 'head-admin'].includes(claims.role)) {
+    redirect('/admin');
   }
 
   return (

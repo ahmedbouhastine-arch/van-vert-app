@@ -1,9 +1,8 @@
-
 'use client';
 
 import Link from "next/link";
-import { useState, useMemo, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useMemo } from "react";
+import { redirect } from "next/navigation";
 import { PlusCircle, MoreHorizontal } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -60,15 +59,8 @@ const safeFormatDate = (date: FirebaseTimestamp | Date | string | undefined | nu
 
 export default function MyApplicationsPage() {
   const { user, claims, loading: userLoading } = useUser();
-  const router = useRouter();
   const [selectedFeedback, setSelectedFeedback] = useState<string | null>(null);
   const firestore = useFirestore();
-
-  useEffect(() => {
-    if (!userLoading && claims && ['reviewer', 'admin', 'head-admin'].includes(claims.role)) {
-      router.push('/admin');
-    }
-  }, [userLoading, claims, router]);
 
   // Use live data for regular users
   const appsQuery = useMemoFirebase(() => {
@@ -80,8 +72,12 @@ export default function MyApplicationsPage() {
   
   const isLoading = userLoading || appsLoading;
 
-  if (isLoading || (claims && ['reviewer', 'admin', 'head-admin'].includes(claims.role))) {
+  if (userLoading) {
     return <LoadingScreen text="Loading applications..." />;
+  }
+
+  if (claims && ['reviewer', 'admin', 'head-admin'].includes(claims.role)) {
+    redirect('/admin');
   }
 
   return (

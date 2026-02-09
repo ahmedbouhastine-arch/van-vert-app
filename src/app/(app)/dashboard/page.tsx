@@ -1,9 +1,7 @@
-
 'use client';
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useEffect } from "react";
+import { redirect } from "next/navigation";
 import { PlusCircle, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -59,15 +57,12 @@ function ApplicationCardSkeleton() {
 
 export default function DashboardPage() {
   const { user, claims, loading: userLoading } = useUser();
-  const router = useRouter();
   const firestore = useFirestore();
 
   // Redirect admins immediately if claims are loaded
-  useEffect(() => {
-    if (!userLoading && claims && ['reviewer', 'admin', 'head-admin'].includes(claims.role)) {
-      router.push('/admin');
-    }
-  }, [userLoading, claims, router]);
+  if (!userLoading && claims && ['reviewer', 'admin', 'head-admin'].includes(claims.role)) {
+    redirect('/admin');
+  }
 
   const appsQuery = useMemoFirebase(() => {
     // Only form the query if we know for sure this is a regular user.
@@ -86,7 +81,7 @@ export default function DashboardPage() {
   const { data: recentApplications, loading: appsLoading } = useCollection<Application>(appsQuery);
 
   // If user data is loading, or if the user is an admin-type role (and will be redirected), show a loading screen.
-  if (userLoading || (claims && claims.role !== 'user')) {
+  if (userLoading) {
       const text = (claims && claims.role !== 'user') ? "Redirecting to Admin Dashboard..." : "Loading Dashboard...";
       return <LoadingScreen text={text} />;
   }
