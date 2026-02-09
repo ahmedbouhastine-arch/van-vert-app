@@ -35,7 +35,7 @@ export default function LoginPage() {
 
     useEffect(() => {
         if (!loading && user && claims) {
-            const isAdmin = claims?.role === 'admin' || claims?.role === 'head-admin' || claims?.role === 'reviewer';
+            const isAdmin = ['reviewer', 'admin', 'head-admin'].includes(claims.role);
             const homePath = isAdmin ? '/admin' : '/dashboard';
             router.push(homePath);
         }
@@ -78,7 +78,7 @@ export default function LoginPage() {
         await signInWithGoogle(auth, firestore);
     }
 
-    if (loading || user) {
+    if (loading || (user && !claims)) {
       return <LoadingScreen text="Authenticating..." />;
     }
 

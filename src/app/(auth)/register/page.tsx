@@ -46,7 +46,7 @@ export default function RegisterPage() {
 
     useEffect(() => {
         if (!loading && user && claims) {
-            const isAdmin = claims?.role === 'admin' || claims?.role === 'head-admin' || claims?.role === 'reviewer';
+            const isAdmin = ['reviewer', 'admin', 'head-admin'].includes(claims.role);
             const homePath = isAdmin ? '/admin' : '/dashboard';
             router.push(homePath);
         }

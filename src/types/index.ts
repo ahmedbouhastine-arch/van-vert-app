@@ -12,7 +12,7 @@ export type UserProfile = {
   email: string;
   displayName?: string;
   photoURL?: string;
-  role: 'user' | 'admin' | 'head-admin' | 'reviewer';
+  role: 'user' | 'reviewer' | 'admin' | 'head-admin';
   createdAt: FirebaseTimestamp;
 };
 
