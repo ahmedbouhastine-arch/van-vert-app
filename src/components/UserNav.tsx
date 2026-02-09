@@ -1,4 +1,3 @@
-
 "use client";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -14,12 +13,10 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useUser, useAuth } from "@/firebase";
 import { signOut } from "firebase/auth";
-import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useToast } from "@/hooks/use-toast";
 
 export function UserNav() {
-  const router = useRouter();
   const { user } = useUser();
   const auth = useAuth();
   const { toast } = useToast();
