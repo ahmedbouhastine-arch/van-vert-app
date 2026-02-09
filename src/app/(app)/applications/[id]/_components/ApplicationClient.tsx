@@ -497,7 +497,6 @@ export function ApplicationClient({
                     </TableRow>
                 </TableBody>
              )}
-            </Table>
         </CardContent>
         <CardFooter>
             {!isSubmitted && !showLogForm && (
@@ -536,5 +535,3 @@ export function ApplicationClient({
     </div>
   );
 }
-
-    

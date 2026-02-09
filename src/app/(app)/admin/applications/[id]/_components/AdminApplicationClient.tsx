@@ -460,5 +460,3 @@ export function AdminApplicationClient({
     </div>
   );
 }
-
-    
