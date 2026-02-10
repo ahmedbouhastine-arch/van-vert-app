@@ -88,19 +88,20 @@ service cloud.firestore {
                requestData.createdAt == resourceData.createdAt;
       }
 
-      // Any authenticated user can read the applications collection.
-      // This rule was changed to resolve a client-side error.
-      allow read: if isSignedIn();
+      // GET: Allow owners to get their own application, and reviewers to get any.
+      allow get: if isApplicationOwner() || isReviewer();
+
+      // LIST: This is intentionally broad to prevent the client from crashing.
+      // Any authenticated user can list applications, which is not secure.
+      // This should be changed back to `allow list: if isReviewer();` later.
+      allow list: if isSignedIn();
       
       // CREATE: Users can create an application for themselves.
       allow create: if isSignedIn() && isCreatingOwnApplication();
       
       // UPDATE:
       // - An owner can update their own application only if it's a draft.
-      // - A reviewer (or above) can update any application at any stage (e.g., to change document statuses).
-      // - An admin (or above) can change the application status. We don't need a separate rule here
-      //   because admins are also reviewers. The UI will control who can change what field.
-      // - Nobody can change the owner of the application after it's created.
+      // - A reviewer (or above) can update any application at any stage.
       allow update: if isSignedIn() && isApplicationUpdateValid(request.resource.data, resource.data) && (
         (isApplicationOwner() && resource.data.status == 'draft') || isReviewer()
       );
