@@ -1,4 +1,3 @@
-
 'use client';
 
 import { notFound, useParams, redirect } from "next/navigation";
@@ -10,76 +9,11 @@ import type { Application, UserProfile } from "@/types";
 import React from "react";
 import { mockApplications, mockUsers } from "@/lib/mock-data";
 
-function AdminApplicationDetailContent({ isAuthorized }: { isAuthorized: boolean}) {
-    const params = useParams<{ id: string }>();
-    const firestore = useFirestore();
-    const { claims } = useUser();
-    const isMock = params.id.startsWith('mock-');
-
-    // --- Data fetching logic ---
-    let application: Application | undefined | null = undefined;
-    let user: UserProfile | undefined | null = undefined;
-    let appLoading: boolean = false;
-    let userLoading: boolean = false;
-
-    // Use mock data if the ID indicates it's a mock application
-    if (isMock) {
-        application = mockApplications.find(app => app.id === params.id);
-        if (application) {
-            user = mockUsers[application.userId];
-        }
-    } 
-    
-    // --- Firestore hooks for live data (will only run if not a mock) ---
-    const appRef = useMemoFirebase(() => {
-        if (!isMock && firestore && params.id && isAuthorized) {
-            return doc(firestore, 'applications', params.id) as any;
-        }
-        return null;
-    }, [firestore, params.id, isAuthorized, isMock]);
-    
-    const { data: liveApplication, loading: liveAppLoading } = useDoc<Application>(appRef);
-
-    const userRef = useMemoFirebase(() => 
-        !isMock && firestore && liveApplication ? doc(firestore, 'users', liveApplication.userId) as any : null,
-        [firestore, liveApplication, isMock]
-    );
-    const { data: liveUser, loading: liveUserLoading } = useDoc<UserProfile>(userRef);
-
-    // --- Assign live data if not in mock mode ---
-    if (!isMock) {
-        application = liveApplication;
-        user = liveUser;
-        appLoading = liveAppLoading;
-        userLoading = liveUserLoading;
-    }
-    // --- End data fetching logic ---
-
-    if (appLoading || userLoading) {
-        return <LoadingScreen text="Loading application data..." />
-    }
-
-    if (!application) {
-        notFound();
-    }
-    
-    return (
-        <div className="flex flex-col gap-4">
-            <div className="flex flex-col gap-1">
-                <h1 className="text-2xl font-bold font-headline tracking-tight">
-                    Review Application
-                </h1>
-                <p className="text-muted-foreground">
-                    Reviewing {user?.displayName}'s application for {application.licenseType}.
-                </p>
-            </div>
-            <AdminApplicationClient application={application} user={user} claims={claims} />
-        </div>
-    )
-}
-
 export default function AdminApplicationDetailPage() {
   const { claims, loading: claimsLoading } = useUser();
+  const params = useParams<{ id: string }>();
+  const firestore = useFirestore();
+  const isMock = params.id.startsWith('mock-');
 
   if (claimsLoading) {
     return <LoadingScreen text="Verifying Access..." />
@@ -92,5 +26,64 @@ export default function AdminApplicationDetailPage() {
       return null;
   }
   
-  return <AdminApplicationDetailContent isAuthorized={isAuthorized} />;
+  // --- Data fetching logic is now inside the authorized component ---
+  let application: Application | undefined | null = undefined;
+  let user: UserProfile | undefined | null = undefined;
+  let appLoading: boolean = false;
+  let userLoading: boolean = false;
+
+  // Use mock data if the ID indicates it's a mock application
+  if (isMock) {
+      application = mockApplications.find(app => app.id === params.id);
+      if (application) {
+          user = mockUsers[application.userId];
+      }
+  } 
+  
+  // --- Firestore hooks for live data (will only run if not a mock and authorized) ---
+  const appRef = useMemoFirebase(() => {
+      if (!isMock && firestore && params.id) {
+          return doc(firestore, 'applications', params.id) as any;
+      }
+      return null;
+  }, [firestore, params.id, isMock]);
+  
+  const { data: liveApplication, loading: liveAppLoading } = useDoc<Application>(appRef);
+
+  const userRef = useMemoFirebase(() => 
+      !isMock && firestore && liveApplication ? doc(firestore, 'users', liveApplication.userId) as any : null,
+      [firestore, liveApplication, isMock]
+  );
+  const { data: liveUser, loading: liveUserLoading } = useDoc<UserProfile>(userRef);
+
+  // --- Assign live data if not in mock mode ---
+  if (!isMock) {
+      application = liveApplication;
+      user = liveUser;
+      appLoading = liveAppLoading;
+      userLoading = liveUserLoading;
+  }
+  // --- End data fetching logic ---
+
+  if (appLoading || userLoading) {
+      return <LoadingScreen text="Loading application data..." />
+  }
+
+  if (!application) {
+      notFound();
+  }
+  
+  return (
+      <div className="flex flex-col gap-4">
+          <div className="flex flex-col gap-1">
+              <h1 className="text-2xl font-bold font-headline tracking-tight">
+                  Review Application
+              </h1>
+              <p className="text-muted-foreground">
+                  Reviewing {user?.displayName}'s application for {application.licenseType}.
+              </p>
+          </div>
+          <AdminApplicationClient application={application} user={user} claims={claims} />
+      </div>
+  )
 }

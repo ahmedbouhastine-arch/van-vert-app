@@ -1,4 +1,3 @@
-
 'use client';
 import Link from "next/link";
 import React from "react";
@@ -139,19 +138,34 @@ function ApplicationTableRow({ application }: { application: Application }) {
     )
 }
 
-function AdminApplicationsTableBody({ isAuthorized }: { isAuthorized: boolean }) {
-    const firestore = useFirestore();
-    
-    const applicationsQuery = useMemoFirebase(() => {
-        if (isAuthorized && firestore) {
-            return query(collection(firestore, "applications"), orderBy("submittedAt", "desc")) as any;
-        }
-        return null;
-    }, [firestore, isAuthorized]);
+export default function AdminApplicationsPage() {
+  const { claims, loading: claimsLoading } = useUser();
+  const firestore = useFirestore();
 
-    const { data: allApplications, isLoading } = useCollection<Application>(applicationsQuery);
+  if (claimsLoading) {
+    return <LoadingScreen text="Verifying Access..." />;
+  }
 
-    if (isLoading) {
+  const isAuthorized = claims?.role && ['reviewer', 'admin', 'head-admin'].includes(claims.role);
+  
+  if (!isAuthorized) {
+    redirect('/dashboard');
+    return null; // Stop rendering immediately
+  }
+
+  // Data fetching hooks are now inside the main component, after the authorization check.
+  const applicationsQuery = useMemoFirebase(() => {
+    // This query is only created if the user is authorized.
+    if (firestore) {
+        return query(collection(firestore, "applications"), orderBy("submittedAt", "desc")) as any;
+    }
+    return null;
+  }, [firestore]);
+
+  const { data: allApplications, isLoading } = useCollection<Application>(applicationsQuery);
+
+  const renderTableBody = () => {
+     if (isLoading) {
         return (
              Array.from({ length: 5 }).map((_, i) => (
                 <TableRow key={i}>
@@ -188,20 +202,6 @@ function AdminApplicationsTableBody({ isAuthorized }: { isAuthorized: boolean })
             ))}
         </>
     )
-}
-
-export default function AdminApplicationsPage() {
-  const { claims, loading: claimsLoading } = useUser();
-
-  if (claimsLoading) {
-    return <LoadingScreen text="Verifying Access..." />;
-  }
-
-  const isAuthorized = claims?.role && ['reviewer', 'admin', 'head-admin'].includes(claims.role);
-  
-  if (!isAuthorized) {
-    redirect('/dashboard');
-    return null; // Stop rendering immediately
   }
 
   return (
@@ -237,7 +237,7 @@ export default function AdminApplicationsPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-                <AdminApplicationsTableBody isAuthorized={isAuthorized} />
+                {renderTableBody()}
             </TableBody>
           </Table>
         </CardContent>
