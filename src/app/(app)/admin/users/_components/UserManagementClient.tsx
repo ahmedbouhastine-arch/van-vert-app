@@ -1,3 +1,4 @@
+
 'use client';
 import { useState } from "react";
 import type { UserProfile } from "@/types";
@@ -102,16 +103,17 @@ function UserRow({
     );
 }
 
-export function UserManagementClient({ currentUser, currentUserClaims }: { currentUser: User, currentUserClaims: any }) {
+export function UserManagementClient({ currentUser, currentUserClaims, isAuthorized }: { currentUser: User, currentUserClaims: any, isAuthorized: boolean }) {
     const { toast } = useToast();
     const [isUpdating, setIsUpdating] = useState<string | null>(null);
     const firestore = useFirestore();
 
-    // This component now assumes it is only rendered for authorized users.
-    // The query can be created without an additional authorization check.
-    const usersQuery = useMemoFirebase(() =>
-        firestore ? collection(firestore, 'users') as any : null
-    , [firestore]);
+    const usersQuery = useMemoFirebase(() => {
+        if (isAuthorized && firestore) {
+            return collection(firestore, 'users') as any;
+        }
+        return null;
+    }, [firestore, isAuthorized]);
 
     const { data: users, isLoading: loading } = useCollection<UserWithProfile>(usersQuery);
 

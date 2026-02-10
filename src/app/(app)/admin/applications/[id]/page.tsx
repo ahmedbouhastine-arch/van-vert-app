@@ -1,3 +1,4 @@
+
 'use client';
 
 import { notFound, useParams, redirect } from "next/navigation";
@@ -9,7 +10,7 @@ import type { Application, UserProfile } from "@/types";
 import React from "react";
 import { mockApplications, mockUsers } from "@/lib/mock-data";
 
-function AdminApplicationDetailContent() {
+function AdminApplicationDetailContent({ isAuthorized }: { isAuthorized: boolean}) {
     const params = useParams<{ id: string }>();
     const firestore = useFirestore();
     const { claims } = useUser();
@@ -31,12 +32,11 @@ function AdminApplicationDetailContent() {
     
     // --- Firestore hooks for live data (will only run if not a mock) ---
     const appRef = useMemoFirebase(() => {
-        const isAuthorized = claims?.role && ['reviewer', 'admin', 'head-admin'].includes(claims.role);
         if (!isMock && firestore && params.id && isAuthorized) {
             return doc(firestore, 'applications', params.id) as any;
         }
         return null;
-    }, [firestore, params.id, claims?.role, isMock]);
+    }, [firestore, params.id, isAuthorized, isMock]);
     
     const { data: liveApplication, loading: liveAppLoading } = useDoc<Application>(appRef);
 
@@ -89,7 +89,8 @@ export default function AdminApplicationDetailPage() {
   
   if (!isAuthorized) {
       redirect('/dashboard');
+      return null;
   }
   
-  return <AdminApplicationDetailContent />;
+  return <AdminApplicationDetailContent isAuthorized={isAuthorized} />;
 }
