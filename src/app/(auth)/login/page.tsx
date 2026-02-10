@@ -29,22 +29,17 @@ export default function LoginPage() {
     const app = useFirebaseApp();
     const auth = getAuth(app);
     const firestore = useFirestore();
-    const { user, loading, claims } = useUser();
+    const { user, loading } = useUser();
     const [showPassword, setShowPassword] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
 
     useEffect(() => {
-        if (!loading && user && claims) {
-            // Google users are pre-verified. Password users need to be checked.
-            if (!user.emailVerified && user.providerData.some(p => p.providerId === 'password')) {
-                router.push('/verify-email');
-            } else {
-                const isAdmin = ['reviewer', 'admin', 'head-admin'].includes(claims.role);
-                const homePath = isAdmin ? '/admin' : '/dashboard';
-                router.push(homePath);
-            }
+        if (!loading && user) {
+            // Always redirect to dashboard, and let the dashboard handle role-based redirects.
+            // This is more robust and avoids a race condition with claims loading.
+            router.push('/dashboard');
         }
-    }, [user, loading, claims, router]);
+    }, [user, loading, router]);
 
     const handleLogin = async (event: React.FormEvent<HTMLFormElement>) => {
         event.preventDefault();
@@ -83,7 +78,7 @@ export default function LoginPage() {
         await signInWithGoogle(auth, firestore);
     }
 
-    if (loading || (user && !claims)) {
+    if (loading || user) {
       return <LoadingScreen text="Authenticating..." />;
     }
 
