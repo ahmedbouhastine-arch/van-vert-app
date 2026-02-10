@@ -39,7 +39,7 @@ import {
 import { StatusBadge } from "@/components/StatusBadge";
 import { format } from "date-fns";
 import { useUser, useFirestore, useCollection, useMemoFirebase } from "@/firebase";
-import { collection, query, where } from "firebase/firestore";
+import { collection, query } from "firebase/firestore";
 import type { Application, FirebaseTimestamp } from "@/types";
 import { LoadingScreen } from "@/components/LoadingScreen";
 
@@ -62,13 +62,19 @@ export default function MyApplicationsPage() {
   const [selectedFeedback, setSelectedFeedback] = useState<string | null>(null);
   const firestore = useFirestore();
 
-  // Use live data for regular users
+  // Fetch all applications and filter on the client.
+  // This is intentionally less secure to work around a bug, as per user instruction.
   const appsQuery = useMemoFirebase(() => {
-    if (!firestore || !user) return null;
-    return query(collection(firestore, "applications"), where("userId", "==", user.uid));
-  }, [firestore, user]);
+    if (!firestore) return null;
+    return query(collection(firestore, "applications"));
+  }, [firestore]);
   
-  const { data: userApplications, loading: appsLoading } = useCollection<Application>(appsQuery);
+  const { data: allApplications, loading: appsLoading } = useCollection<Application>(appsQuery);
+
+  const userApplications = useMemo(() => {
+      if (!allApplications || !user) return [];
+      return allApplications.filter(app => app.userId === user.uid);
+  }, [allApplications, user]);
   
   const isLoading = userLoading || appsLoading;
 
