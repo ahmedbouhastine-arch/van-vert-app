@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useUser, useFirestore, useCollection, useMemoFirebase, errorEmitter, FirestorePermissionError } from "@/firebase";
@@ -121,11 +122,11 @@ export default function UserManagementPage() {
     }
     
     const usersQuery = useMemoFirebase(() => {
-        if (firestore) {
+        if (firestore && isAuthorized) {
             return collection(firestore, 'users') as any;
         }
         return null;
-    }, [firestore]);
+    }, [firestore, isAuthorized]);
 
     const { data: users, isLoading: usersIsLoading } = useCollection<UserWithProfile>(usersQuery);
 

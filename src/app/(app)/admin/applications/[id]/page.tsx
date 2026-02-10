@@ -1,3 +1,4 @@
+
 'use client';
 
 import { notFound, useParams, redirect } from "next/navigation";
@@ -42,17 +43,17 @@ export default function AdminApplicationDetailPage() {
   
   // --- Firestore hooks for live data (will only run if not a mock and authorized) ---
   const appRef = useMemoFirebase(() => {
-      if (!isMock && firestore && params.id) {
+      if (!isMock && firestore && params.id && isAuthorized) {
           return doc(firestore, 'applications', params.id) as any;
       }
       return null;
-  }, [firestore, params.id, isMock]);
+  }, [firestore, params.id, isMock, isAuthorized]);
   
   const { data: liveApplication, loading: liveAppLoading } = useDoc<Application>(appRef);
 
   const userRef = useMemoFirebase(() => 
-      !isMock && firestore && liveApplication ? doc(firestore, 'users', liveApplication.userId) as any : null,
-      [firestore, liveApplication, isMock]
+      !isMock && firestore && liveApplication && isAuthorized ? doc(firestore, 'users', liveApplication.userId) as any : null,
+      [firestore, liveApplication, isMock, isAuthorized]
   );
   const { data: liveUser, loading: liveUserLoading } = useDoc<UserProfile>(userRef);
 
@@ -65,12 +66,13 @@ export default function AdminApplicationDetailPage() {
   }
   // --- End data fetching logic ---
 
-  if (appLoading || userLoading) {
+  if ((appLoading || userLoading) && isAuthorized) {
       return <LoadingScreen text="Loading application data..." />
   }
 
   if (!application) {
-      notFound();
+      if (isAuthorized) notFound();
+      return null;
   }
   
   return (

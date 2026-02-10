@@ -1,3 +1,4 @@
+
 'use client';
 import Link from "next/link";
 import React from "react";
@@ -153,14 +154,12 @@ export default function AdminApplicationsPage() {
     return null; // Stop rendering immediately
   }
 
-  // Data fetching hooks are now inside the main component, after the authorization check.
   const applicationsQuery = useMemoFirebase(() => {
-    // This query is only created if the user is authorized.
-    if (firestore) {
+    if (firestore && isAuthorized) {
         return query(collection(firestore, "applications"), orderBy("submittedAt", "desc")) as any;
     }
     return null;
-  }, [firestore]);
+  }, [firestore, isAuthorized]);
 
   const { data: allApplications, isLoading } = useCollection<Application>(applicationsQuery);
 
