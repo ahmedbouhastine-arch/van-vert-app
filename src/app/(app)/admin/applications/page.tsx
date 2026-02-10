@@ -1,4 +1,3 @@
-
 'use client';
 import Link from "next/link";
 import React from "react";
@@ -139,20 +138,36 @@ function ApplicationTableRow({ application }: { application: Application }) {
     )
 }
 
-function AuthorizedApplicationsList({ isAuthorized }: { isAuthorized: boolean }) {
+export default function AdminApplicationsPage() {
+  const { claims, loading: claimsLoading } = useUser();
   const firestore = useFirestore();
-  
+
+  const isAuthorized = !!(claims?.role && ['reviewer', 'admin', 'head-admin'].includes(claims.role));
+
   const applicationsQuery = useMemoFirebase(() => {
+    // Only build the query if the user is actually authorized.
     if (firestore && isAuthorized) {
         return query(collection(firestore, "applications"), orderBy("submittedAt", "desc")) as any;
     }
+    // If not authorized, the query is null, and useCollection will not run.
     return null;
   }, [firestore, isAuthorized]);
 
   const { data: allApplications, isLoading } = useCollection<Application>(applicationsQuery);
 
+  if (claimsLoading) {
+    return <LoadingScreen text="Verifying Access..." />;
+  }
+
+  // This is the main guard. If the user is not authorized, redirect immediately.
+  // The query will not have been run for this user.
+  if (!isAuthorized) {
+    redirect('/dashboard');
+    return null; // Render nothing while redirecting
+  }
+  
   const renderTableBody = () => {
-     if (isLoading && isAuthorized) {
+     if (isLoading) { // Now we only need to check for the data loading state
         return (
              Array.from({ length: 5 }).map((_, i) => (
                 <TableRow key={i}>
@@ -231,20 +246,4 @@ function AuthorizedApplicationsList({ isAuthorized }: { isAuthorized: boolean })
       </Card>
     </div>
   );
-}
-
-export default function AdminApplicationsPage() {
-  const { claims, loading: claimsLoading } = useUser();
-
-  if (claimsLoading) {
-    return <LoadingScreen text="Verifying Access..." />;
-  }
-
-  const isAuthorized = !!(claims?.role && ['reviewer', 'admin', 'head-admin'].includes(claims.role));
-  
-  if (!isAuthorized) {
-    redirect('/dashboard');
-  }
-  
-  return <AuthorizedApplicationsList isAuthorized={isAuthorized} />;
 }
