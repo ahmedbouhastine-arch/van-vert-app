@@ -87,13 +87,8 @@ service cloud.firestore {
                requestData.createdAt == resourceData.createdAt;
       }
 
-      // READ: Explicitly allow list/get for signed-in users (includes queries).
-      // TEMP: Broad access to fix client race condition—revert to secure version below ASAP.
-      allow read, list, get: if isSignedIn();
-      
-      // SECURE ALTERNATIVE (uncomment and replace above after testing):
-      // allow get: if isApplicationOwner() || isReviewer();
-      // allow list: if isReviewer();  // Or filter: where userId == request.auth.uid
+      // READ: Anyone who is signed in can read any application data.
+      allow read: if isSignedIn();
       
       // CREATE: Users can create an application for themselves.
       allow create: if isSignedIn() && isCreatingOwnApplication();
