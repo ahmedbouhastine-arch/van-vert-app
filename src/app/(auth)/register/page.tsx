@@ -17,7 +17,7 @@ import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { CheckCircle2, XCircle, Eye, EyeOff, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { getAuth, createUserWithEmailAndPassword, updateProfile, deleteUser, type UserCredential, sendEmailVerification } from "firebase/auth";
+import { getAuth, createUserWithEmailAndPassword, updateProfile, deleteUser, type UserCredential } from "firebase/auth";
 import { useFirebaseApp, useFirestore, useUser } from "@/firebase";
 import { doc, setDoc, serverTimestamp } from "firebase/firestore";
 import { GoogleIcon } from "@/components/GoogleIcon";
@@ -42,20 +42,14 @@ export default function RegisterPage() {
     const app = useFirebaseApp();
     const auth = getAuth(app);
     const firestore = useFirestore();
-    const { user, loading, claims } = useUser();
+    const { user, loading } = useUser();
 
     useEffect(() => {
-        if (!loading && user && claims) {
-            // Google users are pre-verified. Password users need to be checked.
-            if (!user.emailVerified && user.providerData.some(p => p.providerId === 'password')) {
-                router.push('/verify-email');
-            } else {
-                const isAdmin = ['reviewer', 'admin', 'head-admin'].includes(claims.role);
-                const homePath = isAdmin ? '/admin' : '/dashboard';
-                router.push(homePath);
-            }
+        if (!loading && user) {
+            // Always redirect to dashboard.
+            router.push('/dashboard');
         }
-    }, [user, loading, claims, router]);
+    }, [user, loading, router]);
 
     const validatedRequirements = passwordRequirements.map(req => ({
         ...req,
@@ -87,7 +81,6 @@ export default function RegisterPage() {
 
             await Promise.all([
                 updateProfile(user, { displayName: fullName }),
-                sendEmailVerification(user),
                 firestore ? setDoc(doc(firestore, "users", user.uid), {
                     displayName: fullName,
                     email: user.email,
@@ -99,7 +92,7 @@ export default function RegisterPage() {
             
             toast({
                 title: "Registration successful!",
-                description: "Please check your inbox to verify your email.",
+                description: "You are now logged in and will be redirected.",
             });
             // The useEffect will handle the redirect, keep submitting true
         } catch (error: any) {
@@ -138,7 +131,7 @@ export default function RegisterPage() {
         await signInWithGoogle(auth, firestore);
     }
 
-    if (loading || (user && !claims)) {
+    if (loading || user) {
         return <LoadingScreen text="Finalizing account setup..."/>;
     }
 
