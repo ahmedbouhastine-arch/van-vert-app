@@ -1,7 +1,7 @@
 'use client';
 
 import Link from "next/link";
-import { useState, useMemo } from "react";
+import { useState } from "react";
 import { redirect } from "next/navigation";
 import { PlusCircle, MoreHorizontal } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -39,7 +39,7 @@ import {
 import { StatusBadge } from "@/components/StatusBadge";
 import { format } from "date-fns";
 import { useUser, useFirestore, useCollection, useMemoFirebase } from "@/firebase";
-import { collection, query } from "firebase/firestore";
+import { collection, query, where } from "firebase/firestore";
 import type { Application, FirebaseTimestamp } from "@/types";
 import { LoadingScreen } from "@/components/LoadingScreen";
 
@@ -62,19 +62,13 @@ export default function MyApplicationsPage() {
   const [selectedFeedback, setSelectedFeedback] = useState<string | null>(null);
   const firestore = useFirestore();
 
-  // Fetch all applications and filter on the client.
-  // This is intentionally less secure to work around a bug, as per user instruction.
-  const appsQuery = useMemoFirebase(() => {
-    if (!firestore) return null;
-    return query(collection(firestore, "applications"));
-  }, [firestore]);
+  const userApplicationsQuery = useMemoFirebase(() => {
+    if (!firestore || !user) return null;
+    // Query for applications where the userId matches the current user's ID
+    return query(collection(firestore, "applications"), where("userId", "==", user.uid));
+  }, [firestore, user]);
   
-  const { data: allApplications, loading: appsLoading } = useCollection<Application>(appsQuery);
-
-  const userApplications = useMemo(() => {
-      if (!allApplications || !user) return [];
-      return allApplications.filter(app => app.userId === user.uid);
-  }, [allApplications, user]);
+  const { data: userApplications, loading: appsLoading } = useCollection<Application>(userApplicationsQuery);
   
   const isLoading = userLoading || appsLoading;
 
