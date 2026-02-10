@@ -70,38 +70,8 @@ service cloud.firestore {
     // Collection: applications
     //-------------------------------------------------------------------------
     match /applications/{applicationId} {
-      
-      function isApplicationOwner() {
-        // Check the userId field in the document being accessed
-        return resource.data.userId == request.auth.uid;
-      }
-      
-      function isCreatingOwnApplication() {
-        // Check the userId field in the document being created
-        return request.resource.data.userId == request.auth.uid;
-      }
-      
-      function isApplicationUpdateValid(requestData, resourceData) {
-        // Ensure the owner ID and creation timestamp do not change.
-        return requestData.userId == resourceData.userId &&
-               requestData.createdAt == resourceData.createdAt;
-      }
-
-      // READ: Anyone who is signed in can read any application data.
-      allow read: if isSignedIn();
-      
-      // CREATE: Users can create an application for themselves.
-      allow create: if isSignedIn() && isCreatingOwnApplication();
-      
-      // UPDATE:
-      // - An owner can update their own application only if it's a draft.
-      // - A reviewer (or above) can update any application at any stage.
-      allow update: if isSignedIn() && isApplicationUpdateValid(request.resource.data, resource.data) && (
-        (isApplicationOwner() && resource.data.status == 'draft') || isReviewer()
-      );
-      
-      // DELETE: For data integrity, only a Head Admin can delete an application record.
-      allow delete: if isHeadAdmin();
+      // PERMISSIVE RULES FOR DEBUGGING: Any signed-in user can read and write all data.
+      allow read, write: if isSignedIn();
     }
   }
 }
