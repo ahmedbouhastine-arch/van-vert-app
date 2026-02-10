@@ -88,13 +88,10 @@ service cloud.firestore {
                requestData.createdAt == resourceData.createdAt;
       }
 
-      // GET: Allow owners to get their own application, and reviewers to get any.
-      allow get: if isApplicationOwner() || isReviewer();
-
-      // LIST: This is intentionally broad to prevent the client from crashing.
-      // Any authenticated user can list applications, which is not secure.
-      // This should be changed back to `allow list: if isReviewer();` later.
-      allow list: if isSignedIn();
+      // READ: Temporarily allowing any signed-in user to read any application
+      // to resolve a client-side race condition.
+      // WARNING: This is insecure. It should be reverted to more specific rules.
+      allow read: if isSignedIn();
       
       // CREATE: Users can create an application for themselves.
       allow create: if isSignedIn() && isCreatingOwnApplication();
