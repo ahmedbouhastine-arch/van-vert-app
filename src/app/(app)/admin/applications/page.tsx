@@ -1,3 +1,4 @@
+
 'use client';
 import Link from "next/link";
 import React from "react";
@@ -138,21 +139,20 @@ function ApplicationTableRow({ application }: { application: Application }) {
     )
 }
 
-function AuthorizedApplicationsList() {
+function AuthorizedApplicationsList({ isAuthorized }: { isAuthorized: boolean }) {
   const firestore = useFirestore();
   
   const applicationsQuery = useMemoFirebase(() => {
-    // This component is only rendered for authorized users, so this query is safe.
-    if (firestore) {
+    if (firestore && isAuthorized) {
         return query(collection(firestore, "applications"), orderBy("submittedAt", "desc")) as any;
     }
     return null;
-  }, [firestore]);
+  }, [firestore, isAuthorized]);
 
   const { data: allApplications, isLoading } = useCollection<Application>(applicationsQuery);
 
   const renderTableBody = () => {
-     if (isLoading) {
+     if (isLoading && isAuthorized) {
         return (
              Array.from({ length: 5 }).map((_, i) => (
                 <TableRow key={i}>
@@ -240,13 +240,11 @@ export default function AdminApplicationsPage() {
     return <LoadingScreen text="Verifying Access..." />;
   }
 
-  const isAuthorized = claims?.role && ['reviewer', 'admin', 'head-admin'].includes(claims.role);
+  const isAuthorized = !!(claims?.role && ['reviewer', 'admin', 'head-admin'].includes(claims.role));
   
   if (!isAuthorized) {
     redirect('/dashboard');
-    return null; // Stop rendering immediately
   }
   
-  // Only render the data-fetching component if authorized.
-  return <AuthorizedApplicationsList />;
+  return <AuthorizedApplicationsList isAuthorized={isAuthorized} />;
 }

@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useUser, useFirestore, useCollection, useMemoFirebase, errorEmitter, FirestorePermissionError } from "@/firebase";
@@ -103,18 +104,18 @@ function UserRow({
     );
 }
 
-function AuthorizedUserList() {
+function AuthorizedUserList({ isAuthorized }: { isAuthorized: boolean }) {
     const { user, claims } = useUser();
     const firestore = useFirestore();
     const { toast } = useToast();
     const [isUpdating, setIsUpdating] = useState<string | null>(null);
 
     const usersQuery = useMemoFirebase(() => {
-        if (firestore) {
+        if (firestore && isAuthorized) {
             return collection(firestore, 'users') as any;
         }
         return null;
-    }, [firestore]);
+    }, [firestore, isAuthorized]);
 
     const { data: users, isLoading: usersIsLoading } = useCollection<UserWithProfile>(usersQuery);
 
@@ -173,7 +174,7 @@ function AuthorizedUserList() {
                             </TableRow>
                         </TableHeader>
                         <TableBody>
-                            {usersIsLoading && <TableRow><TableCell colSpan={3} className="text-center h-24">Loading users...</TableCell></TableRow>}
+                            {usersIsLoading && isAuthorized && <TableRow><TableCell colSpan={3} className="text-center h-24">Loading users...</TableCell></TableRow>}
                             {!usersIsLoading && (!users || users.length === 0) && <TableRow><TableCell colSpan={3} className="text-center h-24">No users found.</TableCell></TableRow>}
                             {users?.sort((a, b) => (a.displayName || '').localeCompare(b.displayName || '')).map(u => (
                                 <UserRow 
@@ -200,12 +201,11 @@ export default function UserManagementPage() {
         return <LoadingScreen text="Verifying Access..." />;
     }
 
-    const isAuthorized = claims?.role === 'head-admin';
+    const isAuthorized = !!(claims?.role === 'head-admin');
 
     if (!isAuthorized) {
         redirect('/admin');
-        return null;
     }
     
-    return <AuthorizedUserList />;
+    return <AuthorizedUserList isAuthorized={isAuthorized} />;
 }
