@@ -15,7 +15,7 @@ import {
 import { StatusBadge } from "@/components/StatusBadge";
 import { format } from "date-fns";
 import { useUser, useFirestore, useCollection, useMemoFirebase } from "@/firebase";
-import { collection, query, orderBy } from "firebase/firestore";
+import { collection, query, where, orderBy, limit } from "firebase/firestore";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { Application, FirebaseTimestamp } from "@/types";
 import { LoadingScreen } from "@/components/LoadingScreen";
@@ -59,26 +59,19 @@ export default function DashboardPage() {
   const { user, loading: userLoading } = useUser();
   const firestore = useFirestore();
 
-  // Fetch all applications, sorted by update time, then filter and limit on the client.
-  // This is intentionally less secure to work around a bug, as per user instruction.
   const appsQuery = useMemoFirebase(() => {
     if (!firestore || !user) {
       return null;
     }
     return query(
         collection(firestore, "applications"), 
-        orderBy("updatedAt", "desc")
+        where("userId", "==", user.uid),
+        orderBy("updatedAt", "desc"),
+        limit(3)
     );
   }, [firestore, user]);
 
-  const { data: allApplications, loading: appsLoading } = useCollection<Application>(appsQuery);
-
-  const recentApplications = useMemo(() => {
-    if (!allApplications || !user) return [];
-    return allApplications
-        .filter(app => app.userId === user.uid)
-        .slice(0, 3);
-  }, [allApplications, user]);
+  const { data: recentApplications, loading: appsLoading } = useCollection<Application>(appsQuery);
 
 
   if (userLoading) {
