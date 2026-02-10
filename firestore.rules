@@ -70,8 +70,10 @@ service cloud.firestore {
     // Collection: applications
     //-------------------------------------------------------------------------
     match /applications/{applicationId} {
-      // PERMISSIVE RULES FOR DEBUGGING: Any signed-in user can read and write all data.
-      allow read, write: if isSignedIn();
+      allow read: if request.auth != null && 
+        resource.data.userId == request.auth.uid;
+      allow create: if request.auth != null && 
+        request.resource.data.userId == request.auth.uid;
     }
   }
 }
