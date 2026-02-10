@@ -1,3 +1,4 @@
+
 'use client';
 
 import { notFound, useParams, redirect } from "next/navigation";
@@ -10,7 +11,7 @@ import React from "react";
 import { mockApplications, mockUsers } from "@/lib/mock-data";
 
 
-function AuthorizedApplicationDetail({ id, claims }: { id: string, claims: any }) {
+function AuthorizedApplicationDetail({ id, claims, isAuthorized }: { id: string, claims: any, isAuthorized: boolean }) {
   const firestore = useFirestore();
   const isMock = id.startsWith('mock-');
 
@@ -28,17 +29,17 @@ function AuthorizedApplicationDetail({ id, claims }: { id: string, claims: any }
   } 
   
   const appRef = useMemoFirebase(() => {
-      if (!isMock && firestore && id) {
+      if (!isMock && firestore && id && isAuthorized) {
           return doc(firestore, 'applications', id) as any;
       }
       return null;
-  }, [firestore, id, isMock]);
+  }, [firestore, id, isMock, isAuthorized]);
   
   const { data: liveApplication, loading: liveAppLoading } = useDoc<Application>(appRef);
 
   const userRef = useMemoFirebase(() => 
-      !isMock && firestore && liveApplication ? doc(firestore, 'users', liveApplication.userId) as any : null,
-      [firestore, liveApplication, isMock]
+      !isMock && firestore && liveApplication && isAuthorized ? doc(firestore, 'users', liveApplication.userId) as any : null,
+      [firestore, liveApplication, isMock, isAuthorized]
   );
   const { data: liveUser, loading: liveUserLoading } = useDoc<UserProfile>(userRef);
 
@@ -49,13 +50,17 @@ function AuthorizedApplicationDetail({ id, claims }: { id: string, claims: any }
       userLoading = liveUserLoading;
   }
 
-  if (appLoading || userLoading) {
+  if ((appLoading || userLoading) && isAuthorized) {
       return <LoadingScreen text="Loading application data..." />
   }
 
-  if (!application) {
+  if (!application && isAuthorized) {
       notFound();
       return null;
+  }
+  
+  if (!application) {
+    return <div className="text-center text-muted-foreground p-8">You do not have permission to view this page.</div>;
   }
   
   return (
@@ -82,12 +87,11 @@ export default function AdminApplicationDetailPage() {
     return <LoadingScreen text="Verifying Access..." />
   }
 
-  const isAuthorized = claims?.role && ['reviewer', 'admin', 'head-admin'].includes(claims.role);
+  const isAuthorized = !!(claims?.role && ['reviewer', 'admin', 'head-admin'].includes(claims.role));
   
   if (!isAuthorized) {
       redirect('/dashboard');
-      return null;
   }
   
-  return <AuthorizedApplicationDetail id={params.id} claims={claims} />;
+  return <AuthorizedApplicationDetail id={params.id} claims={claims} isAuthorized={isAuthorized} />;
 }
