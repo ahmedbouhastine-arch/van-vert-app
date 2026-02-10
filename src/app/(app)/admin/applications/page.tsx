@@ -1,3 +1,4 @@
+
 'use client';
 import Link from "next/link";
 import React from "react";
@@ -138,14 +139,15 @@ function ApplicationTableRow({ application }: { application: Application }) {
     )
 }
 
-function AdminApplicationsTableBody() {
+function AdminApplicationsTableBody({ isAuthorized }: { isAuthorized: boolean }) {
     const firestore = useFirestore();
     
-    // This component assumes it is rendered by an authorized user.
-    // The query is safe to create here.
-    const applicationsQuery = useMemoFirebase(() =>
-        firestore ? query(collection(firestore, "applications"), orderBy("submittedAt", "desc")) as any : null
-    , [firestore]);
+    const applicationsQuery = useMemoFirebase(() => {
+        if (isAuthorized && firestore) {
+            return query(collection(firestore, "applications"), orderBy("submittedAt", "desc")) as any;
+        }
+        return null;
+    }, [firestore, isAuthorized]);
 
     const { data: allApplications, isLoading } = useCollection<Application>(applicationsQuery);
 
@@ -235,7 +237,7 @@ export default function AdminApplicationsPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-                <AdminApplicationsTableBody />
+                <AdminApplicationsTableBody isAuthorized={isAuthorized} />
             </TableBody>
           </Table>
         </CardContent>
