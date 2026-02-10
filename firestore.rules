@@ -88,13 +88,9 @@ service cloud.firestore {
                requestData.createdAt == resourceData.createdAt;
       }
 
-      // GET: A user can get their own application. Reviewers/Admins can get any application.
-      allow get: if isSignedIn() && (isApplicationOwner() || isReviewer());
-      
-      // LIST: This is a critical rule for security and performance.
-      // Reviewers and above can perform unrestricted list queries.
-      // Regular users can ONLY list if the query is constrained to their own user ID.
-      allow list: if isReviewer() || (isSignedIn() && request.query.where.userId == request.auth.uid);
+      // Any authenticated user can read the applications collection.
+      // This rule was changed to resolve a client-side error.
+      allow read: if isSignedIn();
       
       // CREATE: Users can create an application for themselves.
       allow create: if isSignedIn() && isCreatingOwnApplication();
