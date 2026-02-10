@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useUser, useFirestore, useCollection, useMemoFirebase, errorEmitter, FirestorePermissionError } from "@/firebase";
@@ -104,29 +103,18 @@ function UserRow({
     );
 }
 
-export default function UserManagementPage() {
-    const { user, loading: userLoading, claims } = useUser();
+function AuthorizedUserList() {
+    const { user, claims } = useUser();
     const firestore = useFirestore();
     const { toast } = useToast();
     const [isUpdating, setIsUpdating] = useState<string | null>(null);
 
-    if (userLoading || !user) {
-        return <LoadingScreen text="Verifying Access..." />;
-    }
-
-    const isAuthorized = claims?.role === 'head-admin';
-
-    if (!isAuthorized) {
-        redirect('/admin');
-        return null;
-    }
-    
     const usersQuery = useMemoFirebase(() => {
-        if (firestore && isAuthorized) {
+        if (firestore) {
             return collection(firestore, 'users') as any;
         }
         return null;
-    }, [firestore, isAuthorized]);
+    }, [firestore]);
 
     const { data: users, isLoading: usersIsLoading } = useCollection<UserWithProfile>(usersQuery);
 
@@ -159,6 +147,10 @@ export default function UserManagementPage() {
                 setIsUpdating(null);
             });
     };
+
+    if (!user) {
+        return <LoadingScreen />
+    }
 
     return (
         <div className="flex flex-col gap-4">
@@ -199,4 +191,21 @@ export default function UserManagementPage() {
             </Card>
         </div>
     );
+}
+
+export default function UserManagementPage() {
+    const { loading: userLoading, claims } = useUser();
+
+    if (userLoading) {
+        return <LoadingScreen text="Verifying Access..." />;
+    }
+
+    const isAuthorized = claims?.role === 'head-admin';
+
+    if (!isAuthorized) {
+        redirect('/admin');
+        return null;
+    }
+    
+    return <AuthorizedUserList />;
 }
