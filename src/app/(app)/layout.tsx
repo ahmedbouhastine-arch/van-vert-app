@@ -21,7 +21,7 @@ export default function AppLayout({
 }) {
     const { user, loading, claims } = useUser();
     const router = useRouter();
-    const homePath = (claims?.role === 'admin' || claims?.role === 'head-admin' || claims?.role === 'reviewer') ? "/admin" : "/dashboard";
+    const homePath = "/dashboard";
 
     useEffect(() => {
         if (!loading && !user) {

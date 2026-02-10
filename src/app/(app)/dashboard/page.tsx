@@ -1,7 +1,6 @@
 'use client';
 
 import Link from "next/link";
-import { redirect } from "next/navigation";
 import { PlusCircle, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -56,18 +55,11 @@ function ApplicationCardSkeleton() {
 
 
 export default function DashboardPage() {
-  const { user, claims, loading: userLoading } = useUser();
+  const { user, loading: userLoading } = useUser();
   const firestore = useFirestore();
 
-  // Redirect admins immediately if claims are loaded
-  if (!userLoading && claims && ['reviewer', 'admin', 'head-admin'].includes(claims.role)) {
-    redirect('/admin');
-  }
-
   const appsQuery = useMemoFirebase(() => {
-    // Only form the query if we know for sure this is a regular user.
-    // Wait for user and claims to be fully loaded.
-    if (userLoading || !firestore || !user || (claims && claims.role !== 'user')) {
+    if (!firestore || !user) {
       return null;
     }
     return query(
@@ -76,18 +68,15 @@ export default function DashboardPage() {
         orderBy("updatedAt", "desc"),
         limit(3)
     );
-  }, [firestore, user, userLoading, claims]);
+  }, [firestore, user]);
 
   const { data: recentApplications, loading: appsLoading } = useCollection<Application>(appsQuery);
 
-  // If user data is loading, or if the user is an admin-type role (and will be redirected), show a loading screen.
   if (userLoading) {
-      const text = (claims && claims.role !== 'user') ? "Redirecting to Admin Dashboard..." : "Loading Dashboard...";
-      return <LoadingScreen text={text} />;
+      return <LoadingScreen text="Loading Dashboard..." />;
   }
   
   const renderContent = () => {
-    // While the application query is running (for a confirmed user), show skeletons.
     if (appsLoading) {
       return Array.from({ length: 3 }).map((_, i) => <ApplicationCardSkeleton key={i} />);
     }
@@ -132,9 +121,11 @@ export default function DashboardPage() {
       <div className="flex items-center justify-between">
         <div className="flex flex-col gap-1">
             <h1 className="text-3xl font-bold font-headline tracking-tight">
-              {userLoading ? <Skeleton className="h-9 w-48" /> : `Welcome, ${user?.displayName || 'User'}!`}
+              User Dashboard
             </h1>
-            <p className="text-muted-foreground">Here's a quick look at your recent activity.</p>
+            <p className="text-muted-foreground">
+                {`Welcome, ${user?.displayName || 'User'}! Here's a quick look at your recent activity.`}
+            </p>
         </div>
         <Link href="/applications/new">
             <Button>

@@ -102,7 +102,8 @@ service cloud.firestore {
       // - An owner can update their own application only if it's a draft.
       // - A reviewer (or above) can update any application at any stage.
       allow update: if isSignedIn() && isApplicationUpdateValid(request.resource.data, resource.data) && (
-        (isApplicationOwner() && resource.data.status == 'draft') || isReviewer()
+        (isApplicationOwner() && resougit add .
+rce.data.status == 'draft') || isReviewer()
       );
       
       // DELETE: For data integrity, only a Head Admin can delete an application record.
