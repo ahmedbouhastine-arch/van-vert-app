@@ -41,17 +41,13 @@ export async function uploadDocumentAction(
 
     // AI Expiry Date Detection for images
     if (requiresExpiry && mimeType.startsWith('image/')) {
-        if (!process.env.GEMINI_API_KEY) {
-            console.warn("GEMINI_API_KEY is not set. Skipping AI expiry date detection.");
-        } else {
-            try {
-                const { expiryDate } = await extractExpiryDate({ documentImage: fileDataUri });
-                detectedExpiryDate = expiryDate;
-            } catch (e) {
-                console.error("AI expiry date detection failed:", e);
-                // Don't block the upload if AI fails, but let the user know something went wrong.
-                // We won't throw, but a toast on the client might be good in the future.
-            }
+        try {
+            const { expiryDate } = await extractExpiryDate({ documentImage: fileDataUri });
+            detectedExpiryDate = expiryDate;
+        } catch (e) {
+            console.error("AI expiry date detection failed:", e);
+            // Don't block the upload if AI fails, but let the user know something went wrong.
+            // We won't throw, but a toast on the client might be good in the future.
         }
     }
 
@@ -72,11 +68,6 @@ export async function uploadFlightLogAction(
         throw new Error('Invalid file type. Only PDF is allowed for flight logs.');
     }
     
-    // Explicitly check for the API key to provide a clear error message.
-    if (!process.env.GEMINI_API_KEY) {
-        throw new Error('AI processing failed: GEMINI_API_KEY is not configured on the server.');
-    }
-
     const storageRef = ref(storage, `applications/${applicationId}/flight-log.pdf`);
     await uploadBytes(storageRef, buffer, { contentType: mimeType });
 
