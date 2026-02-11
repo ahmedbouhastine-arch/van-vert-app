@@ -44,6 +44,7 @@ export type FlightLog = {
   duration: number; // in hours
   aircraft: string;
   remarks: string;
+  instructorName?: string;
 };
 
 export type Application = {
@@ -53,6 +54,7 @@ export type Application = {
   status: ApplicationStatus;
   documents: ApplicationDocument[];
   flightLogs?: FlightLog[];
+  flightLogPdfStoragePath?: string;
   submittedAt?: FirebaseTimestamp;
   updatedAt: FirebaseTimestamp;
   createdAt?: FirebaseTimestamp;

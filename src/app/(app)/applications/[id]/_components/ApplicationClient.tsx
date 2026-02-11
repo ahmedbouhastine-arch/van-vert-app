@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useTransition, useRef, useEffect } from "react";
@@ -20,8 +21,7 @@ import {
   UploadCloud,
   Save,
   Loader2,
-  Trash2,
-  PlusCircle,
+  Download,
   X,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
@@ -31,10 +31,10 @@ import { format } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
 import { flagExpiringDocuments } from "@/ai/flows/flag-expiring-documents";
 import { checkRecency, type CheckRecencyOutput } from "@/ai/flows/check-recency";
+import { extractFlightLogs } from "@/ai/flows/extract-flight-logs";
 import { useFirestore, useStorage, errorEmitter, FirestorePermissionError } from "@/firebase";
 import { doc, serverTimestamp, updateDoc, collection, addDoc } from "firebase/firestore";
-import { ref, uploadBytes } from "firebase/storage";
-import { Textarea } from "@/components/ui/textarea";
+import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
 import { v4 as uuidv4 } from 'uuid';
 
@@ -153,12 +153,12 @@ export function ApplicationClient({
   const firestore = useFirestore();
   const storage = useStorage();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const logPdfInputRef = useRef<HTMLInputElement>(null);
 
   const [recencyResult, setRecencyResult] = useState<CheckRecencyOutput | null>(null);
   const [isRecencyChecking, setIsRecencyChecking] = useState(false);
+  const [isUploadingLog, setIsUploadingLog] = useState(false);
 
-  const [newLog, setNewLog] = useState({ date: '', duration: '', aircraft: '', remarks: '' });
-  const [showLogForm, setShowLogForm] = useState(false);
   
   const handlePersistChanges = (updates: Partial<Application>, successToast: {title: string, description?: string} | null) => {
     if (!firestore) return;
@@ -335,31 +335,73 @@ export function ApplicationClient({
     });
   }
 
-  const handleAddLogEntry = () => {
-    const duration = parseFloat(newLog.duration);
-    if (!newLog.date || !newLog.duration || isNaN(duration) || duration <= 0) {
-        toast({ variant: 'destructive', title: 'Invalid Entry', description: 'Please provide a valid date and positive duration.' });
-        return;
-    }
-    const newEntry: FlightLog = {
-        id: uuidv4(),
-        ...newLog,
-        duration,
-    };
-    const newLogs = [...(appState.flightLogs || []), newEntry];
-    setAppState(prev => ({ ...prev, flightLogs: newLogs }));
-    
-    handlePersistChanges({ flightLogs: newLogs }, { title: "Flight Log Added" });
+  const handleFlightLogUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file || !storage) return;
 
-    setNewLog({ date: '', duration: '', aircraft: '', remarks: '' });
-    setShowLogForm(false);
+    setIsUploadingLog(true);
+    toast({ title: 'AI Processing Started', description: 'Your flight log is being analyzed. This may take a moment.' });
+
+    try {
+        // 1. Read file as Data URI for AI processing
+        const reader = new FileReader();
+        reader.readAsDataURL(file);
+        reader.onload = async () => {
+            const pdfDataUri = reader.result as string;
+
+            // 2. Upload file to storage while AI is running
+            const storageRef = ref(storage, `applications/${appState.id}/flight-log.pdf`);
+            const uploadTask = uploadBytes(storageRef, file);
+
+            // 3. Call AI flow
+            const aiTask = extractFlightLogs({ flightLogPdf: pdfDataUri });
+
+            // 4. Await both tasks
+            const [uploadResult, extractedLogs] = await Promise.all([uploadTask, aiTask]);
+            
+            const newLogs: FlightLog[] = extractedLogs.map(log => ({ ...log, id: uuidv4(), remarks: log.remarks || '' }));
+            
+            setAppState(prev => ({ ...prev, flightLogs: newLogs, flightLogPdfStoragePath: uploadResult.ref.fullPath }));
+            handlePersistChanges({ flightLogs: newLogs, flightLogPdfStoragePath: uploadResult.ref.fullPath }, {
+                title: "AI Analysis Complete",
+                description: `${newLogs.length} recent flight logs have been extracted and saved.`,
+            });
+        };
+
+        reader.onerror = (error) => {
+            throw new Error("Failed to read file for AI processing.");
+        }
+    } catch (error) {
+        console.error("Flight log processing failed:", error);
+        toast({
+            variant: "destructive",
+            title: "Processing Failed",
+            description: "Could not process the flight log PDF. Please try again.",
+        });
+    } finally {
+        setIsUploadingLog(false);
+        if (logPdfInputRef.current) {
+            logPdfInputRef.current.value = "";
+        }
+    }
   };
 
-  const handleDeleteLogEntry = (logId: string) => {
-    const newLogs = appState.flightLogs?.filter(log => log.id !== logId);
-    setAppState(prev => ({ ...prev, flightLogs: newLogs }));
-    handlePersistChanges({ flightLogs: newLogs }, { title: "Flight Log Removed" });
-  }
+  const handleDownloadLogPdf = async () => {
+    if (!storage || !appState.flightLogPdfStoragePath) return;
+    try {
+        const fileRef = ref(storage, appState.flightLogPdfStoragePath);
+        const url = await getDownloadURL(fileRef);
+        window.open(url, '_blank');
+    } catch (error) {
+        console.error("Download failed:", error);
+        toast({
+            variant: "destructive",
+            title: "Download Failed",
+            description: "Could not get the download URL for the logbook.",
+        });
+    }
+};
+
   
   useEffect(() => {
     const handleRecencyCheck = async () => {
@@ -397,6 +439,7 @@ export function ApplicationClient({
   return (
     <div className="grid gap-8">
       <input type="file" ref={fileInputRef} onChange={handleFileSelected} className="hidden" />
+      <input type="file" ref={logPdfInputRef} onChange={handleFlightLogUpload} accept="application/pdf" className="hidden" />
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between">
@@ -435,7 +478,7 @@ export function ApplicationClient({
       <Card>
         <CardHeader>
             <CardTitle>Flight Logs</CardTitle>
-            <CardDescription>Add your recent flight logs to verify currency requirements.</CardDescription>
+            <CardDescription>Upload a PDF of your flight logbook. The AI will extract recent flights automatically.</CardDescription>
         </CardHeader>
         <CardContent>
             {isRecencyChecking ? (
@@ -462,9 +505,8 @@ export function ApplicationClient({
                     <TableRow>
                         <TableHead>Date</TableHead>
                         <TableHead>Aircraft</TableHead>
+                        <TableHead>Instructor</TableHead>
                         <TableHead className="text-right">Duration (hrs)</TableHead>
-                        <TableHead className="hidden md:table-cell">Remarks</TableHead>
-                        <TableHead><span className="sr-only">Actions</span></TableHead>
                     </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -474,42 +516,31 @@ export function ApplicationClient({
                                 <TableRow key={log.id}>
                                     <TableCell>{format(new Date(log.date), 'PPP')}</TableCell>
                                     <TableCell>{log.aircraft}</TableCell>
+                                    <TableCell>{log.instructorName || 'N/A'}</TableCell>
                                     <TableCell className="text-right">{log.duration.toFixed(2)}</TableCell>
-                                    <TableCell className="hidden md:table-cell truncate max-w-[200px]">{log.remarks}</TableCell>
-                                    <TableCell className="text-right">
-                                        <Button variant="ghost" size="icon" onClick={() => !isSubmitted && handleDeleteLogEntry(log.id)} disabled={isSubmitted}>
-                                            <Trash2 className="h-4 w-4" />
-                                        </Button>
-                                    </TableCell>
                                 </TableRow>
                             ))
                         ) : (
                             <TableRow>
-                                <TableCell colSpan={5} className="h-24 text-center">No flight logs added yet.</TableCell>
+                                <TableCell colSpan={4} className="h-24 text-center">No flight logs have been extracted yet.</TableCell>
                             </TableRow>
-                        )}
-                        {!isSubmitted && showLogForm && (
-                          <TableRow className="bg-muted/50">
-                              <TableCell><Input type="date" value={newLog.date} onChange={e => setNewLog({...newLog, date: e.target.value})} /></TableCell>
-                              <TableCell><Input placeholder="e.g., C172" value={newLog.aircraft} onChange={e => setNewLog({...newLog, aircraft: e.target.value})} /></TableCell>
-                              <TableCell><Input type="number" placeholder="e.g., 1.5" className="text-right" value={newLog.duration} onChange={e => setNewLog({...newLog, duration: e.target.value})} /></TableCell>
-                              <TableCell className="hidden md:table-cell"><Textarea placeholder="e.g., Cross-country flight" value={newLog.remarks} onChange={e => setNewLog({...newLog, remarks: e.target.value})} rows={1} /></TableCell>
-                              <TableCell className="text-right">
-                                  <div className="flex gap-2 justify-end">
-                                      <Button size="sm" onClick={handleAddLogEntry}>Save</Button>
-                                      <Button size="sm" variant="ghost" onClick={() => setShowLogForm(false)}>Cancel</Button>
-                                  </div>
-                              </TableCell>
-                          </TableRow>
                         )}
                     </>
                 </TableBody>
             </Table>
         </CardContent>
-        <CardFooter>
-            {!isSubmitted && !showLogForm && (
-                <Button variant="outline" onClick={() => setShowLogForm(true)}>
-                    <PlusCircle className="mr-2 h-4 w-4" /> Add Log Entry
+        <CardFooter className="flex items-center gap-2">
+            <Button
+                variant="outline"
+                onClick={() => logPdfInputRef.current?.click()}
+                disabled={isSubmitted || isUploadingLog}
+            >
+                {isUploadingLog ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <UploadCloud className="mr-2 h-4 w-4" />}
+                {appState.flightLogPdfStoragePath ? 'Replace PDF' : 'Upload Log PDF'}
+            </Button>
+            {appState.flightLogPdfStoragePath && (
+                <Button variant="secondary" onClick={handleDownloadLogPdf} disabled={isUploadingLog}>
+                    <Download className="mr-2 h-4 w-4" /> Download PDF
                 </Button>
             )}
         </CardFooter>
@@ -543,4 +574,3 @@ export function ApplicationClient({
     </div>
   );
 }
-    
