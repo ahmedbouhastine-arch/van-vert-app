@@ -29,17 +29,19 @@ export default function LoginPage() {
     const app = useFirebaseApp();
     const auth = getAuth(app);
     const firestore = useFirestore();
-    const { user, loading } = useUser();
+    const { user, loading, claims } = useUser();
     const [showPassword, setShowPassword] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
 
     useEffect(() => {
-        if (!loading && user) {
-            // Always redirect to dashboard, and let the dashboard handle role-based redirects.
-            // This is more robust and avoids a race condition with claims loading.
-            router.push('/dashboard');
+        // Wait until loading is complete and we have user and claims data.
+        if (!loading && user && claims) {
+            // Check user's role and redirect to the appropriate dashboard.
+            const isAdmin = ['reviewer', 'admin', 'head-admin'].includes(claims.role);
+            const homePath = isAdmin ? '/admin' : '/dashboard';
+            router.push(homePath);
         }
-    }, [user, loading, router]);
+    }, [user, loading, claims, router]);
 
     const handleLogin = async (event: React.FormEvent<HTMLFormElement>) => {
         event.preventDefault();
@@ -78,7 +80,8 @@ export default function LoginPage() {
         await signInWithGoogle(auth, firestore);
     }
 
-    if (loading || user) {
+    // Show loading screen while auth state is loading OR if the user is logged in but claims are not yet loaded.
+    if (loading || (user && !claims)) {
       return <LoadingScreen text="Authenticating..." />;
     }
 
