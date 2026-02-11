@@ -41,12 +41,17 @@ export async function uploadDocumentAction(
 
     // AI Expiry Date Detection for images
     if (requiresExpiry && mimeType.startsWith('image/')) {
-        try {
-            const { expiryDate } = await extractExpiryDate({ documentImage: fileDataUri });
-            detectedExpiryDate = expiryDate;
-        } catch (e) {
-            console.error("AI expiry date detection failed:", e);
-            // Don't block the upload if AI fails
+        if (!process.env.GEMINI_API_KEY) {
+            console.warn("GEMINI_API_KEY is not set. Skipping AI expiry date detection.");
+        } else {
+            try {
+                const { expiryDate } = await extractExpiryDate({ documentImage: fileDataUri });
+                detectedExpiryDate = expiryDate;
+            } catch (e) {
+                console.error("AI expiry date detection failed:", e);
+                // Don't block the upload if AI fails, but let the user know something went wrong.
+                // We won't throw, but a toast on the client might be good in the future.
+            }
         }
     }
 
@@ -66,6 +71,11 @@ export async function uploadFlightLogAction(
     if (mimeType !== 'application/pdf') {
         throw new Error('Invalid file type. Only PDF is allowed for flight logs.');
     }
+    
+    // Explicitly check for the API key to provide a clear error message.
+    if (!process.env.GEMINI_API_KEY) {
+        throw new Error('AI processing failed: GEMINI_API_KEY is not configured on the server.');
+    }
 
     const storageRef = ref(storage, `applications/${applicationId}/flight-log.pdf`);
     await uploadBytes(storageRef, buffer, { contentType: mimeType });
@@ -78,9 +88,8 @@ export async function uploadFlightLogAction(
         }
     } catch (e) {
         console.error("AI flight log extraction failed:", e);
-        // Return empty logs but still count the upload as successful
-        // We throw the error so the client can notify the user.
-        throw new Error("AI processing of the flight log failed.");
+        // Re-throw the error so the client can notify the user of the failure.
+        throw new Error("AI processing of the flight log PDF failed unexpectedly.");
     }
     
     return { storagePath: storageRef.fullPath, extractedLogs };
