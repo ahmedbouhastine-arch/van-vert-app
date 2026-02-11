@@ -51,7 +51,7 @@ import {
 import { StatusBadge } from "@/components/StatusBadge";
 import { format } from "date-fns";
 import { useUser, useFirestore, useCollection, useMemoFirebase } from "@/firebase";
-import { collection, query, where, doc, deleteDoc } from "firebase/firestore";
+import { collection, query, where, doc, deleteDoc, orderBy } from "firebase/firestore";
 import type { Application, FirebaseTimestamp } from "@/types";
 import { LoadingScreen } from "@/components/LoadingScreen";
 import { useToast } from "@/hooks/use-toast";
@@ -79,8 +79,8 @@ export default function MyApplicationsPage() {
 
   const userApplicationsQuery = useMemoFirebase(() => {
     if (!firestore || !user) return null;
-    // Query for applications where the userId matches the current user's ID
-    return query(collection(firestore, "applications"), where("userId", "==", user.uid));
+    // Query for applications where the userId matches the current user's ID, sorted by most recent
+    return query(collection(firestore, "applications"), where("userId", "==", user.uid), orderBy("updatedAt", "desc"));
   }, [firestore, user]);
   
   const { data: userApplications, isLoading: appsLoading } = useCollection<Application>(userApplicationsQuery);
