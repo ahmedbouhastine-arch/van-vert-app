@@ -69,7 +69,7 @@ export default function DashboardPage() {
     return query(collection(firestore, "applications"), where("userId", "==", user.uid), orderBy("updatedAt", "desc"));
   }, [firestore, user]);
   
-  const { data: userApplications, loading: appsLoading } = useCollection<Application>(userApplicationsQuery);
+  const { data: userApplications, isLoading: appsLoading } = useCollection<Application>(userApplicationsQuery);
   
   const isLoading = userLoading || appsLoading;
 

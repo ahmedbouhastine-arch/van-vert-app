@@ -69,11 +69,11 @@ export default function MyApplicationsPage() {
     return query(collection(firestore, "applications"), where("userId", "==", user.uid));
   }, [firestore, user]);
   
-  const { data: userApplications, loading: appsLoading } = useCollection<Application>(userApplicationsQuery);
+  const { data: userApplications, isLoading: appsLoading } = useCollection<Application>(userApplicationsQuery);
   
   const isLoading = userLoading || appsLoading;
 
-  if (userLoading) {
+  if (isLoading) {
     return <LoadingScreen text="Loading applications..." />;
   }
 
