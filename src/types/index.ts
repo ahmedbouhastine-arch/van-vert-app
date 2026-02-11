@@ -53,7 +53,7 @@ export type Application = {
   licenseType: string;
   status: ApplicationStatus;
   documents: ApplicationDocument[];
-  flightLogs?: FlightLog[];
+  flightLogs: FlightLog[];
   flightLogPdfStoragePath?: string;
   submittedAt?: FirebaseTimestamp;
   updatedAt: FirebaseTimestamp;
