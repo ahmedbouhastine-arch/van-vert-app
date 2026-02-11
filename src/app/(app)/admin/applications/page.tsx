@@ -34,7 +34,7 @@ import { useUser, useFirestore, useCollection, useDoc, useMemoFirebase } from "@
 import type { Application, UserProfile, FirebaseTimestamp } from "@/types";
 import { useToast } from "@/hooks/use-toast";
 import { LoadingScreen } from "@/components/LoadingScreen";
-import { collection, query, orderBy, doc, where } from "firebase/firestore";
+import { collection, query, orderBy, where, doc } from "firebase/firestore";
 import { Skeleton } from "@/components/ui/skeleton";
 
 // Helper function to safely format dates, whether they are Timestamps or strings
