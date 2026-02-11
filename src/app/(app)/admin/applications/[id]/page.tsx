@@ -8,47 +8,26 @@ import { doc } from "firebase/firestore";
 import { LoadingScreen } from "@/components/LoadingScreen";
 import type { Application, UserProfile } from "@/types";
 import React from "react";
-import { mockApplications, mockUsers } from "@/lib/mock-data";
 
 
 function AuthorizedApplicationDetail({ id, claims, isAuthorized }: { id: string, claims: any, isAuthorized: boolean }) {
   const firestore = useFirestore();
-  const isMock = id.startsWith('mock-');
 
-  let application: Application | undefined | null = undefined;
-  let user: UserProfile | undefined | null = undefined;
-  let appLoading: boolean = false;
-  let userLoading: boolean = false;
-
-  // Use mock data if the ID indicates it's a mock application
-  if (isMock) {
-      application = mockApplications.find(app => app.id === id);
-      if (application) {
-          user = mockUsers[application.userId];
-      }
-  } 
-  
   const appRef = useMemoFirebase(() => {
-      if (!isMock && firestore && id && isAuthorized) {
+      if (firestore && id && isAuthorized) {
           return doc(firestore, 'applications', id) as any;
       }
       return null;
-  }, [firestore, id, isMock, isAuthorized]);
+  }, [firestore, id, isAuthorized]);
   
-  const { data: liveApplication, loading: liveAppLoading } = useDoc<Application>(appRef);
+  const { data: application, isLoading: appLoading } = useDoc<Application>(appRef);
 
   const userRef = useMemoFirebase(() => 
-      !isMock && firestore && liveApplication && isAuthorized ? doc(firestore, 'users', liveApplication.userId) as any : null,
-      [firestore, liveApplication, isMock, isAuthorized]
+      firestore && application && isAuthorized ? doc(firestore, 'users', application.userId) as any : null,
+      [firestore, application, isAuthorized]
   );
-  const { data: liveUser, loading: liveUserLoading } = useDoc<UserProfile>(userRef);
+  const { data: user, isLoading: userLoading } = useDoc<UserProfile>(userRef);
 
-  if (!isMock) {
-      application = liveApplication;
-      user = liveUser;
-      appLoading = liveAppLoading;
-      userLoading = liveUserLoading;
-  }
 
   if ((appLoading || userLoading) && isAuthorized) {
       return <LoadingScreen text="Loading application data..." />
