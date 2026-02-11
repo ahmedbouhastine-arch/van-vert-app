@@ -47,7 +47,14 @@ function NewApplicationButton({ licenseType }: { licenseType: LicenseType }) {
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
         feedback: "",
-        documents: [],
+        documents: licenseType.documentRequirements.map(req => ({
+            id: uuidv4(),
+            docRequirementId: req.id,
+            name: req.name,
+            description: req.description,
+            status: 'missing',
+            requiresExpiry: req.requiresExpiry,
+        })),
         flightLogs: [],
       };
 
