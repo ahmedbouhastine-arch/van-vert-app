@@ -31,11 +31,10 @@ import { format } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
 import { flagExpiringDocuments } from "@/ai/flows/flag-expiring-documents";
 import { checkRecency, type CheckRecencyOutput } from "@/ai/flows/check-recency";
-import { extractFlightLogs } from "@/ai/flows/extract-flight-logs";
-import { extractExpiryDate } from "@/ai/flows/extract-expiry-date";
+import { uploadDocumentAction, uploadFlightLogAction } from "@/app/actions";
 import { useFirestore, useStorage, errorEmitter, FirestorePermissionError } from "@/firebase";
 import { doc, serverTimestamp, updateDoc, collection, addDoc } from "firebase/firestore";
-import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
+import { ref, getDownloadURL } from "firebase/storage";
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
 import { v4 as uuidv4 } from 'uuid';
 
@@ -200,37 +199,34 @@ export function ApplicationClient({
 
   const handleFileSelected = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
-    if (!file || !activeUploadDocId || !storage || !firestore) return;
+    if (!file || !activeUploadDocId) return;
 
     const docDefinition = appState.documents.find(d => d.id === activeUploadDocId);
     if (!docDefinition) return;
 
     setUploadingDocId(activeUploadDocId);
+    toast({ title: 'Upload Started', description: 'Your document is being uploaded and processed.' });
 
     try {
-        const storageRef = ref(storage, `applications/${appState.id}/${activeUploadDocId}/${file.name}`);
-        await uploadBytes(storageRef, file);
-        
-        let detectedExpiryDate: string | null | undefined = docDefinition.expiryDate;
+        const reader = new FileReader();
+        reader.readAsDataURL(file);
+        const dataUrl = await new Promise<string>((resolve, reject) => {
+            reader.onload = () => resolve(reader.result as string);
+            reader.onerror = (error) => reject(error);
+        });
 
-        // AI Expiry Date Detection for images
-        if (docDefinition.requiresExpiry && file.type.startsWith('image/')) {
-            toast({ title: 'AI Processing...', description: 'Detecting expiry date from your document.' });
-            const reader = new FileReader();
-            reader.readAsDataURL(file);
-            // This is async, so we need to wrap it in a promise
-            const dataUrl = await new Promise<string>((resolve, reject) => {
-                reader.onload = () => resolve(reader.result as string);
-                reader.onerror = (error) => reject(error);
-            });
+        const { storagePath, expiryDate: detectedExpiryDate } = await uploadDocumentAction(
+            appState.id,
+            activeUploadDocId,
+            dataUrl,
+            file.name,
+            docDefinition.requiresExpiry,
+        );
 
-            const { expiryDate } = await extractExpiryDate({ documentImage: dataUrl });
-            if (expiryDate) {
-                detectedExpiryDate = expiryDate;
-                toast({ title: 'AI Success!', description: `Detected expiry date: ${format(new Date(expiryDate), 'PPP')}` });
-            } else {
-                 toast({ variant: "default", title: 'AI Notice', description: 'Could not automatically detect an expiry date. Please enter it manually.' });
-            }
+        if (detectedExpiryDate) {
+            toast({ title: 'AI Success!', description: `Detected expiry date: ${format(new Date(detectedExpiryDate), 'PPP')}` });
+        } else if (docDefinition.requiresExpiry) {
+             toast({ variant: "default", title: 'AI Notice', description: 'Could not automatically detect an expiry date. Please enter it manually.' });
         }
 
         const newDocuments = appState.documents.map((doc) =>
@@ -240,8 +236,8 @@ export function ApplicationClient({
                 status: "uploaded" as const,
                 fileName: file.name,
                 uploadedAt: new Date().toISOString(),
-                storagePath: storageRef.fullPath,
-                expiryDate: detectedExpiryDate, // Use the detected date
+                storagePath: storagePath,
+                expiryDate: detectedExpiryDate || doc.expiryDate, // Use detected date, but keep manual if AI fails
               }
             : doc
         );
@@ -250,12 +246,12 @@ export function ApplicationClient({
         
         handlePersistChanges({ documents: newDocuments }, { title: "Upload Successful", description: `${file.name} has been uploaded and saved.` });
 
-    } catch (error) {
+    } catch (error: any) {
         console.error("Upload failed:", error);
         toast({
             variant: "destructive",
             title: "Upload Failed",
-            description: "There was an error uploading your file or processing it with AI.",
+            description: error.message || "There was an error uploading your file.",
         });
         setAppState(initialApplication);
     } finally {
@@ -364,13 +360,12 @@ export function ApplicationClient({
 
   const handleFlightLogUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
-    if (!file || !storage) return;
+    if (!file) return;
 
     setIsUploadingLog(true);
     toast({ title: 'AI Processing Started', description: 'Your flight log is being analyzed. This may take a moment.' });
 
     try {
-        // 1. Read file as Data URI for AI processing
         const reader = new FileReader();
         reader.readAsDataURL(file);
         const pdfDataUri = await new Promise<string>((resolve, reject) => {
@@ -378,30 +373,24 @@ export function ApplicationClient({
             reader.onerror = (error) => reject(error);
         });
         
-        // 2. Upload file to storage while AI is running
-        const storageRef = ref(storage, `applications/${appState.id}/flight-log.pdf`);
-        const uploadTask = uploadBytes(storageRef, file);
+        const { storagePath, extractedLogs } = await uploadFlightLogAction(
+            appState.id,
+            pdfDataUri,
+        );
 
-        // 3. Call AI flow
-        const aiTask = extractFlightLogs({ flightLogPdf: pdfDataUri });
-
-        // 4. Await both tasks
-        const [uploadResult, extractedLogs] = await Promise.all([uploadTask, aiTask]);
+        setAppState(prev => ({ ...prev, flightLogs: extractedLogs, flightLogPdfStoragePath: storagePath }));
         
-        const newLogs: FlightLog[] = extractedLogs.map(log => ({ ...log, id: uuidv4(), remarks: log.remarks || '' }));
-        
-        setAppState(prev => ({ ...prev, flightLogs: newLogs, flightLogPdfStoragePath: uploadResult.ref.fullPath }));
-        handlePersistChanges({ flightLogs: newLogs, flightLogPdfStoragePath: uploadResult.ref.fullPath }, {
+        handlePersistChanges({ flightLogs: extractedLogs, flightLogPdfStoragePath: storagePath }, {
             title: "AI Analysis Complete",
-            description: `${newLogs.length} recent flight logs have been extracted and saved.`,
+            description: `${extractedLogs.length} recent flight logs have been extracted and saved.`,
         });
 
-    } catch (error) {
+    } catch (error: any) {
         console.error("Flight log processing failed:", error);
         toast({
             variant: "destructive",
             title: "Processing Failed",
-            description: "Could not process the flight log PDF. Please try again.",
+            description: error.message || "Could not process the flight log PDF. Please try again.",
         });
     } finally {
         setIsUploadingLog(false);
