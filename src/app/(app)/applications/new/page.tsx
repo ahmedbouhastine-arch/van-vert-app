@@ -1,3 +1,4 @@
+
 'use client';
 
 import {
@@ -8,8 +9,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { licenseTypes } from "@/lib/licensing";
-import { useState } from 'react';
-import { redirect } from 'next/navigation';
+import { useState, useEffect } from 'react';
 import { useFirestore, useUser } from '@/firebase';
 import { addDoc, collection, serverTimestamp } from 'firebase/firestore';
 import { Button } from '@/components/ui/button';
@@ -95,13 +95,18 @@ function NewApplicationButton({ licenseType }: { licenseType: LicenseType }) {
 
 export default function NewApplicationPage() {
   const { claims, loading: userLoading } = useUser();
+  const router = useRouter();
 
-  if (userLoading) {
+  useEffect(() => {
+    // In client components, redirects during render should be handled in useEffect.
+    if (!userLoading && claims && ['reviewer', 'admin', 'head-admin'].includes(claims.role)) {
+      router.push('/admin');
+    }
+  }, [userLoading, claims, router]);
+
+  // To prevent a flicker of the page content before redirect, we check the condition here as well.
+  if (userLoading || (claims && ['reviewer', 'admin', 'head-admin'].includes(claims.role))) {
     return <LoadingScreen text="Verifying access..." />;
-  }
-
-  if (claims && ['reviewer', 'admin', 'head-admin'].includes(claims.role)) {
-    redirect('/admin');
   }
 
   return (
