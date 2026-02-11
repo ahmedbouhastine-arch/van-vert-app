@@ -20,9 +20,6 @@ function decodeDataUri(dataUri: string) {
     return { buffer, mimeType };
 }
 
-// NOTE: Server Actions may run in a separate environment. We need to initialize Firebase here.
-const { storage } = initializeFirebase();
-
 export async function uploadDocumentAction(
     applicationId: string, 
     docId: string,
@@ -30,6 +27,8 @@ export async function uploadDocumentAction(
     fileName: string,
     requiresExpiry: boolean,
 ): Promise<{ storagePath: string; expiryDate: string | null | undefined }> {
+    // Initialize Firebase inside the action for reliability in serverless environments.
+    const { storage } = initializeFirebase();
     
     const { buffer, mimeType } = decodeDataUri(fileDataUri);
     
@@ -57,6 +56,8 @@ export async function uploadFlightLogAction(
     applicationId: string,
     pdfDataUri: string,
 ): Promise<{ storagePath: string; extractedLogs: FlightLog[] }> {
+    // Initialize Firebase inside the action for reliability in serverless environments.
+    const { storage } = initializeFirebase();
     
     const { buffer, mimeType } = decodeDataUri(pdfDataUri);
 
