@@ -1,3 +1,4 @@
+
 'use client';
 
 import Link from "next/link";
@@ -24,12 +25,16 @@ export default function AppLayout({
     const homePath = "/dashboard";
 
     useEffect(() => {
-        if (!loading && !user) {
+        if (loading) return; // Wait until the user state is loaded
+
+        if (!user) {
             router.push('/login');
+        } else if (!user.emailVerified) {
+            router.push('/verify-email');
         }
     }, [user, loading, router]);
     
-    if (loading || !user) {
+    if (loading || !user || !user.emailVerified) {
         return <LoadingScreen text="Authenticating..." />;
     }
 
