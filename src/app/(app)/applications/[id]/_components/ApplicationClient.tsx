@@ -373,31 +373,29 @@ export function ApplicationClient({
         // 1. Read file as Data URI for AI processing
         const reader = new FileReader();
         reader.readAsDataURL(file);
-        reader.onload = async () => {
-            const pdfDataUri = reader.result as string;
+        const pdfDataUri = await new Promise<string>((resolve, reject) => {
+            reader.onload = () => resolve(reader.result as string);
+            reader.onerror = (error) => reject(error);
+        });
+        
+        // 2. Upload file to storage while AI is running
+        const storageRef = ref(storage, `applications/${appState.id}/flight-log.pdf`);
+        const uploadTask = uploadBytes(storageRef, file);
 
-            // 2. Upload file to storage while AI is running
-            const storageRef = ref(storage, `applications/${appState.id}/flight-log.pdf`);
-            const uploadTask = uploadBytes(storageRef, file);
+        // 3. Call AI flow
+        const aiTask = extractFlightLogs({ flightLogPdf: pdfDataUri });
 
-            // 3. Call AI flow
-            const aiTask = extractFlightLogs({ flightLogPdf: pdfDataUri });
+        // 4. Await both tasks
+        const [uploadResult, extractedLogs] = await Promise.all([uploadTask, aiTask]);
+        
+        const newLogs: FlightLog[] = extractedLogs.map(log => ({ ...log, id: uuidv4(), remarks: log.remarks || '' }));
+        
+        setAppState(prev => ({ ...prev, flightLogs: newLogs, flightLogPdfStoragePath: uploadResult.ref.fullPath }));
+        handlePersistChanges({ flightLogs: newLogs, flightLogPdfStoragePath: uploadResult.ref.fullPath }, {
+            title: "AI Analysis Complete",
+            description: `${newLogs.length} recent flight logs have been extracted and saved.`,
+        });
 
-            // 4. Await both tasks
-            const [uploadResult, extractedLogs] = await Promise.all([uploadTask, aiTask]);
-            
-            const newLogs: FlightLog[] = extractedLogs.map(log => ({ ...log, id: uuidv4(), remarks: log.remarks || '' }));
-            
-            setAppState(prev => ({ ...prev, flightLogs: newLogs, flightLogPdfStoragePath: uploadResult.ref.fullPath }));
-            handlePersistChanges({ flightLogs: newLogs, flightLogPdfStoragePath: uploadResult.ref.fullPath }, {
-                title: "AI Analysis Complete",
-                description: `${newLogs.length} recent flight logs have been extracted and saved.`,
-            });
-        };
-
-        reader.onerror = (error) => {
-            throw new Error("Failed to read file for AI processing.");
-        }
     } catch (error) {
         console.error("Flight log processing failed:", error);
         toast({
@@ -465,7 +463,7 @@ export function ApplicationClient({
 
   return (
     <div className="grid gap-8">
-      <input type="file" ref={fileInputRef} onChange={handleFileSelected} className="hidden" accept="image/png, image/jpeg, image/webp" />
+      <input type="file" ref={fileInputRef} onChange={handleFileSelected} className="hidden" accept="image/png, image/jpeg, image/webp,application/pdf" />
       <input type="file" ref={logPdfInputRef} onChange={handleFlightLogUpload} accept="application/pdf" className="hidden" />
       <Card>
         <CardHeader>
@@ -556,7 +554,7 @@ export function ApplicationClient({
                 </TableBody>
             </Table>
         </CardContent>
-        <CardFooter className="flex items-center gap-2">
+        <CardFooter className="flex items-center gap-2 border-t pt-6">
             <Button
                 variant="outline"
                 onClick={() => logPdfInputRef.current?.click()}
