@@ -32,6 +32,7 @@ import { useToast } from "@/hooks/use-toast";
 import { flagExpiringDocuments } from "@/ai/flows/flag-expiring-documents";
 import { checkRecency, type CheckRecencyOutput } from "@/ai/flows/check-recency";
 import { extractFlightLogs } from "@/ai/flows/extract-flight-logs";
+import { extractExpiryDate } from "@/ai/flows/extract-expiry-date";
 import { useFirestore, useStorage, errorEmitter, FirestorePermissionError } from "@/firebase";
 import { doc, serverTimestamp, updateDoc, collection, addDoc } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
@@ -201,11 +202,36 @@ export function ApplicationClient({
     const file = event.target.files?.[0];
     if (!file || !activeUploadDocId || !storage || !firestore) return;
 
+    const docDefinition = appState.documents.find(d => d.id === activeUploadDocId);
+    if (!docDefinition) return;
+
     setUploadingDocId(activeUploadDocId);
 
     try {
         const storageRef = ref(storage, `applications/${appState.id}/${activeUploadDocId}/${file.name}`);
         await uploadBytes(storageRef, file);
+        
+        let detectedExpiryDate: string | null | undefined = docDefinition.expiryDate;
+
+        // AI Expiry Date Detection for images
+        if (docDefinition.requiresExpiry && file.type.startsWith('image/')) {
+            toast({ title: 'AI Processing...', description: 'Detecting expiry date from your document.' });
+            const reader = new FileReader();
+            reader.readAsDataURL(file);
+            // This is async, so we need to wrap it in a promise
+            const dataUrl = await new Promise<string>((resolve, reject) => {
+                reader.onload = () => resolve(reader.result as string);
+                reader.onerror = (error) => reject(error);
+            });
+
+            const { expiryDate } = await extractExpiryDate({ documentImage: dataUrl });
+            if (expiryDate) {
+                detectedExpiryDate = expiryDate;
+                toast({ title: 'AI Success!', description: `Detected expiry date: ${format(new Date(expiryDate), 'PPP')}` });
+            } else {
+                 toast({ variant: "default", title: 'AI Notice', description: 'Could not automatically detect an expiry date. Please enter it manually.' });
+            }
+        }
 
         const newDocuments = appState.documents.map((doc) =>
           doc.id === activeUploadDocId
@@ -215,6 +241,7 @@ export function ApplicationClient({
                 fileName: file.name,
                 uploadedAt: new Date().toISOString(),
                 storagePath: storageRef.fullPath,
+                expiryDate: detectedExpiryDate, // Use the detected date
               }
             : doc
         );
@@ -228,7 +255,7 @@ export function ApplicationClient({
         toast({
             variant: "destructive",
             title: "Upload Failed",
-            description: "There was an error uploading your file.",
+            description: "There was an error uploading your file or processing it with AI.",
         });
         setAppState(initialApplication);
     } finally {
@@ -438,7 +465,7 @@ export function ApplicationClient({
 
   return (
     <div className="grid gap-8">
-      <input type="file" ref={fileInputRef} onChange={handleFileSelected} className="hidden" />
+      <input type="file" ref={fileInputRef} onChange={handleFileSelected} className="hidden" accept="image/png, image/jpeg, image/webp" />
       <input type="file" ref={logPdfInputRef} onChange={handleFlightLogUpload} accept="application/pdf" className="hidden" />
       <Card>
         <CardHeader>
