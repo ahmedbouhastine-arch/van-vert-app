@@ -1,5 +1,7 @@
-
 'use server';
+
+import { config } from 'dotenv';
+config();
 
 import { initializeFirebase } from '@/firebase';
 import { extractExpiryDate } from '@/ai/flows/extract-expiry-date';
