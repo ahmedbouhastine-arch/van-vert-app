@@ -33,7 +33,7 @@ import { flagExpiringDocuments } from "@/ai/flows/flag-expiring-documents";
 import { checkRecency, type CheckRecencyOutput } from "@/ai/flows/check-recency";
 import { useFirestore, useStorage, errorEmitter, FirestorePermissionError } from "@/firebase";
 import { doc, serverTimestamp, updateDoc, collection, addDoc } from "firebase/firestore";
-import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
+import { ref, uploadBytes } from "firebase/storage";
 import { Textarea } from "@/components/ui/textarea";
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
 import { v4 as uuidv4 } from 'uuid';
@@ -206,7 +206,6 @@ export function ApplicationClient({
     try {
         const storageRef = ref(storage, `applications/${appState.id}/${activeUploadDocId}/${file.name}`);
         await uploadBytes(storageRef, file);
-        const downloadURL = await getDownloadURL(storageRef);
 
         const newDocuments = appState.documents.map((doc) =>
           doc.id === activeUploadDocId
