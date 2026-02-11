@@ -34,7 +34,7 @@ import { useUser, useFirestore, useCollection, useDoc, useMemoFirebase } from "@
 import type { Application, UserProfile, FirebaseTimestamp } from "@/types";
 import { useToast } from "@/hooks/use-toast";
 import { LoadingScreen } from "@/components/LoadingScreen";
-import { collection, query, orderBy, where, doc } from "firebase/firestore";
+import { collection, query, orderBy, doc } from "firebase/firestore";
 import { Skeleton } from "@/components/ui/skeleton";
 
 // Helper function to safely format dates, whether they are Timestamps or strings
@@ -141,16 +141,14 @@ function ApplicationTableRow({ application }: { application: Application }) {
 
 function AuthorizedApplicationList() {
     const firestore = useFirestore();
-    const { user } = useUser();
     
     const applicationsQuery = useMemoFirebase(() => {
-        if (!firestore || !user?.uid) return null;
+        if (!firestore) return null;
         return query(
             collection(firestore, "applications"),
-            where("userId", "==", user.uid),
             orderBy("submittedAt", "desc")
         ) as any;
-    }, [firestore, user?.uid]);
+    }, [firestore]);
     
     const { data: allApplications, isLoading } = useCollection<Application>(applicationsQuery);
 
