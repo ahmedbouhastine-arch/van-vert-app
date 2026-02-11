@@ -60,7 +60,7 @@ export default function DashboardPage() {
   const firestore = useFirestore();
 
   const appsQuery = useMemoFirebase(() => {
-    if (!firestore || !user) {
+    if (!firestore || !user?.uid) {
       return null;
     }
     return query(
@@ -69,9 +69,9 @@ export default function DashboardPage() {
         orderBy("updatedAt", "desc"),
         limit(3)
     );
-  }, [firestore, user]);
+  }, [firestore, user?.uid]);
 
-  const { data: recentApplications, loading: appsLoading } = useCollection<Application>(appsQuery);
+  const { data: recentApplications, isLoading: appsLoading, error: appsError } = useCollection<Application>(appsQuery);
 
 
   if (userLoading) {
@@ -81,6 +81,14 @@ export default function DashboardPage() {
   const renderContent = () => {
     if (appsLoading) {
       return Array.from({ length: 3 }).map((_, i) => <ApplicationCardSkeleton key={i} />);
+    }
+
+    if (appsError) {
+      return (
+        <div className="text-center text-destructive p-4 rounded-md col-span-full">
+            <p>Could not load your recent applications.</p>
+        </div>
+      );
     }
 
     if (!recentApplications || recentApplications.length === 0) {
