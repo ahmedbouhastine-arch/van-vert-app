@@ -1,9 +1,70 @@
 
 rules_version = '2';
+
 service cloud.firestore {
   match /databases/{database}/documents {
-    match /{document=**} {
-      allow read, write: if request.auth != null;
+  
+    // Function to get the role of the requesting user from their user profile
+    function getUserRole(userId) {
+      return get(/databases/$(database)/documents/users/$(userId)).data.role;
+    }
+    
+    // --- User Profiles ---
+    // Users can read any profile (for names/avatars).
+    // Users can create and update their own profile.
+    // Head Admins can update any profile to change roles.
+    match /users/{userId} {
+      allow read: if request.auth != null;
+      allow create: if request.auth.uid == userId;
+      allow update: if request.auth.uid == userId || getUserRole(request.auth.uid) == 'head-admin';
+      allow delete: if false; // Deleting user profiles is disallowed.
+    }
+
+    // --- Applications ---
+    match /applications/{applicationId} {
+      
+      // --- Helper Functions ---
+      function isOwner() {
+        // Is the person making the request the owner of the document?
+        return request.auth.uid == resource.data.userId;
+      }
+
+      function isPrivileged() {
+        // Does the person have a role of reviewer or higher?
+        let userRole = getUserRole(request.auth.uid);
+        return userRole in ['reviewer', 'admin', 'head-admin'];
+      }
+      
+      function isAdmin() {
+        // Does the person have a role of admin or higher?
+        let userRole = getUserRole(request.auth.uid);
+        return userRole in ['admin', 'head-admin'];
+      }
+      
+      // --- Rules ---
+      // Read: Owners and all privileged users can read.
+      allow read: if request.auth != null && (isOwner() || isPrivileged());
+      
+      // Create: Only the owner can create an application for themselves.
+      allow create: if request.auth != null && request.auth.uid == request.resource.data.userId;
+
+      // Update (Full): Owners can update their own drafts. Admins can update any application.
+      allow update: if request.auth != null && ((isOwner() && resource.data.status == 'draft') || isAdmin());
+      
+      // Update (Partial): Reviewers can only update the 'documents' field and the 'updatedAt' timestamp.
+      // This is a separate rule that grants them specific, limited write access.
+      allow update: if request.auth != null && 
+                    isPrivileged() && 
+                    request.resource.data.keys().hasOnly(['documents', 'updatedAt']);
+      
+      // Delete: Only the owner can delete their application.
+      allow delete: if request.auth != null && isOwner();
+    }
+    
+    // --- Notifications ---
+    // Users can only read and write to their own notifications subcollection.
+    match /users/{userId}/notifications/{notificationId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
     }
   }
 }
