@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useState } from "react";
 import { redirect } from "next/navigation";
 import { PlusCircle, MoreHorizontal } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import {
   Card,
   CardContent,
@@ -23,10 +23,21 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
@@ -40,9 +51,10 @@ import {
 import { StatusBadge } from "@/components/StatusBadge";
 import { format } from "date-fns";
 import { useUser, useFirestore, useCollection, useMemoFirebase } from "@/firebase";
-import { collection, query, where } from "firebase/firestore";
+import { collection, query, where, doc, deleteDoc } from "firebase/firestore";
 import type { Application, FirebaseTimestamp } from "@/types";
 import { LoadingScreen } from "@/components/LoadingScreen";
+import { useToast } from "@/hooks/use-toast";
 
 // Helper function to safely format dates, whether they are Timestamps or strings
 const safeFormatDate = (date: FirebaseTimestamp | Date | string | undefined | null, formatString: string) => {
@@ -61,7 +73,9 @@ const safeFormatDate = (date: FirebaseTimestamp | Date | string | undefined | nu
 export default function MyApplicationsPage() {
   const { user, claims, loading: userLoading } = useUser();
   const [selectedFeedback, setSelectedFeedback] = useState<string | null>(null);
+  const [appToDelete, setAppToDelete] = useState<Application | null>(null);
   const firestore = useFirestore();
+  const { toast } = useToast();
 
   const userApplicationsQuery = useMemoFirebase(() => {
     if (!firestore || !user) return null;
@@ -72,6 +86,27 @@ export default function MyApplicationsPage() {
   const { data: userApplications, isLoading: appsLoading } = useCollection<Application>(userApplicationsQuery);
   
   const isLoading = userLoading || appsLoading;
+
+  const handleDelete = async () => {
+    if (!appToDelete || !firestore) return;
+
+    const appRef = doc(firestore, 'applications', appToDelete.id);
+    try {
+        await deleteDoc(appRef);
+        toast({
+            title: 'Draft Deleted',
+            description: `Application for '${appToDelete.licenseType}' has been deleted.`
+        });
+    } catch (error) {
+        toast({
+            variant: 'destructive',
+            title: 'Delete Failed',
+            description: 'Could not delete the application. Please try again.'
+        });
+    } finally {
+        setAppToDelete(null); // Close dialog
+    }
+  };
 
   if (isLoading) {
     return <LoadingScreen text="Loading applications..." />;
@@ -157,6 +192,14 @@ export default function MyApplicationsPage() {
                               <Link href={`/applications/${app.id}`}>View Details</Link>
                           </DropdownMenuItem>
                           {app.feedback && <DropdownMenuItem onSelect={() => setSelectedFeedback(app.feedback || null)}>View Feedback</DropdownMenuItem>}
+                          {app.status === 'draft' && (
+                            <>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem onSelect={() => setAppToDelete(app)} className="text-destructive focus:text-destructive">
+                                    Delete Draft
+                                </DropdownMenuItem>
+                            </>
+                          )}
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </TableCell>
@@ -185,6 +228,8 @@ export default function MyApplicationsPage() {
             </CardFooter>
         )}
       </Card>
+
+      {/* Feedback Dialog */}
       <Dialog open={!!selectedFeedback} onOpenChange={(isOpen) => !isOpen && setSelectedFeedback(null)}>
         <DialogContent className="sm:max-w-md">
             <DialogHeader>
@@ -198,6 +243,24 @@ export default function MyApplicationsPage() {
             </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={!!appToDelete} onOpenChange={(isOpen) => !isOpen && setAppToDelete(null)}>
+        <AlertDialogContent>
+            <AlertDialogHeader>
+                <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                <AlertDialogDescription>
+                    This action will permanently delete your draft application for the <span className="font-semibold text-foreground">{appToDelete?.licenseType}</span>. This cannot be undone.
+                </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction onClick={handleDelete} className={buttonVariants({ variant: "destructive" })}>
+                    Delete
+                </AlertDialogAction>
+            </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

@@ -11,13 +11,14 @@ import {
 import { licenseTypes } from "@/lib/licensing";
 import { useState, useEffect } from 'react';
 import { useFirestore, useUser } from '@/firebase';
-import { addDoc, collection, serverTimestamp } from 'firebase/firestore';
+import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { Button } from '@/components/ui/button';
 import { ArrowRight, Loader2 } from 'lucide-react';
 import type { LicenseType } from '@/lib/licensing';
 import { useToast } from '@/hooks/use-toast';
 import { LoadingScreen } from "@/components/LoadingScreen";
 import { useRouter } from "next/navigation";
+import { v4 as uuidv4 } from 'uuid';
 
 function NewApplicationButton({ licenseType }: { licenseType: LicenseType }) {
   const [isCreating, setIsCreating] = useState(false);
@@ -38,6 +39,7 @@ function NewApplicationButton({ licenseType }: { licenseType: LicenseType }) {
 
     setIsCreating(true);
     try {
+      const newAppId = uuidv4();
       const docData = {
         userId: user.uid,
         licenseType: licenseType.name,
@@ -56,14 +58,15 @@ function NewApplicationButton({ licenseType }: { licenseType: LicenseType }) {
         flightLogs: [],
       };
 
-      const newAppRef = await addDoc(collection(firestore, 'applications'), docData);
+      const newAppRef = doc(firestore, 'applications', newAppId);
+      await setDoc(newAppRef, docData);
       
       toast({
         title: "Application Created",
         description: `Your draft for ${licenseType.name} is ready.`,
       });
 
-      router.push(`/applications/${newAppRef.id}`);
+      router.push(`/applications/${newAppId}`);
 
     } catch (error: any) {
       console.error("Error creating application:", error);
