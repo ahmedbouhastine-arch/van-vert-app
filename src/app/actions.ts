@@ -75,8 +75,8 @@ export async function uploadFlightLogAction(
         }
     } catch (e: any) {
         console.error("AI flight log extraction failed:", e);
-        // Re-throw the original, more specific error message from the AI service.
-        throw new Error(e.message || "AI processing of the flight log PDF failed unexpectedly.");
+        // Re-throw the original error to preserve the full stack trace for debugging.
+        throw e;
     }
     
     return { storagePath: storageRef.fullPath, extractedLogs };
