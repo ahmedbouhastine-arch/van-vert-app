@@ -1,8 +1,5 @@
 'use server';
 
-import { config } from 'dotenv';
-config();
-
 import { initializeFirebase } from '@/firebase';
 import { extractExpiryDate } from '@/ai/flows/extract-expiry-date';
 import { extractFlightLogs } from '@/ai/flows/extract-flight-logs';
@@ -44,10 +41,9 @@ export async function uploadDocumentAction(
         try {
             const { expiryDate } = await extractExpiryDate({ documentImage: fileDataUri });
             detectedExpiryDate = expiryDate;
-        } catch (e) {
+        } catch (e: any) {
             console.error("AI expiry date detection failed:", e);
-            // Don't block the upload if AI fails, but let the user know something went wrong.
-            // We won't throw, but a toast on the client might be good in the future.
+            // Don't block the upload if AI fails. We can show a toast on the client later.
         }
     }
 
@@ -77,10 +73,10 @@ export async function uploadFlightLogAction(
         if (aiResult) {
             extractedLogs = aiResult.map(log => ({ ...log, id: uuidv4(), remarks: log.remarks || '' }));
         }
-    } catch (e) {
+    } catch (e: any) {
         console.error("AI flight log extraction failed:", e);
-        // Re-throw the error so the client can notify the user of the failure.
-        throw new Error("AI processing of the flight log PDF failed unexpectedly.");
+        // Re-throw the original, more specific error message from the AI service.
+        throw new Error(e.message || "AI processing of the flight log PDF failed unexpectedly.");
     }
     
     return { storagePath: storageRef.fullPath, extractedLogs };
