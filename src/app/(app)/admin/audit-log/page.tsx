@@ -8,7 +8,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { format } from "date-fns";
 import type { AuditLogEntry, FirebaseTimestamp } from "@/types";
-import { subHours } from 'date-fns';
 
 // Helper function to safely format dates, whether they are Timestamps or strings
 const safeFormatDate = (date: FirebaseTimestamp | Date | string | undefined | null, formatString: string) => {
@@ -35,46 +34,8 @@ export default function AuditLogPage() {
     const { loading, claims } = useUser();
 
     // In a real app, this data would be fetched from a Firestore collection.
-    // Mock data for demonstration
-    const now = new Date();
-    const auditLogs: AuditLogEntry[] = [
-        {
-            id: 'log1',
-            adminId: 'admin_user_id_1',
-            adminName: 'Jane Doe',
-            adminEmail: 'jane.doe@test.va',
-            action: 'User Role Changed',
-            timestamp: { toDate: () => subHours(now, 2), seconds: 0, nanoseconds: 0 },
-            details: 'Changed role of user john.pilot@example.com from "user" to "reviewer".'
-        },
-        {
-            id: 'log2',
-            adminId: 'admin_user_id_2',
-            adminName: 'Admin Head',
-            adminEmail: 'head-admin@test.va',
-            action: 'Application Status Updated',
-            timestamp: { toDate: () => subHours(now, 5), seconds: 0, nanoseconds: 0 },
-            details: 'Updated status of CPL Application #APP12345 to "Approved".'
-        },
-        {
-            id: 'log3',
-            adminId: 'admin_user_id_1',
-            adminName: 'Jane Doe',
-            adminEmail: 'jane.doe@test.va',
-            action: 'Application Feedback Added',
-            timestamp: { toDate: () => subHours(now, 26), seconds: 0, nanoseconds: 0 },
-            details: 'Added feedback to PPL Application #APP67890.'
-        },
-        {
-            id: 'log4',
-            adminId: 'admin_user_id_2',
-            adminName: 'Admin Head',
-            adminEmail: 'head-admin@test.va',
-            action: 'System Login',
-            timestamp: { toDate: () => subHours(now, 48), seconds: 0, nanoseconds: 0 },
-            details: 'Admin user logged into the system.'
-        }
-    ];
+    // For now, it's an empty array as mock data has been removed.
+    const auditLogs: AuditLogEntry[] = [];
 
     if (loading) {
         return <LoadingScreen text="Verifying Access..." />;
