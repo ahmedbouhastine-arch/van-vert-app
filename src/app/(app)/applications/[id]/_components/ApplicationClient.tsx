@@ -376,6 +376,7 @@ export function ApplicationClient({
         const { storagePath, extractedLogs } = await uploadFlightLogAction(
             appState.id,
             pdfDataUri,
+            file.name,
         );
 
         setAppState(prev => ({ ...prev, flightLogs: extractedLogs, flightLogPdfStoragePath: storagePath }));
