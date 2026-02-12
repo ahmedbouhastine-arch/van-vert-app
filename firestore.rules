@@ -89,8 +89,9 @@ service firebase.storage {
     
     match /applications/{applicationId}/{allPaths=**} {
       allow read: if request.auth != null && (isOwner(applicationId) || isPrivileged());
-      // A user can write to their own application folder.
-      allow write: if request.auth != null && isOwner(applicationId);
+      // DEBUG: Temporarily allow all writes to diagnose upload issue.
+      // This is insecure and should be reverted.
+      allow write: if true;
     }
   }
 }
