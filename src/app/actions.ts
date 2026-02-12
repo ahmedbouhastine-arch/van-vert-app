@@ -40,13 +40,12 @@ export async function uploadDocumentAction(
     try {
         await file.save(buffer, { contentType: mimeType });
     } catch (e: any) {
-        console.error("DETAILED DOCUMENT UPLOAD ERROR:", JSON.stringify(e, Object.getOwnPropertyNames(e), 2));
-        
-        if (e.message && e.message.includes('Could not refresh access token')) {
-            throw new Error('Firebase Admin SDK failed to authenticate. This is likely an issue with the development environment configuration and not your code.');
+        const errorMessage = e.message || '';
+        if (errorMessage.includes('Could not refresh access token')) {
+            throw new Error('Firebase Admin SDK failed to authenticate. This is likely an issue with the development environment configuration. Please run `gcloud auth application-default login` in your terminal and try again.');
         }
 
-        throw new Error(`Firebase Admin SDK Storage Error: ${e.message}`);
+        throw new Error(`Firebase Admin SDK Storage Error: ${errorMessage}`);
     }
 
     let detectedExpiryDate: string | null | undefined = undefined;
@@ -85,13 +84,12 @@ export async function uploadFlightLogAction(
     try {
         await file.save(buffer, { contentType: mimeType });
     } catch (e: any) {
-        console.error("DETAILED FLIGHT LOG UPLOAD ERROR:", JSON.stringify(e, Object.getOwnPropertyNames(e), 2));
-        
-        if (e.message && e.message.includes('Could not refresh access token')) {
-            throw new Error('Firebase Admin SDK failed to authenticate. This is likely an issue with the development environment configuration and not your code.');
+        const errorMessage = e.message || '';
+        if (errorMessage.includes('Could not refresh access token')) {
+            throw new Error('Firebase Admin SDK failed to authenticate. This is likely an issue with the development environment configuration. Please run `gcloud auth application-default login` in your terminal and try again.');
         }
         
-        throw new Error(`Firebase Admin SDK Storage Error: ${e.message}`);
+        throw new Error(`Firebase Admin SDK Storage Error: ${errorMessage}`);
     }
 
     let extractedLogs: FlightLog[] = [];
