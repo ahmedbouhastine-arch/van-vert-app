@@ -32,7 +32,13 @@ export async function uploadDocumentAction(
     const { buffer, mimeType } = decodeDataUri(fileDataUri);
     
     const storageRef = ref(storage, `applications/${applicationId}/${docId}/${fileName}`);
-    await uploadBytes(storageRef, buffer, { contentType: mimeType });
+    
+    try {
+        await uploadBytes(storageRef, buffer, { contentType: mimeType });
+    } catch (e: any) {
+        console.error("DETAILED DOCUMENT UPLOAD ERROR:", JSON.stringify(e, null, 2));
+        throw e;
+    }
 
     let detectedExpiryDate: string | null | undefined = undefined;
 
@@ -65,7 +71,13 @@ export async function uploadFlightLogAction(
     }
     
     const storageRef = ref(storage, `applications/${applicationId}/flight-log.pdf`);
-    await uploadBytes(storageRef, buffer, { contentType: mimeType });
+
+    try {
+        await uploadBytes(storageRef, buffer, { contentType: mimeType });
+    } catch (e: any) {
+        console.error("DETAILED FLIGHT LOG UPLOAD ERROR:", JSON.stringify(e, null, 2));
+        throw e;
+    }
 
     let extractedLogs: FlightLog[] = [];
     try {
