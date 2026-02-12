@@ -33,11 +33,12 @@ export async function uploadDocumentAction(
     const { buffer, mimeType } = decodeDataUri(fileDataUri);
     
     const storageRef = ref(storage, `applications/${applicationId}/${docId}/${fileName}`);
+    console.log(`Attempting to upload document to: ${storageRef.fullPath}`);
     
     try {
         await uploadBytes(storageRef, buffer, { contentType: mimeType });
     } catch (e: any) {
-        console.error("DETAILED DOCUMENT UPLOAD ERROR:", JSON.stringify(e, null, 2));
+        console.error("DETAILED DOCUMENT UPLOAD ERROR:", e);
         throw e;
     }
 
@@ -72,11 +73,12 @@ export async function uploadFlightLogAction(
     }
     
     const storageRef = ref(storage, `applications/${applicationId}/flight-log.pdf`);
+    console.log(`Attempting to upload flight log to: ${storageRef.fullPath}`);
 
     try {
         await uploadBytes(storageRef, buffer, { contentType: mimeType });
     } catch (e: any) {
-        console.error("DETAILED FLIGHT LOG UPLOAD ERROR:", JSON.stringify(e, null, 2));
+        console.error("DETAILED FLIGHT LOG UPLOAD ERROR:", e);
         throw e;
     }
 
