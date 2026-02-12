@@ -32,9 +32,8 @@ import { flagExpiringDocuments } from "@/ai/flows/flag-expiring-documents";
 import { checkRecency } from "@/ai/flows/check-recency";
 import type { CheckRecencyOutput } from "@/ai/flows/check-recency";
 import { cn } from "@/lib/utils";
-import { useFirestore, useStorage, errorEmitter, FirestorePermissionError } from "@/firebase";
+import { useFirestore, errorEmitter, FirestorePermissionError } from "@/firebase";
 import { doc, serverTimestamp, updateDoc, addDoc, collection } from "firebase/firestore";
-import { getDownloadURL, ref } from "firebase/storage";
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
 
 
@@ -79,7 +78,7 @@ function DocumentReviewCard({
 }: {
   doc: ApplicationDocument;
   onStatusChange: (docId: string, status: DocumentStatus) => void;
-  onDownload: (storagePath: string) => void;
+  onDownload: (url: string) => void;
 }) {
   const documentStatuses: DocumentStatus[] = [
     "uploaded",
@@ -150,7 +149,7 @@ function DocumentReviewCard({
             <div className="flex items-center gap-4 text-muted-foreground">
               <FileIcon className="h-5 w-5" />
               <span className="font-medium text-foreground">{doc.fileName}</span>
-              <Button variant="outline" size="sm" onClick={() => doc.storagePath && onDownload(doc.storagePath)}>
+              <Button variant="outline" size="sm" onClick={() => doc.fileUrl && onDownload(doc.fileUrl)}>
                 <Download className="mr-2 h-4 w-4" /> Download
               </Button>
             </div>
@@ -199,7 +198,6 @@ export function AdminApplicationClient({
   const { toast } = useToast();
   
   const firestore = useFirestore();
-  const storage = useStorage();
 
   const isAdminOrHigher = claims?.role === 'admin' || claims?.role === 'head-admin';
 
@@ -347,18 +345,16 @@ export function AdminApplicationClient({
     });
   }
 
-  const handleDownload = async (storagePath: string) => {
-    if (!storage) return;
+  const handleDownload = async (url: string) => {
+    if (!url) return;
     try {
-        const fileRef = ref(storage, storagePath);
-        const url = await getDownloadURL(fileRef);
         window.open(url, '_blank');
     } catch (error) {
         console.error("Download failed:", error);
         toast({
             variant: "destructive",
             title: "Download Failed",
-            description: "Could not get the download URL for the file.",
+            description: "Could not open the file URL.",
         });
     }
   };

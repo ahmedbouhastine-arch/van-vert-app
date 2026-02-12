@@ -61,7 +61,7 @@ export async function uploadDocumentAction(
     fileDataUri: string, 
     fileName: string,
     requiresExpiry: boolean,
-): Promise<{ storagePath: string; expiryDate: string | null | undefined }> {
+): Promise<{ publicUrl: string; expiryDate: string | null | undefined }> {
     const { adminStorage } = initializeAdminApp();
     const bucket = adminStorage.bucket(firebaseConfig.storageBucket);
     
@@ -73,7 +73,10 @@ export async function uploadDocumentAction(
     console.log(`Attempting to upload document '${fileName}' to storage path: ${storagePath}`);
 
     try {
-        await file.save(buffer, { contentType: mimeType });
+        await file.save(buffer, { 
+            contentType: mimeType,
+            public: true, // Make the file publicly readable
+        });
     } catch (e: any) {
         const errorMessage = e.message || '';
         if (errorMessage.includes('Could not refresh access token')) {
@@ -93,8 +96,9 @@ export async function uploadDocumentAction(
             console.error("AI expiry date detection failed:", e);
         }
     }
-
-    return { storagePath, expiryDate: detectedExpiryDate };
+    
+    const publicUrl = `https://storage.googleapis.com/${bucket.name}/${storagePath}`;
+    return { publicUrl, expiryDate: detectedExpiryDate };
 }
 
 
@@ -102,7 +106,7 @@ export async function uploadFlightLogAction(
     applicationId: string,
     pdfDataUri: string,
     fileName: string,
-): Promise<{ storagePath: string; extractedLogs: FlightLog[] }> {
+): Promise<{ publicUrl: string; extractedLogs: FlightLog[] }> {
     const { adminStorage } = initializeAdminApp();
     const bucket = adminStorage.bucket(firebaseConfig.storageBucket);
     
@@ -118,7 +122,10 @@ export async function uploadFlightLogAction(
     console.log(`Attempting to upload flight log '${fileName}' to storage path: ${storagePath}`);
 
     try {
-        await file.save(buffer, { contentType: mimeType });
+        await file.save(buffer, { 
+            contentType: mimeType,
+            public: true,
+        });
     } catch (e: any) {
         const errorMessage = e.message || '';
          if (errorMessage.includes('Could not refresh access token')) {
@@ -139,5 +146,6 @@ export async function uploadFlightLogAction(
         throw e;
     }
     
-    return { storagePath, extractedLogs };
+    const publicUrl = `https://storage.googleapis.com/${bucket.name}/${storagePath}`;
+    return { publicUrl, extractedLogs };
 }
