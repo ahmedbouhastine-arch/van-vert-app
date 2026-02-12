@@ -26,9 +26,13 @@ export async function createApplicationAction(
     userId: string,
     licenseId: string,
 ): Promise<{ applicationId: string }> {
+    console.log('--- Starting createApplicationAction ---');
     const { adminStorage, adminFirestore } = initializeAdminApp();
     const bucketName = firebaseConfig.storageBucket;
+    
+    console.log(`Using bucket name from config: ${bucketName}`);
     if (!bucketName) {
+        console.error("CRITICAL: Firebase Storage bucket name is not configured in firebaseConfig.");
         throw new Error("Firebase Storage bucket name is not configured.");
     }
     
@@ -40,6 +44,7 @@ export async function createApplicationAction(
     }
 
     const newAppId = uuidv4();
+    console.log(`Generated new Application ID: ${newAppId}`);
 
     // Create placeholder files and get their URLs
     const documentPromises = licenseType.documentRequirements.map(async (req) => {
@@ -48,10 +53,12 @@ export async function createApplicationAction(
         const storagePath = `applications/${newAppId}/${docInstanceId}/${placeholderFileName}`;
         const file = bucket.file(storagePath);
         
+        console.log(`Attempting to create placeholder file at path: ${storagePath}`);
         await file.save(Buffer.from(''), {
             contentType: 'text/plain',
             public: true,
         });
+        console.log(`Placeholder created for document: ${req.name}`);
         
         const publicUrl = `https://storage.googleapis.com/${bucket.name}/${storagePath}`;
 
@@ -69,6 +76,7 @@ export async function createApplicationAction(
     });
 
     const documents = await Promise.all(documentPromises);
+    console.log('All placeholder files created successfully.');
 
     const appData = {
         id: newAppId,
@@ -83,7 +91,9 @@ export async function createApplicationAction(
         flightLogPdfUrl: "",
     };
     
+    console.log('Writing new application data to Firestore...');
     await adminFirestore.collection('applications').doc(newAppId).set(appData);
+    console.log('--- Finished createApplicationAction ---');
 
     return { applicationId: newAppId };
 }
