@@ -1,4 +1,5 @@
 import admin from 'firebase-admin';
+import { firebaseConfig } from '@/firebase/config';
 
 // Admin SDK initialization (for server-side use)
 export function initializeAdminApp() {
@@ -12,7 +13,10 @@ export function initializeAdminApp() {
 
     // Initialize the admin app. It will automatically use Application Default Credentials
     // when running in a Google Cloud environment like App Hosting.
-    admin.initializeApp();
+    // Explicitly setting the storageBucket makes the connection more robust.
+    admin.initializeApp({
+        storageBucket: firebaseConfig.storageBucket,
+    });
     
     return {
         adminAuth: admin.auth(),
