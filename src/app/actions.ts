@@ -1,7 +1,7 @@
 
 'use server';
 
-import { initializeAdminApp } from '@/firebase/init';
+import { initializeAdminApp } from '@/firebase/admin-init';
 import { extractExpiryDate } from '@/ai/flows/extract-expiry-date';
 import { extractFlightLogs } from '@/ai/flows/extract-flight-logs';
 import type { FlightLog } from '@/types';
