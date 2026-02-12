@@ -35,7 +35,7 @@ export async function uploadDocumentAction(
     const storagePath = `applications/${applicationId}/${docId}/${fileName}`;
     const file = bucket.file(storagePath);
     
-    console.log('Attempting to upload document to storage path:', storagePath);
+    console.log(`Attempting to upload document '${fileName}' to storage path: ${storagePath}`);
 
     try {
         await file.save(buffer, { contentType: mimeType });
@@ -45,7 +45,7 @@ export async function uploadDocumentAction(
             throw new Error('Firebase Admin SDK failed to authenticate. This is likely an issue with the development environment configuration. Please run `gcloud auth application-default login` in your terminal and try again.');
         }
 
-        throw new Error(`Firebase Admin SDK Storage Error on path '${storagePath}': ${errorMessage}`);
+        throw new Error(`Firebase Admin SDK Storage Error uploading '${fileName}' to path '${storagePath}': ${errorMessage}`);
     }
 
     let detectedExpiryDate: string | null | undefined = undefined;
@@ -66,6 +66,7 @@ export async function uploadDocumentAction(
 export async function uploadFlightLogAction(
     applicationId: string,
     pdfDataUri: string,
+    fileName: string,
 ): Promise<{ storagePath: string; extractedLogs: FlightLog[] }> {
     const { adminStorage } = initializeAdminApp();
     const bucket = adminStorage.bucket(firebaseConfig.storageBucket);
@@ -79,7 +80,7 @@ export async function uploadFlightLogAction(
     const storagePath = `applications/${applicationId}/flight-log.pdf`;
     const file = bucket.file(storagePath);
 
-    console.log('Attempting to upload flight log to storage path:', storagePath);
+    console.log(`Attempting to upload flight log '${fileName}' to storage path: ${storagePath}`);
 
     try {
         await file.save(buffer, { contentType: mimeType });
@@ -89,7 +90,7 @@ export async function uploadFlightLogAction(
             throw new Error('Firebase Admin SDK failed to authenticate. This is likely an issue with the development environment configuration. Please run `gcloud auth application-default login` in your terminal and try again.');
         }
         
-        throw new Error(`Firebase Admin SDK Storage Error on path '${storagePath}': ${errorMessage}`);
+        throw new Error(`Firebase Admin SDK Storage Error uploading '${fileName}' to path '${storagePath}': ${errorMessage}`);
     }
 
     let extractedLogs: FlightLog[] = [];
