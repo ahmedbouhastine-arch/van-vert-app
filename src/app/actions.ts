@@ -2,6 +2,7 @@
 'use server';
 
 import { initializeAdminApp } from '@/firebase/admin-init';
+import { firebaseConfig } from '@/firebase/config';
 import { extractExpiryDate } from '@/ai/flows/extract-expiry-date';
 import { extractFlightLogs } from '@/ai/flows/extract-flight-logs';
 import type { FlightLog } from '@/types';
@@ -27,7 +28,7 @@ export async function uploadDocumentAction(
     requiresExpiry: boolean,
 ): Promise<{ storagePath: string; expiryDate: string | null | undefined }> {
     const { adminStorage } = initializeAdminApp();
-    const bucket = adminStorage.bucket();
+    const bucket = adminStorage.bucket(firebaseConfig.storageBucket);
     
     const { buffer, mimeType } = decodeDataUri(fileDataUri);
     
@@ -39,10 +40,13 @@ export async function uploadDocumentAction(
     try {
         await file.save(buffer, { contentType: mimeType });
     } catch (e: any) {
-        const errorPayload = JSON.stringify(e, Object.getOwnPropertyNames(e), 2);
-        console.error("DETAILED DOCUMENT UPLOAD ERROR:", errorPayload);
+        console.error("DETAILED DOCUMENT UPLOAD ERROR:", JSON.stringify(e, Object.getOwnPropertyNames(e), 2));
         
-        throw new Error(`Firebase Admin SDK Storage Error. Payload: ${errorPayload}`);
+        if (e.message && e.message.includes('Could not refresh access token')) {
+            throw new Error('Firebase Admin SDK failed to authenticate. This is likely an issue with the development environment configuration and not your code.');
+        }
+
+        throw new Error(`Firebase Admin SDK Storage Error: ${e.message}`);
     }
 
     let detectedExpiryDate: string | null | undefined = undefined;
@@ -65,7 +69,7 @@ export async function uploadFlightLogAction(
     pdfDataUri: string,
 ): Promise<{ storagePath: string; extractedLogs: FlightLog[] }> {
     const { adminStorage } = initializeAdminApp();
-    const bucket = adminStorage.bucket();
+    const bucket = adminStorage.bucket(firebaseConfig.storageBucket);
     
     const { buffer, mimeType } = decodeDataUri(pdfDataUri);
 
@@ -81,10 +85,13 @@ export async function uploadFlightLogAction(
     try {
         await file.save(buffer, { contentType: mimeType });
     } catch (e: any) {
-        const errorPayload = JSON.stringify(e, Object.getOwnPropertyNames(e), 2);
-        console.error("DETAILED FLIGHT LOG UPLOAD ERROR:", errorPayload);
+        console.error("DETAILED FLIGHT LOG UPLOAD ERROR:", JSON.stringify(e, Object.getOwnPropertyNames(e), 2));
         
-        throw new Error(`Firebase Admin SDK Storage Error. Payload: ${errorPayload}`);
+        if (e.message && e.message.includes('Could not refresh access token')) {
+            throw new Error('Firebase Admin SDK failed to authenticate. This is likely an issue with the development environment configuration and not your code.');
+        }
+        
+        throw new Error(`Firebase Admin SDK Storage Error: ${e.message}`);
     }
 
     let extractedLogs: FlightLog[] = [];
