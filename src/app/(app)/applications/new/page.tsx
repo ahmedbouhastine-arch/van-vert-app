@@ -10,25 +10,24 @@ import {
 } from "@/components/ui/card";
 import { licenseTypes } from "@/lib/licensing";
 import { useState, useEffect } from 'react';
-import { useFirestore, useUser } from '@/firebase';
-import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { useUser } from '@/firebase';
 import { Button } from '@/components/ui/button';
 import { ArrowRight, Loader2 } from 'lucide-react';
 import type { LicenseType } from '@/lib/licensing';
 import { useToast } from '@/hooks/use-toast';
 import { LoadingScreen } from "@/components/LoadingScreen";
 import { useRouter } from "next/navigation";
-import { v4 as uuidv4 } from 'uuid';
+import { createApplicationAction } from "@/app/actions";
+
 
 function NewApplicationButton({ licenseType }: { licenseType: LicenseType }) {
   const [isCreating, setIsCreating] = useState(false);
-  const firestore = useFirestore();
   const { user } = useUser();
   const router = useRouter();
   const { toast } = useToast();
 
   const handleCreateApplication = async () => {
-    if (!firestore || !user) {
+    if (!user) {
         toast({
             variant: "destructive",
             title: "Error",
@@ -39,34 +38,14 @@ function NewApplicationButton({ licenseType }: { licenseType: LicenseType }) {
 
     setIsCreating(true);
     try {
-      const newAppId = uuidv4();
-      const docData = {
-        userId: user.uid,
-        licenseType: licenseType.name,
-        status: 'draft',
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
-        feedback: "",
-        documents: licenseType.documentRequirements.map(req => ({
-            id: uuidv4(),
-            docRequirementId: req.id,
-            name: req.name,
-            description: req.description,
-            status: 'missing',
-            requiresExpiry: req.requiresExpiry,
-        })),
-        flightLogs: [],
-      };
-
-      const newAppRef = doc(firestore, 'applications', newAppId);
-      await setDoc(newAppRef, docData);
+      const { applicationId } = await createApplicationAction(user.uid, licenseType.id);
       
       toast({
         title: "Application Created",
         description: `Your draft for ${licenseType.name} is ready.`,
       });
 
-      router.push(`/applications/${newAppId}`);
+      router.push(`/applications/${applicationId}`);
 
     } catch (error: any) {
       console.error("Error creating application:", error);

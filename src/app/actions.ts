@@ -5,8 +5,10 @@ import { initializeAdminApp } from '@/firebase/admin-init';
 import { firebaseConfig } from '@/firebase/config';
 import { extractExpiryDate } from '@/ai/flows/extract-expiry-date';
 import { extractFlightLogs } from '@/ai/flows/extract-flight-logs';
-import type { FlightLog } from '@/types';
+import type { FlightLog, ApplicationDocument } from '@/types';
 import { v4 as uuidv4 } from 'uuid';
+import { licenseTypes } from '@/lib/licensing';
+import admin from 'firebase-admin';
 
 // Helper to decode data URI
 function decodeDataUri(dataUri: string) {
@@ -19,6 +21,73 @@ function decodeDataUri(dataUri: string) {
     const buffer = Buffer.from(base64Data, 'base64');
     return { buffer, mimeType };
 }
+
+export async function createApplicationAction(
+    userId: string,
+    licenseId: string,
+): Promise<{ applicationId: string }> {
+    const { adminStorage, adminFirestore } = initializeAdminApp();
+    const bucketName = firebaseConfig.storageBucket;
+    if (!bucketName) {
+        throw new Error("Firebase Storage bucket name is not configured.");
+    }
+    
+    const bucket = adminStorage.bucket(bucketName);
+
+    const licenseType = licenseTypes.find(lt => lt.id === licenseId);
+    if (!licenseType) {
+        throw new Error(`License type with ID "${licenseId}" not found.`);
+    }
+
+    const newAppId = uuidv4();
+
+    // Create placeholder files and get their URLs
+    const documentPromises = licenseType.documentRequirements.map(async (req) => {
+        const docInstanceId = uuidv4();
+        const placeholderFileName = 'placeholder.txt';
+        const storagePath = `applications/${newAppId}/${docInstanceId}/${placeholderFileName}`;
+        const file = bucket.file(storagePath);
+        
+        await file.save(Buffer.from(''), {
+            contentType: 'text/plain',
+            public: true,
+        });
+        
+        const publicUrl = `https://storage.googleapis.com/${bucket.name}/${storagePath}`;
+
+        const doc: ApplicationDocument = {
+            id: docInstanceId,
+            docRequirementId: req.id,
+            name: req.name,
+            description: req.description,
+            status: 'missing',
+            requiresExpiry: req.requiresExpiry,
+            fileUrl: publicUrl,
+            fileName: placeholderFileName,
+        };
+        return doc;
+    });
+
+    const documents = await Promise.all(documentPromises);
+
+    const appData = {
+        id: newAppId,
+        userId: userId,
+        licenseType: licenseType.name,
+        status: 'draft' as const,
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        feedback: "",
+        documents: documents,
+        flightLogs: [],
+        flightLogPdfUrl: "",
+    };
+    
+    await adminFirestore.collection('applications').doc(newAppId).set(appData);
+
+    return { applicationId: newAppId };
+}
+
 
 export async function uploadProfilePictureAction(
     userId: string,
