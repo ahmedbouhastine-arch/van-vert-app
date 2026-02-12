@@ -116,7 +116,7 @@ export async function uploadFlightLogAction(
         throw new Error('Invalid file type. Only PDF is allowed for flight logs.');
     }
     
-    const storagePath = `applications/${applicationId}/flight-log.pdf`;
+    const storagePath = `applications/${applicationId}/${fileName}`;
     const file = bucket.file(storagePath);
 
     console.log(`Attempting to upload flight log '${fileName}' to storage path: ${storagePath}`);
