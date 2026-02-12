@@ -39,10 +39,8 @@ const nextConfig: NextConfig = {
   experimental: {
     serverActions: {
       bodySizeLimit: '50mb',
+      allowedOrigins: ["3000-firebase-pilotpack-pre-1769026686788.cluster-cbeiita7rbe7iuwhvjs5zww2i4.cloudworkstations.dev"],
     },
-  },
-  serverActions: {
-    allowedOrigins: ["3000-firebase-pilotpack-pre-1769026686788.cluster-cbeiita7rbe7iuwhvjs5zww2i4.cloudworkstations.dev"],
   },
 };
 
