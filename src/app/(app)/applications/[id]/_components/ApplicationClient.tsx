@@ -32,9 +32,8 @@ import { useToast } from "@/hooks/use-toast";
 import { flagExpiringDocuments } from "@/ai/flows/flag-expiring-documents";
 import { checkRecency, type CheckRecencyOutput } from "@/ai/flows/check-recency";
 import { uploadDocumentAction, uploadFlightLogAction } from "@/app/actions";
-import { useFirestore, useStorage, errorEmitter, FirestorePermissionError } from "@/firebase";
+import { useFirestore, errorEmitter, FirestorePermissionError } from "@/firebase";
 import { doc, serverTimestamp, updateDoc, collection, addDoc } from "firebase/firestore";
-import { ref, getDownloadURL } from "firebase/storage";
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
 import { v4 as uuidv4 } from 'uuid';
 
@@ -151,7 +150,6 @@ export function ApplicationClient({
   const [activeUploadDocId, setActiveUploadDocId] = useState<string | null>(null);
   const { toast } = useToast();
   const firestore = useFirestore();
-  const storage = useStorage();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const logPdfInputRef = useRef<HTMLInputElement>(null);
 
@@ -215,7 +213,7 @@ export function ApplicationClient({
             reader.onerror = (error) => reject(error);
         });
 
-        const { storagePath, expiryDate: detectedExpiryDate } = await uploadDocumentAction(
+        const { publicUrl, expiryDate: detectedExpiryDate } = await uploadDocumentAction(
             appState.id,
             activeUploadDocId,
             dataUrl,
@@ -236,7 +234,7 @@ export function ApplicationClient({
                 status: "uploaded" as const,
                 fileName: file.name,
                 uploadedAt: new Date().toISOString(),
-                storagePath: storagePath,
+                fileUrl: publicUrl,
                 expiryDate: detectedExpiryDate || doc.expiryDate, // Use detected date, but keep manual if AI fails
               }
             : doc
@@ -373,15 +371,15 @@ export function ApplicationClient({
             reader.onerror = (error) => reject(error);
         });
         
-        const { storagePath, extractedLogs } = await uploadFlightLogAction(
+        const { publicUrl, extractedLogs } = await uploadFlightLogAction(
             appState.id,
             pdfDataUri,
             file.name,
         );
 
-        setAppState(prev => ({ ...prev, flightLogs: extractedLogs, flightLogPdfStoragePath: storagePath }));
+        setAppState(prev => ({ ...prev, flightLogs: extractedLogs, flightLogPdfUrl: publicUrl }));
         
-        handlePersistChanges({ flightLogs: extractedLogs, flightLogPdfStoragePath: storagePath }, {
+        handlePersistChanges({ flightLogs: extractedLogs, flightLogPdfUrl: publicUrl }, {
             title: "AI Analysis Complete",
             description: `${extractedLogs.length} recent flight logs have been extracted and saved.`,
         });
@@ -402,19 +400,8 @@ export function ApplicationClient({
   };
 
   const handleDownloadLogPdf = async () => {
-    if (!storage || !appState.flightLogPdfStoragePath) return;
-    try {
-        const fileRef = ref(storage, appState.flightLogPdfStoragePath);
-        const url = await getDownloadURL(fileRef);
-        window.open(url, '_blank');
-    } catch (error) {
-        console.error("Download failed:", error);
-        toast({
-            variant: "destructive",
-            title: "Download Failed",
-            description: "Could not get the download URL for the logbook.",
-        });
-    }
+    if (!appState.flightLogPdfUrl) return;
+    window.open(appState.flightLogPdfUrl, '_blank');
 };
 
   
@@ -551,9 +538,9 @@ export function ApplicationClient({
                 disabled={isSubmitted || isUploadingLog}
             >
                 {isUploadingLog ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <UploadCloud className="mr-2 h-4 w-4" />}
-                {appState.flightLogPdfStoragePath ? 'Replace PDF' : 'Upload Log PDF'}
+                {appState.flightLogPdfUrl ? 'Replace PDF' : 'Upload Log PDF'}
             </Button>
-            {appState.flightLogPdfStoragePath && (
+            {appState.flightLogPdfUrl && (
                 <Button variant="secondary" onClick={handleDownloadLogPdf} disabled={isUploadingLog}>
                     <Download className="mr-2 h-4 w-4" /> Download PDF
                 </Button>

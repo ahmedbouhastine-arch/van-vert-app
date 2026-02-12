@@ -28,7 +28,7 @@ export type ApplicationDocument = {
   name: string;
   description: string;
   status: DocumentStatus;
-  storagePath?: string;
+  fileUrl?: string;
   fileName?: string;
   uploadedAt?: string; // ISO Date string
   requiresExpiry: boolean;
@@ -54,7 +54,7 @@ export type Application = {
   status: ApplicationStatus;
   documents: ApplicationDocument[];
   flightLogs: FlightLog[];
-  flightLogPdfStoragePath?: string;
+  flightLogPdfUrl?: string;
   submittedAt?: FirebaseTimestamp;
   updatedAt: FirebaseTimestamp;
   createdAt?: FirebaseTimestamp;
