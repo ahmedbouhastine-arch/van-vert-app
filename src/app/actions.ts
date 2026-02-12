@@ -20,6 +20,41 @@ function decodeDataUri(dataUri: string) {
     return { buffer, mimeType };
 }
 
+export async function uploadProfilePictureAction(
+    userId: string,
+    fileDataUri: string,
+    fileName: string,
+): Promise<{ photoURL: string }> {
+    const { adminStorage } = initializeAdminApp();
+    const bucket = adminStorage.bucket(firebaseConfig.storageBucket);
+
+    const { buffer, mimeType } = decodeDataUri(fileDataUri);
+    const storagePath = `profile-pictures/${userId}/${fileName}`;
+    const file = bucket.file(storagePath);
+    
+    console.log(`Attempting to upload profile picture '${fileName}' to storage path: ${storagePath}`);
+
+    try {
+        await file.save(buffer, {
+            contentType: mimeType,
+            public: true, // Make the file publicly readable
+        });
+        
+        // Return the public URL
+        const photoURL = `https://storage.googleapis.com/${bucket.name}/${storagePath}`;
+        return { photoURL };
+
+    } catch (e: any) {
+        const errorMessage = e.message || '';
+        if (errorMessage.includes('Could not refresh access token')) {
+            throw new Error('Firebase Admin SDK failed to authenticate. This is likely an issue with the development environment configuration. Please run `gcloud auth application-default login` in your terminal and try again.');
+        }
+
+        throw new Error(`Firebase Admin SDK Storage Error uploading '${fileName}' to path '${storagePath}': ${errorMessage}`);
+    }
+}
+
+
 export async function uploadDocumentAction(
     applicationId: string, 
     docId: string,

@@ -3,7 +3,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -15,7 +15,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
-import { CheckCircle2, XCircle, Eye, EyeOff, Loader2 } from "lucide-react";
+import { CheckCircle2, XCircle, Eye, EyeOff, Loader2, User as UserIcon, Camera } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { getAuth, createUserWithEmailAndPassword, updateProfile, deleteUser, type UserCredential } from "firebase/auth";
 import { useFirebaseApp, useFirestore, useUser } from "@/firebase";
@@ -23,6 +23,8 @@ import { doc, setDoc, serverTimestamp } from "firebase/firestore";
 import { GoogleIcon } from "@/components/GoogleIcon";
 import { LoadingScreen } from "@/components/LoadingScreen";
 import { signInWithGoogle } from "@/firebase/auth-actions";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { uploadProfilePictureAction } from "@/app/actions";
 
 
 const passwordRequirements = [
@@ -38,6 +40,9 @@ export default function RegisterPage() {
     const [password, setPassword] = useState("");
     const [showPassword, setShowPassword] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
+    const [avatarFile, setAvatarFile] = useState<File | null>(null);
+    const avatarInputRef = useRef<HTMLInputElement>(null);
 
     const app = useFirebaseApp();
     const auth = getAuth(app);
@@ -61,6 +66,18 @@ export default function RegisterPage() {
 
     const allRequirementsMet = validatedRequirements.every(req => req.isValid);
 
+    const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (file) {
+            setAvatarFile(file);
+            const reader = new FileReader();
+            reader.onloadend = () => {
+                setAvatarPreview(reader.result as string);
+            };
+            reader.readAsDataURL(file);
+        }
+    };
+
     const handleRegister = async (event: React.FormEvent<HTMLFormElement>) => {
         event.preventDefault();
         if (!allRequirementsMet) {
@@ -81,13 +98,26 @@ export default function RegisterPage() {
         try {
             userCredential = await createUserWithEmailAndPassword(auth, email, password);
             const user = userCredential.user;
+            let photoURL: string | null = null;
+
+            if (avatarFile) {
+                const reader = new FileReader();
+                reader.readAsDataURL(avatarFile);
+                const dataUrl = await new Promise<string>((resolve, reject) => {
+                    reader.onload = () => resolve(reader.result as string);
+                    reader.onerror = (error) => reject(error);
+                });
+
+                const uploadResult = await uploadProfilePictureAction(user.uid, dataUrl, avatarFile.name);
+                photoURL = uploadResult.photoURL;
+            }
 
             await Promise.all([
-                updateProfile(user, { displayName: fullName }),
+                updateProfile(user, { displayName: fullName, photoURL }),
                 firestore ? setDoc(doc(firestore, "users", user.uid), {
                     displayName: fullName,
                     email: user.email,
-                    photoURL: user.photoURL,
+                    photoURL: photoURL,
                     role: email === 'head-admin@test.va' ? 'head-admin' : 'user',
                     createdAt: serverTimestamp(),
                 }) : Promise.resolve()
@@ -149,6 +179,29 @@ export default function RegisterPage() {
       </CardHeader>
       <CardContent>
         <form onSubmit={handleRegister} className="grid gap-4">
+            <div className="flex justify-center mb-4">
+                <input
+                    type="file"
+                    ref={avatarInputRef}
+                    onChange={handleAvatarChange}
+                    className="hidden"
+                    accept="image/png, image/jpeg, image/webp"
+                />
+                <div className="relative">
+                    <Avatar className="h-24 w-24 cursor-pointer" onClick={() => avatarInputRef.current?.click()}>
+                        <AvatarImage src={avatarPreview || undefined} alt="User avatar" />
+                        <AvatarFallback className="text-4xl">
+                           <UserIcon />
+                        </AvatarFallback>
+                    </Avatar>
+                     <div 
+                        className="absolute bottom-0 right-0 flex h-8 w-8 items-center justify-center rounded-full bg-primary text-primary-foreground cursor-pointer border-2 border-background"
+                        onClick={() => avatarInputRef.current?.click()}
+                     >
+                        <Camera className="h-4 w-4" />
+                    </div>
+                </div>
+            </div>
           <div className="grid gap-2">
             <Label htmlFor="full-name">Full Name</Label>
             <Input id="full-name" name="full-name" placeholder="John Pilot" required disabled={isSubmitting} />
