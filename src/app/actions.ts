@@ -37,9 +37,14 @@ export async function uploadDocumentAction(
     try {
         await uploadBytes(storageRef, buffer, { contentType: mimeType });
     } catch (e: any) {
-        // Create a more descriptive error to send back to the client.
         const errorPayload = JSON.stringify(e, Object.getOwnPropertyNames(e), 2);
         console.error("DETAILED DOCUMENT UPLOAD ERROR:", errorPayload);
+        
+        // Check for 404 error specifically
+        if (e.status_ === 404 || (e.code_ && e.code_.includes('404'))) {
+             throw new Error(`Firebase Storage Error (404): Bucket not found. Please ensure Cloud Storage is activated in your Firebase project console.`);
+        }
+
         throw new Error(`Firebase Storage Error. Payload: ${errorPayload}`);
     }
 
@@ -78,9 +83,14 @@ export async function uploadFlightLogAction(
     try {
         await uploadBytes(storageRef, buffer, { contentType: mimeType });
     } catch (e: any) {
-        // Create a more descriptive error to send back to the client.
         const errorPayload = JSON.stringify(e, Object.getOwnPropertyNames(e), 2);
         console.error("DETAILED FLIGHT LOG UPLOAD ERROR:", errorPayload);
+
+        // Check for 404 error specifically
+        if (e.status_ === 404 || (e.code_ && e.code_.includes('404'))) {
+             throw new Error(`Firebase Storage Error (404): Bucket not found. Please ensure Cloud Storage is activated in your Firebase project console.`);
+        }
+        
         throw new Error(`Firebase Storage Error. Payload: ${errorPayload}`);
     }
 
