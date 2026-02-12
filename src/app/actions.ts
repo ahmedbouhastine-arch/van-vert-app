@@ -1,12 +1,11 @@
 
 'use server';
 
-import { initializeFirebase } from '@/firebase/init';
+import { initializeAdminApp } from '@/firebase/init';
 import { extractExpiryDate } from '@/ai/flows/extract-expiry-date';
 import { extractFlightLogs } from '@/ai/flows/extract-flight-logs';
 import type { FlightLog } from '@/types';
 import { v4 as uuidv4 } from 'uuid';
-import { ref, uploadBytes } from 'firebase/storage';
 
 // Helper to decode data URI
 function decodeDataUri(dataUri: string) {
@@ -27,43 +26,37 @@ export async function uploadDocumentAction(
     fileName: string,
     requiresExpiry: boolean,
 ): Promise<{ storagePath: string; expiryDate: string | null | undefined }> {
-    // Initialize Firebase inside the action for reliability in serverless environments.
-    const { storage } = initializeFirebase();
+    const { adminStorage } = initializeAdminApp();
+    const bucket = adminStorage.bucket();
     
     const { buffer, mimeType } = decodeDataUri(fileDataUri);
     
-    const storageRef = ref(storage, `applications/${applicationId}/${docId}/${fileName}`);
+    const storagePath = `applications/${applicationId}/${docId}/${fileName}`;
+    const file = bucket.file(storagePath);
     
-    console.log('Attempting to upload document to storage path:', storageRef.fullPath);
+    console.log('Attempting to upload document to storage path:', storagePath);
 
     try {
-        await uploadBytes(storageRef, buffer, { contentType: mimeType });
+        await file.save(buffer, { contentType: mimeType });
     } catch (e: any) {
         const errorPayload = JSON.stringify(e, Object.getOwnPropertyNames(e), 2);
         console.error("DETAILED DOCUMENT UPLOAD ERROR:", errorPayload);
         
-        // Check for 404 error specifically
-        if (e.status_ === 404 || (e.code_ && e.code_.includes('404'))) {
-             throw new Error(`Firebase Storage Error (404): Bucket not found. Please ensure Cloud Storage is activated in your Firebase project console.`);
-        }
-
-        throw new Error(`Firebase Storage Error. Payload: ${errorPayload}`);
+        throw new Error(`Firebase Admin SDK Storage Error. Payload: ${errorPayload}`);
     }
 
     let detectedExpiryDate: string | null | undefined = undefined;
 
-    // AI Expiry Date Detection for images
     if (requiresExpiry && mimeType.startsWith('image/')) {
         try {
             const { expiryDate } = await extractExpiryDate({ documentImage: fileDataUri });
             detectedExpiryDate = expiryDate;
         } catch (e: any) {
             console.error("AI expiry date detection failed:", e);
-            // Don't block the upload if AI fails. We can show a toast on the client later.
         }
     }
 
-    return { storagePath: storageRef.fullPath, expiryDate: detectedExpiryDate };
+    return { storagePath, expiryDate: detectedExpiryDate };
 }
 
 
@@ -71,8 +64,8 @@ export async function uploadFlightLogAction(
     applicationId: string,
     pdfDataUri: string,
 ): Promise<{ storagePath: string; extractedLogs: FlightLog[] }> {
-    // Initialize Firebase inside the action for reliability in serverless environments.
-    const { storage } = initializeFirebase();
+    const { adminStorage } = initializeAdminApp();
+    const bucket = adminStorage.bucket();
     
     const { buffer, mimeType } = decodeDataUri(pdfDataUri);
 
@@ -80,22 +73,18 @@ export async function uploadFlightLogAction(
         throw new Error('Invalid file type. Only PDF is allowed for flight logs.');
     }
     
-    const storageRef = ref(storage, `applications/${applicationId}/flight-log.pdf`);
+    const storagePath = `applications/${applicationId}/flight-log.pdf`;
+    const file = bucket.file(storagePath);
 
-    console.log('Attempting to upload flight log to storage path:', storageRef.fullPath);
+    console.log('Attempting to upload flight log to storage path:', storagePath);
 
     try {
-        await uploadBytes(storageRef, buffer, { contentType: mimeType });
+        await file.save(buffer, { contentType: mimeType });
     } catch (e: any) {
         const errorPayload = JSON.stringify(e, Object.getOwnPropertyNames(e), 2);
         console.error("DETAILED FLIGHT LOG UPLOAD ERROR:", errorPayload);
-
-        // Check for 404 error specifically
-        if (e.status_ === 404 || (e.code_ && e.code_.includes('404'))) {
-             throw new Error(`Firebase Storage Error (404): Bucket not found. Please ensure Cloud Storage is activated in your Firebase project console.`);
-        }
         
-        throw new Error(`Firebase Storage Error. Payload: ${errorPayload}`);
+        throw new Error(`Firebase Admin SDK Storage Error. Payload: ${errorPayload}`);
     }
 
     let extractedLogs: FlightLog[] = [];
@@ -106,9 +95,8 @@ export async function uploadFlightLogAction(
         }
     } catch (e: any) {
         console.error("AI flight log extraction failed:", e);
-        // Re-throw the original error to preserve the full stack trace for debugging.
         throw e;
     }
     
-    return { storagePath: storageRef.fullPath, extractedLogs };
+    return { storagePath, extractedLogs };
 }
