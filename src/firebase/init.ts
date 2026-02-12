@@ -18,9 +18,10 @@ export function initializeFirebase() {
 }
 
 export function getSdks(firebaseApp: FirebaseApp) {
-  // Let the SDK auto-detect the storage bucket.
-  // This is the simplest and most reliable configuration.
-  const storage = getStorage(firebaseApp);
+  // Explicitly pass the storage bucket from the config to ensure the
+  // correct bucket is used, especially in server-side environments where
+  // auto-detection can be less reliable.
+  const storage = getStorage(firebaseApp, firebaseConfig.storageBucket);
 
   return {
     firebaseApp,
