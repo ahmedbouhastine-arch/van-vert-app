@@ -26,7 +26,11 @@ export async function uploadProfilePictureAction(
     fileName: string,
 ): Promise<{ photoURL: string }> {
     const { adminStorage } = initializeAdminApp();
-    const bucket = adminStorage.bucket(firebaseConfig.storageBucket);
+    const bucketName = firebaseConfig.storageBucket;
+    if (!bucketName) {
+        throw new Error("Firebase Storage bucket name is not configured.");
+    }
+    const bucket = adminStorage.bucket(bucketName);
 
     const { buffer, mimeType } = decodeDataUri(fileDataUri);
     const storagePath = `profile-pictures/${userId}/${fileName}`;
@@ -63,7 +67,11 @@ export async function uploadDocumentAction(
     requiresExpiry: boolean,
 ): Promise<{ publicUrl: string; expiryDate: string | null | undefined }> {
     const { adminStorage } = initializeAdminApp();
-    const bucket = adminStorage.bucket(firebaseConfig.storageBucket);
+    const bucketName = firebaseConfig.storageBucket;
+    if (!bucketName) {
+        throw new Error("Firebase Storage bucket name is not configured.");
+    }
+    const bucket = adminStorage.bucket(bucketName);
     
     const { buffer, mimeType } = decodeDataUri(fileDataUri);
     
@@ -108,7 +116,11 @@ export async function uploadFlightLogAction(
     fileName: string,
 ): Promise<{ publicUrl: string; extractedLogs: FlightLog[] }> {
     const { adminStorage } = initializeAdminApp();
-    const bucket = adminStorage.bucket(firebaseConfig.storageBucket);
+    const bucketName = firebaseConfig.storageBucket;
+     if (!bucketName) {
+        throw new Error("Firebase Storage bucket name is not configured.");
+    }
+    const bucket = adminStorage.bucket(bucketName);
     
     const { buffer, mimeType } = decodeDataUri(pdfDataUri);
 
