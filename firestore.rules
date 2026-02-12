@@ -87,7 +87,7 @@ service firebase.storage {
     
     match /applications/{applicationId}/{allPaths=**} {
       allow read: if request.auth != null && (isOwner(applicationId) || isPrivileged());
-      allow write: if request.auth != null && isOwner(applicationId);
+      allow write: if request.auth != null;
     }
   }
 }
