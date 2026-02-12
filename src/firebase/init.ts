@@ -1,3 +1,4 @@
+
 import { firebaseConfig } from '@/firebase/config';
 import { initializeApp, getApps, getApp, FirebaseApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
@@ -17,9 +18,9 @@ export function initializeFirebase() {
 }
 
 export function getSdks(firebaseApp: FirebaseApp) {
-  // Explicitly provide the bucket URL to getStorage to ensure the correct bucket is used.
-  // This helps prevent "404 Not Found" errors if automatic detection fails.
-  const storage = getStorage(firebaseApp, `gs://${firebaseConfig.storageBucket}`);
+  // Rely on the SDK to automatically detect the correct storage bucket
+  // from the initialized firebaseApp configuration. This is more robust.
+  const storage = getStorage(firebaseApp);
 
   return {
     firebaseApp,
