@@ -34,6 +34,8 @@ export async function uploadDocumentAction(
     
     const storageRef = ref(storage, `applications/${applicationId}/${docId}/${fileName}`);
     
+    console.log('Attempting to upload document to storage path:', storageRef.fullPath);
+
     try {
         await uploadBytes(storageRef, buffer, { contentType: mimeType });
     } catch (e: any) {
@@ -79,6 +81,8 @@ export async function uploadFlightLogAction(
     }
     
     const storageRef = ref(storage, `applications/${applicationId}/flight-log.pdf`);
+
+    console.log('Attempting to upload flight log to storage path:', storageRef.fullPath);
 
     try {
         await uploadBytes(storageRef, buffer, { contentType: mimeType });
