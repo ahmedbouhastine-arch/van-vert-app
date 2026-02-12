@@ -99,6 +99,11 @@
             "required": ["id", "date", "duration", "aircraft"]
           }
         },
+        "flightLogPdfUrl": {
+            "type": "string",
+            "description": "Public URL of the uploaded flight log PDF in Firebase Storage.",
+            "format": "uri"
+        },
         "documents": {
           "type": "array",
           "description": "An array of documents associated with the application.",
@@ -149,9 +154,10 @@
           "type": "number",
           "description": "Size of the uploaded file in bytes."
         },
-        "storagePath": {
+        "fileUrl": {
           "type": "string",
-          "description": "Path to the file in Firebase Storage."
+          "description": "Public URL of the uploaded file in Firebase Storage.",
+          "format": "uri"
         },
         "expiryDate": {
           "type": "string",
