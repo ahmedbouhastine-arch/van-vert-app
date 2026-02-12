@@ -45,7 +45,7 @@ export async function uploadDocumentAction(
             throw new Error('Firebase Admin SDK failed to authenticate. This is likely an issue with the development environment configuration. Please run `gcloud auth application-default login` in your terminal and try again.');
         }
 
-        throw new Error(`Firebase Admin SDK Storage Error: ${errorMessage}`);
+        throw new Error(`Firebase Admin SDK Storage Error on path '${storagePath}': ${errorMessage}`);
     }
 
     let detectedExpiryDate: string | null | undefined = undefined;
@@ -85,11 +85,11 @@ export async function uploadFlightLogAction(
         await file.save(buffer, { contentType: mimeType });
     } catch (e: any) {
         const errorMessage = e.message || '';
-        if (errorMessage.includes('Could not refresh access token')) {
+         if (errorMessage.includes('Could not refresh access token')) {
             throw new Error('Firebase Admin SDK failed to authenticate. This is likely an issue with the development environment configuration. Please run `gcloud auth application-default login` in your terminal and try again.');
         }
         
-        throw new Error(`Firebase Admin SDK Storage Error: ${errorMessage}`);
+        throw new Error(`Firebase Admin SDK Storage Error on path '${storagePath}': ${errorMessage}`);
     }
 
     let extractedLogs: FlightLog[] = [];
