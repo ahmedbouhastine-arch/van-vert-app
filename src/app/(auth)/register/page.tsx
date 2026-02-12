@@ -78,7 +78,7 @@ export default function RegisterPage() {
         }
     };
 
-    const handleRegister = async (event: React.FormEvent<HTMLFormElement>) => {
+    const handleRegister = (event: React.FormEvent<HTMLFormElement>) => {
         event.preventDefault();
         if (!allRequirementsMet) {
             toast({
@@ -94,62 +94,63 @@ export default function RegisterPage() {
         const email = formData.get("email") as string;
         const fullName = formData.get("full-name") as string;
 
-        let userCredential: UserCredential | undefined;
-        try {
-            userCredential = await createUserWithEmailAndPassword(auth, email, password);
-            const user = userCredential.user;
-            let photoURL: string | null = null;
+        createUserWithEmailAndPassword(auth, email, password)
+            .then(async (userCredential) => {
+                const user = userCredential.user;
+                let photoURL: string | null = null;
+                
+                try {
+                    if (avatarFile) {
+                        const reader = new FileReader();
+                        reader.readAsDataURL(avatarFile);
+                        const dataUrl = await new Promise<string>((resolve, reject) => {
+                            reader.onload = () => resolve(reader.result as string);
+                            reader.onerror = (error) => reject(error);
+                        });
 
-            if (avatarFile) {
-                const reader = new FileReader();
-                reader.readAsDataURL(avatarFile);
-                const dataUrl = await new Promise<string>((resolve, reject) => {
-                    reader.onload = () => resolve(reader.result as string);
-                    reader.onerror = (error) => reject(error);
+                        const uploadResult = await uploadProfilePictureAction(user.uid, dataUrl, avatarFile.name);
+                        photoURL = uploadResult.photoURL;
+                    }
+
+                    await Promise.all([
+                        updateProfile(user, { displayName: fullName, photoURL }),
+                        firestore ? setDoc(doc(firestore, "users", user.uid), {
+                            displayName: fullName,
+                            email: user.email,
+                            photoURL: photoURL,
+                            role: email === 'head-admin@test.va' ? 'head-admin' : 'user',
+                            createdAt: serverTimestamp(),
+                        }) : Promise.reject("Firestore not available")
+                    ]);
+                    
+                    toast({
+                        title: "Registration successful!",
+                        description: "You are now logged in and will be redirected.",
+                    });
+                    // The useEffect will handle the redirect, keep submitting true
+                } catch (dbError) {
+                    // If DB write fails after auth user creation, delete the auth user for consistency
+                    await deleteUser(user).catch(deleteError => {
+                        console.error("Failed to clean up orphaned user:", deleteError);
+                    });
+                    // Rethrow to be caught by the outer .catch
+                    throw dbError;
+                }
+            })
+            .catch((error: any) => {
+                let description = "An unexpected error occurred during sign-up. Please try again.";
+                if (error.code === 'auth/email-already-in-use') {
+                    description = "An account with this email already exists. Please log in.";
+                } else {
+                    console.error("Registration Error: ", error); 
+                }
+                toast({
+                    variant: 'destructive',
+                    title: 'Registration Failed',
+                    description: description,
                 });
-
-                const uploadResult = await uploadProfilePictureAction(user.uid, dataUrl, avatarFile.name);
-                photoURL = uploadResult.photoURL;
-            }
-
-            await Promise.all([
-                updateProfile(user, { displayName: fullName, photoURL }),
-                firestore ? setDoc(doc(firestore, "users", user.uid), {
-                    displayName: fullName,
-                    email: user.email,
-                    photoURL: photoURL,
-                    role: email === 'head-admin@test.va' ? 'head-admin' : 'user',
-                    createdAt: serverTimestamp(),
-                }) : Promise.resolve()
-            ]);
-            
-            toast({
-                title: "Registration successful!",
-                description: "You are now logged in and will be redirected.",
+                setIsSubmitting(false); // Only re-enable form on failure
             });
-            // The useEffect will handle the redirect, keep submitting true
-        } catch (error: any) {
-            // If the user was created in auth but the DB write failed, delete the auth user
-            if (userCredential) {
-                await deleteUser(userCredential.user).catch(deleteError => {
-                    console.error("Failed to clean up orphaned user:", deleteError);
-                });
-            }
-
-            let description = error.message;
-            if (error.code === 'auth/email-already-in-use') {
-                description = "An account with this email already exists. Please log in.";
-            } else {
-                console.error("Registration Error: ", error); 
-                description = "An unexpected error occurred during sign-up. Please try again.";
-            }
-            toast({
-                variant: 'destructive',
-                title: 'Registration Failed',
-                description: description,
-            });
-            setIsSubmitting(false); // Only re-enable form on failure
-        }
     }
 
     const handleGoogleLogin = async () => {

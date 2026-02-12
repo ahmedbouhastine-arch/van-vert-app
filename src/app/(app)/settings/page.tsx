@@ -57,10 +57,10 @@ export default function SettingsPage() {
             
             const userRef = doc(firestore, "users", user.uid);
             try {
-                // Auth profile update should be awaited as it's not a simple DB write
+                // Auth profile update can fail, so we await it.
                 await updateProfile(user, { displayName });
 
-                // Firestore update is made non-blocking with optimistic UI
+                // Firestore update uses the non-blocking pattern.
                 updateDoc(userRef, { displayName })
                     .catch((error) => {
                         const permissionError = new FirestorePermissionError({
@@ -69,7 +69,6 @@ export default function SettingsPage() {
                             requestResourceData: { displayName },
                         });
                         errorEmitter.emit('permission-error', permissionError);
-                        // The global error handler will show the issue. We'll show a toast here too.
                         toast({
                             variant: 'destructive',
                             title: 'Database update failed',
@@ -82,6 +81,7 @@ export default function SettingsPage() {
                     description: "Your changes will be reflected shortly.",
                 });
             } catch (error: any) {
+                // This catches errors from `updateProfile`
                 toast({
                     variant: 'destructive',
                     title: 'Update failed',

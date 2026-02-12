@@ -43,29 +43,27 @@ export default function LoginPage() {
         }
     }, [user, loading, claims, router]);
 
-    const handleLogin = async (event: React.FormEvent<HTMLFormElement>) => {
+    const handleLogin = (event: React.FormEvent<HTMLFormElement>) => {
         event.preventDefault();
         setIsSubmitting(true);
         const formData = new FormData(event.currentTarget);
         const email = formData.get("email") as string;
         const password = formData.get("password") as string;
         
-        try {
-            await signInWithEmailAndPassword(auth, email, password);
-            // On successful login, the `useEffect` hook will handle the redirect.
-            // We leave `isSubmitting` as true to keep the form disabled during redirection.
-        } catch (error: any) {
-            let description = error.message;
-            if (error.code === 'auth/invalid-credential') {
-                description = "Invalid email or password. Please try again.";
-            }
-            toast({
-                variant: 'destructive',
-                title: 'Login Failed',
-                description: description,
+        // Use non-blocking sign-in. The useEffect hook will handle success.
+        signInWithEmailAndPassword(auth, email, password)
+            .catch((error: any) => {
+                let description = "An unexpected error occurred. Please try again.";
+                if (error.code === 'auth/invalid-credential') {
+                    description = "Invalid email or password. Please try again.";
+                }
+                toast({
+                    variant: 'destructive',
+                    title: 'Login Failed',
+                    description: description,
+                });
+                setIsSubmitting(false); // Re-enable the form ONLY on failure.
             });
-            setIsSubmitting(false); // Re-enable the form ONLY on failure.
-        }
     }
 
     const handleGoogleLogin = async () => {

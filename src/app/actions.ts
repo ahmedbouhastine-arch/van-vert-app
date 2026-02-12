@@ -105,8 +105,6 @@ export async function uploadProfilePictureAction(
     const storagePath = `profile-pictures/${userId}/${fileName}`;
     const file = bucket.file(storagePath);
     
-    console.log(`Attempting to upload profile picture '${fileName}' to storage path: ${storagePath}`);
-
     try {
         await file.save(buffer, {
             contentType: mimeType,
@@ -147,8 +145,6 @@ export async function uploadDocumentAction(
     const storagePath = `applications/${applicationId}/${docId}/${fileName}`;
     const file = bucket.file(storagePath);
     
-    console.log(`Attempting to upload document '${fileName}' to storage path: ${storagePath}`);
-
     try {
         await file.save(buffer, { 
             contentType: mimeType,
@@ -199,8 +195,6 @@ export async function uploadFlightLogAction(
     
     const storagePath = `applications/${applicationId}/${fileName}`;
     const file = bucket.file(storagePath);
-
-    console.log(`Attempting to upload flight log '${fileName}' to storage path: ${storagePath}`);
 
     try {
         await file.save(buffer, { 
