@@ -18,9 +18,10 @@ export function initializeFirebase() {
 }
 
 export function getSdks(firebaseApp: FirebaseApp) {
-  // Explicitly pass the storage bucket URL from the config.
-  // This is a final diagnostic step to ensure the correct bucket is targeted.
-  const storage = getStorage(firebaseApp, firebaseConfig.storageBucket);
+  // Explicitly construct the gs:// URL for the storage bucket.
+  // This is the most robust way to ensure the correct bucket is targeted,
+  // especially when auto-detection might be failing.
+  const storage = getStorage(firebaseApp, `gs://${firebaseConfig.storageBucket}`);
 
   return {
     firebaseApp,
