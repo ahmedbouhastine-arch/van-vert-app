@@ -22,6 +22,20 @@ function decodeDataUri(dataUri: string) {
     return { buffer, mimeType };
 }
 
+function handleStorageError(e: any, path: string) {
+    const errorMessage = e.message || '';
+    if (errorMessage.includes('Could not refresh access token') || errorMessage.includes('credential')) {
+        throw new Error('Firebase Admin SDK failed to authenticate. This is a common issue in development environments. Please run `gcloud auth application-default login` in your terminal and restart the server.');
+    }
+    // The "bucket not found" error is often a permissions issue.
+    if (e.code === 404 || errorMessage.includes('does not exist')) {
+        throw new Error(`The storage bucket was not found, which often indicates a permission issue with the Admin SDK. Please ensure your Application Default Credentials are valid by running 'gcloud auth application-default login'. Original error: ${errorMessage}`);
+    }
+
+    throw new Error(`Firebase Admin SDK Storage Error on path '${path}': ${errorMessage}`);
+}
+
+
 export async function createApplicationAction(
     userId: string,
     licenseId: string,
@@ -46,19 +60,23 @@ export async function createApplicationAction(
     const newAppId = uuidv4();
     console.log(`Generated new Application ID: ${newAppId}`);
 
-    // Create placeholder files and get their URLs
     const documentPromises = licenseType.documentRequirements.map(async (req) => {
         const docInstanceId = uuidv4();
         const placeholderFileName = 'placeholder.txt';
         const storagePath = `applications/${newAppId}/${docInstanceId}/${placeholderFileName}`;
         const file = bucket.file(storagePath);
         
-        console.log(`Attempting to create placeholder file at path: ${storagePath}`);
-        await file.save(Buffer.from(''), {
-            contentType: 'text/plain',
-            public: true,
-        });
-        console.log(`Placeholder created for document: ${req.name}`);
+        try {
+            console.log(`Attempting to create placeholder file at path: ${storagePath}`);
+            await file.save(Buffer.from(''), {
+                contentType: 'text/plain',
+                public: true,
+            });
+            console.log(`Placeholder created for document: ${req.name}`);
+        } catch (e: any) {
+            console.error(`Failed to create placeholder for ${req.name} at ${storagePath}`);
+            handleStorageError(e, storagePath);
+        }
         
         const publicUrl = `https://storage.googleapis.com/${bucket.name}/${storagePath}`;
 
@@ -118,20 +136,17 @@ export async function uploadProfilePictureAction(
     try {
         await file.save(buffer, {
             contentType: mimeType,
-            public: true, // Make the file publicly readable
+            public: true,
         });
         
-        // Return the public URL
         const photoURL = `https://storage.googleapis.com/${bucket.name}/${storagePath}`;
         return { photoURL };
 
     } catch (e: any) {
-        const errorMessage = e.message || '';
-        if (errorMessage.includes('Could not refresh access token')) {
-            throw new Error('Firebase Admin SDK failed to authenticate. This is likely an issue with the development environment configuration. Please run `gcloud auth application-default login` in your terminal and try again.');
-        }
-
-        throw new Error(`Firebase Admin SDK Storage Error uploading '${fileName}' to path '${storagePath}': ${errorMessage}`);
+       handleStorageError(e, storagePath);
+       // The line below will not be reached because handleStorageError throws,
+       // but it's needed for TypeScript to know the function has a return path.
+       return { photoURL: '' };
     }
 }
 
@@ -158,15 +173,10 @@ export async function uploadDocumentAction(
     try {
         await file.save(buffer, { 
             contentType: mimeType,
-            public: true, // Make the file publicly readable
+            public: true,
         });
     } catch (e: any) {
-        const errorMessage = e.message || '';
-        if (errorMessage.includes('Could not refresh access token')) {
-            throw new Error('Firebase Admin SDK failed to authenticate. This is likely an issue with the development environment configuration. Please run `gcloud auth application-default login` in your terminal and try again.');
-        }
-
-        throw new Error(`Firebase Admin SDK Storage Error uploading '${fileName}' to path '${storagePath}': ${errorMessage}`);
+        handleStorageError(e, storagePath);
     }
 
     let detectedExpiryDate: string | null | undefined = undefined;
@@ -212,12 +222,7 @@ export async function uploadFlightLogAction(
             public: true,
         });
     } catch (e: any) {
-        const errorMessage = e.message || '';
-         if (errorMessage.includes('Could not refresh access token')) {
-            throw new Error('Firebase Admin SDK failed to authenticate. This is likely an issue with the development environment configuration. Please run `gcloud auth application-default login` in your terminal and try again.');
-        }
-        
-        throw new Error(`Firebase Admin SDK Storage Error uploading '${fileName}' to path '${storagePath}': ${errorMessage}`);
+        handleStorageError(e, storagePath);
     }
 
     let extractedLogs: FlightLog[] = [];
