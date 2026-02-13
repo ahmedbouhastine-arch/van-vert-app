@@ -41,7 +41,6 @@ const sixMonthsAgo = formatISO(subMonths(new Date(), 6), { representation: 'date
 
 const prompt = ai.definePrompt({
   name: 'extractFlightLogsPrompt',
-  model: 'googleai/gemini-2.0-flash',
   input: {schema: ExtractFlightLogsInputSchema},
   output: {schema: ExtractFlightLogsOutputSchema},
   prompt: `You are an expert aviation administrator. Your task is to extract flight log entries from the provided PDF document.
