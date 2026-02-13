@@ -13,6 +13,7 @@ if (geminiApiKey) {
   plugins.push(
     googleAI({
       apiKey: geminiApiKey,
+      apiVersion: 'v1beta',
     })
   );
 } else {
