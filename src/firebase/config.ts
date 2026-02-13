@@ -8,6 +8,7 @@ export const firebaseConfig = {
     "measurementId":"G-1WJ4K132Z7",
     "messagingSenderId":"REDACTED_FIREBASE_SENDER_ID",
     "projectId":"REDACTED_FIREBASE_PROJECT_ID",
-    "storageBucket": "REDACTED_FIREBASE_PROJECT_ID.appspot.com"
+    "storageBucket": "REDACTED_FIREBASE_STORAGE_BUCKET"
 };
+
 
