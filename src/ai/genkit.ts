@@ -13,7 +13,6 @@ if (geminiApiKey) {
   plugins.push(
     googleAI({
       apiKey: geminiApiKey,
-      apiVersion: 'v1beta',
     })
   );
 } else {
@@ -26,5 +25,5 @@ if (geminiApiKey) {
 
 export const ai = genkit({
   plugins: plugins,
-  model: 'googleai/gemini-pro-vision',
+  model: 'googleai/gemini-1.5-flash-latest',
 });
