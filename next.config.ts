@@ -40,7 +40,6 @@ const nextConfig: NextConfig = {
       bodySizeLimit: '50mb',
       allowedOrigins: ["https://3000-firebase-pilotpack-pre-1769026686788.cluster-cbeiita7rbe7iuwhvjs5zww2i4.cloudworkstations.dev"],
     },
-    allowedDevOrigins: ["https://3000-firebase-pilotpack-pre-1769026686788.cluster-cbeiita7rbe7iuwhvjs5zww2i4.cloudworkstations.dev"],
   },
 };
 
