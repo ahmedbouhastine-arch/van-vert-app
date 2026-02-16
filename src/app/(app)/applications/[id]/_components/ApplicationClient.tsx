@@ -227,18 +227,34 @@ export function ApplicationClient({
              toast({ variant: "default", title: 'AI Notice', description: 'Could not automatically detect an expiry date. Please enter it manually.' });
         }
 
-        const newDocuments = appState.documents.map((doc) =>
-          doc.id === activeUploadDocId
-            ? {
+        const newDocuments = appState.documents.map((doc) => {
+            if (doc.id === activeUploadDocId) {
+                // This is the document being updated. Construct it fully.
+                return {
+                    id: doc.id,
+                    docRequirementId: doc.docRequirementId,
+                    name: doc.name,
+                    description: doc.description,
+                    requiresExpiry: doc.requiresExpiry,
+                    status: "uploaded" as const,
+                    fileName: file.name,
+                    fileUrl: publicUrl,
+                    uploadedAt: new Date().toISOString(),
+                    expiryDate: detectedExpiryDate || doc.expiryDate || '',
+                    isExpiringSoon: doc.isExpiringSoon || false,
+                };
+            }
+            // For all other documents, ensure their optional fields have default values
+            // to prevent sending 'undefined' to Firestore.
+            return {
                 ...doc,
-                status: "uploaded" as const,
-                fileName: file.name,
-                uploadedAt: new Date().toISOString(),
-                fileUrl: publicUrl,
-                expiryDate: detectedExpiryDate || doc.expiryDate, // Use detected date, but keep manual if AI fails
-              }
-            : doc
-        );
+                fileName: doc.fileName || '',
+                fileUrl: doc.fileUrl || '',
+                uploadedAt: doc.uploadedAt || '',
+                expiryDate: doc.expiryDate || '',
+                isExpiringSoon: doc.isExpiringSoon || false,
+            };
+        });
         
         setAppState((prev) => ({ ...prev, documents: newDocuments }));
         
@@ -576,3 +592,5 @@ export function ApplicationClient({
     </div>
   );
 }
+
+    
