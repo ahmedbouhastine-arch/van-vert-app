@@ -90,6 +90,7 @@ export async function createApplicationAction(
             fileUrl: publicUrl,
             fileName: placeholderFileName,
             // Explicitly initialize optional fields to prevent 'undefined' errors in Firestore
+            fileType: '',
             uploadedAt: '',
             expiryDate: '',
             isExpiringSoon: false,
@@ -161,7 +162,7 @@ export async function uploadDocumentAction(
     fileDataUri: string, 
     fileName: string,
     requiresExpiry: boolean,
-): Promise<{ publicUrl: string; expiryDate: string | null | undefined }> {
+): Promise<{ publicUrl: string; expiryDate: string | null | undefined; mimeType: string }> {
     const { adminStorage } = initializeAdminApp();
     const bucketName = firebaseConfig.storageBucket;
     if (!bucketName) {
@@ -195,7 +196,7 @@ export async function uploadDocumentAction(
     }
     
     const publicUrl = `https://storage.googleapis.com/${bucket.name}/${storagePath}`;
-    return { publicUrl, expiryDate: detectedExpiryDate };
+    return { publicUrl, expiryDate: detectedExpiryDate, mimeType };
 }
 
 
@@ -242,4 +243,56 @@ export async function uploadFlightLogAction(
     
     const publicUrl = `https://storage.googleapis.com/${bucket.name}/${storagePath}`;
     return { publicUrl, extractedLogs };
+}
+
+export async function getExpiryDatesFromDocumentsAction(
+    applicationId: string,
+    documents: ApplicationDocument[]
+): Promise<{ docId: string, expiryDate: string }[]> {
+    const { adminStorage } = initializeAdminApp();
+    const bucketName = firebaseConfig.storageBucket;
+    if (!bucketName) {
+        throw new Error("Firebase Storage bucket name is not configured.");
+    }
+    const bucket = adminStorage.bucket(bucketName);
+
+    const docsToProcess = documents.filter(
+        (doc) => doc.fileUrl && doc.fileType?.startsWith('image/') && doc.requiresExpiry && !doc.expiryDate
+    );
+
+    if (docsToProcess.length === 0) {
+        return [];
+    }
+
+    const results = await Promise.all(
+        docsToProcess.map(async (doc) => {
+            if (!doc.fileName) return null;
+            // Reconstruct storage path from what we know
+            const storagePath = `applications/${applicationId}/${doc.id}/${doc.fileName}`;
+            const file = bucket.file(storagePath);
+            
+            try {
+                const [exists] = await file.exists();
+                if (!exists) {
+                    console.warn(`File not found in storage, skipping AI check: ${storagePath}`);
+                    return null;
+                }
+
+                const [fileBuffer] = await file.download();
+                const dataUri = `data:${doc.fileType};base64,${fileBuffer.toString('base64')}`;
+
+                const { expiryDate } = await extractExpiryDate({ documentImage: dataUri });
+
+                if (expiryDate) {
+                    return { docId: doc.id, expiryDate };
+                }
+                return null;
+            } catch (error) {
+                console.error(`Error processing document ${doc.id} for expiry date:`, error);
+                return null; // Don't let one failure stop the whole batch
+            }
+        })
+    );
+
+    return results.filter((result): result is { docId: string, expiryDate: string } => result !== null);
 }
