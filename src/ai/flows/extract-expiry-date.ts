@@ -12,10 +12,10 @@ import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
 
 const ExtractExpiryDateInputSchema = z.object({
-  documentImage: z
+  documentDataUri: z
     .string()
     .describe(
-      "An image of a document, as a data URI that must include a MIME type and use Base64 encoding. Expected format: 'data:<mimetype>;base64,<encoded_data>'."
+      "An image or PDF of a document, as a data URI that must include a MIME type and use Base64 encoding. Expected format: 'data:<mimetype>;base64,<encoded_data>'."
     ),
 });
 export type ExtractExpiryDateInput = z.infer<typeof ExtractExpiryDateInputSchema>;
@@ -31,9 +31,10 @@ export async function extractExpiryDate(input: ExtractExpiryDateInput): Promise<
 
 const prompt = ai.definePrompt({
   name: 'extractExpiryDatePrompt',
+  model: 'googleai/gemini-1.5-flash-latest',
   input: {schema: ExtractExpiryDateInputSchema},
   output: {schema: ExtractExpiryDateOutputSchema},
-  prompt: `You are an expert at processing official documents. Your task is to find and extract the expiry date from the provided document image.
+  prompt: `You are an expert at processing official documents. Your task is to find and extract the expiry date from the provided document image or PDF.
 
   Look for labels like "Expiry Date", "Date of Expiry", "Expires", "Valid Until", or similar phrases.
 
@@ -43,7 +44,7 @@ const prompt = ai.definePrompt({
   - Return the date ONLY in YYYY-MM-DD format.
   - If no expiry date is found, return null.
 
-  Document for processing: {{media url=documentImage}}`,
+  Document for processing: {{media url=documentDataUri}}`,
 });
 
 const extractExpiryDateFlow = ai.defineFlow(
