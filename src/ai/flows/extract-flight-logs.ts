@@ -10,7 +10,6 @@
 
 import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
-import { subMonths, formatISO } from 'date-fns';
 
 const ExtractFlightLogsInputSchema = z.object({
   flightLogPdf: z
@@ -37,12 +36,11 @@ export async function extractFlightLogs(input: ExtractFlightLogsInput): Promise<
   return extractFlightLogsFlow(input);
 }
 
-const sixMonthsAgo = formatISO(subMonths(new Date(), 6), { representation: 'date' });
-
 const prompt = ai.definePrompt({
   name: 'extractFlightLogsPrompt',
   input: {schema: ExtractFlightLogsInputSchema},
   output: {schema: ExtractFlightLogsOutputSchema},
+  model: 'googleai/gemini-2.0-flash',
   prompt: `You are an expert aviation administrator. Your task is to extract flight log entries from the provided PDF document.
 
   Analyze the document and identify all individual flight entries. For each entry, extract the following information:
@@ -51,8 +49,6 @@ const prompt = ai.definePrompt({
   - The flight duration in hours (convert minutes to a decimal of hours if necessary).
   - The name of the instructor, if listed.
   - Any remarks about the flight.
-
-  IMPORTANT: Only include flight entries that occurred on or after ${sixMonthsAgo}. Discard all entries before this date.
 
   Return the data as a structured array of flight log objects. Ensure all dates are in YYYY-MM-DD format.
 
