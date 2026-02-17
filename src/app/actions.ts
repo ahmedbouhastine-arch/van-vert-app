@@ -89,6 +89,10 @@ export async function createApplicationAction(
             requiresExpiry: req.requiresExpiry,
             fileUrl: publicUrl,
             fileName: placeholderFileName,
+            // Explicitly initialize optional fields to prevent 'undefined' errors in Firestore
+            uploadedAt: '',
+            expiryDate: '',
+            isExpiringSoon: false,
         };
         return doc;
     });
