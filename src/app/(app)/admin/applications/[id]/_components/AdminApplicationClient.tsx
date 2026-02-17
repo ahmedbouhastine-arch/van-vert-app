@@ -205,39 +205,6 @@ export function AdminApplicationClient({
 
   const totalFlightHours = appState.flightLogs?.reduce((sum, log) => sum + (Number(log.duration) || 0), 0);
 
-  const handleRecencyCheck = async () => {
-    if (!appState.flightLogs || appState.flightLogs.length === 0) {
-        toast({
-            title: "No Flight Logs",
-            description: "Cannot perform recency check without flight logs.",
-        });
-        return;
-    }
-
-    setIsRecencyChecking(true);
-    toast({ title: 'AI Check In Progress...', description: 'Re-analyzing flight logs for recency.' });
-
-    try {
-        const result = await checkRecency({
-            flights: appState.flightLogs.map(f => ({ date: f.date, duration: f.duration }))
-        });
-        setRecencyResult(result);
-        toast({
-            title: 'AI Check Complete',
-            description: `Pilot has logged ${result.totalHours} hours in the last 6 months.`
-        });
-    } catch (error) {
-        console.error("Recency check failed:", error);
-        toast({
-            variant: "destructive",
-            title: "AI Check Failed",
-            description: "Could not perform pilot recency check.",
-        });
-    } finally {
-        setIsRecencyChecking(false);
-    }
-  };
-
   useEffect(() => {
     const initialRecencyCheck = async () => {
         if (!appState.flightLogs || appState.flightLogs.length === 0) {
@@ -447,16 +414,6 @@ export function AdminApplicationClient({
                         <p className="text-sm text-muted-foreground">No flight logs available for this application to perform a recency check.</p>
                     )}
                 </CardContent>
-                <CardFooter className="border-t p-4">
-                    <Button
-                        onClick={handleRecencyCheck}
-                        disabled={isRecencyChecking || !appState.flightLogs || appState.flightLogs.length === 0}
-                        variant="secondary"
-                    >
-                        {isRecencyChecking ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />}
-                        Re-check Hours
-                    </Button>
-                </CardFooter>
             </Card>
 
              <Card>
