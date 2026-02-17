@@ -229,7 +229,7 @@ export function ApplicationClient({
 
         const newDocuments = appState.documents.map((doc) => {
             if (doc.id === activeUploadDocId) {
-                // This is the document being updated. Construct it fully.
+                // This is the document being updated. Construct it fully to avoid undefined values.
                 return {
                     id: doc.id,
                     docRequirementId: doc.docRequirementId,
@@ -244,8 +244,7 @@ export function ApplicationClient({
                     isExpiringSoon: doc.isExpiringSoon || false,
                 };
             }
-            // For all other documents, ensure their optional fields have default values
-            // to prevent sending 'undefined' to Firestore.
+            // For all other documents, ensure their optional fields have default values.
             return {
                 ...doc,
                 fileName: doc.fileName || '',
@@ -592,5 +591,7 @@ export function ApplicationClient({
     </div>
   );
 }
+
+    
 
     
