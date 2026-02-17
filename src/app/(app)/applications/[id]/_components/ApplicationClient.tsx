@@ -244,32 +244,17 @@ export function ApplicationClient({
 
         const newDocuments = appState.documents.map((doc) => {
             if (doc.id === activeUploadDocId) {
-                // This is the document being updated. Construct it fully to avoid undefined values.
                 return {
-                    id: doc.id,
-                    docRequirementId: doc.docRequirementId,
-                    name: doc.name,
-                    description: doc.description,
-                    requiresExpiry: doc.requiresExpiry,
+                    ...doc,
                     status: "uploaded" as const,
                     fileName: file.name,
                     fileType: mimeType,
                     fileUrl: publicUrl,
                     uploadedAt: new Date().toISOString(),
                     expiryDate: detectedExpiryDate || doc.expiryDate || '',
-                    isExpiringSoon: doc.isExpiringSoon || false,
                 };
             }
-            // For all other documents, ensure their optional fields have default values.
-            return {
-                ...doc,
-                fileName: doc.fileName || '',
-                fileUrl: doc.fileUrl || '',
-                fileType: doc.fileType || '',
-                uploadedAt: doc.uploadedAt || '',
-                expiryDate: doc.expiryDate || '',
-                isExpiringSoon: doc.isExpiringSoon || false,
-            };
+            return doc;
         });
         
         setAppState((prev) => ({ ...prev, documents: newDocuments }));
@@ -592,7 +577,7 @@ export function ApplicationClient({
                         {appState.flightLogs && appState.flightLogs.length > 0 ? (
                             appState.flightLogs.map(log => (
                                 <TableRow key={log.id}>
-                                    <TableCell>{format(new Date(log.date), 'PPP')}</TableCell>
+                                    <TableCell>{safeFormatDate(log.date, 'PPP')}</TableCell>
                                     <TableCell>{log.aircraft}</TableCell>
                                     <TableCell>{log.instructorName || 'N/A'}</TableCell>
                                     <TableCell className="text-right">{log.duration.toFixed(2)}</TableCell>

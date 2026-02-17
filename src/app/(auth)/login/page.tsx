@@ -54,7 +54,8 @@ export default function LoginPage() {
         signInWithEmailAndPassword(auth, email, password)
             .catch((error: any) => {
                 let description = "An unexpected error occurred. Please try again.";
-                if (error.code === 'auth/invalid-credential') {
+                // Consolidate common auth errors into one user-friendly message.
+                if (['auth/invalid-credential', 'auth/user-not-found', 'auth/wrong-password'].includes(error.code)) {
                     description = "Invalid email or password. Please try again.";
                 }
                 toast({

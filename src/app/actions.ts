@@ -41,17 +41,8 @@ export async function createApplicationAction(
     licenseId: string,
 ): Promise<{ applicationId: string }> {
     console.log('--- Starting createApplicationAction ---');
-    const { adminStorage, adminFirestore } = initializeAdminApp();
-    const bucketName = firebaseConfig.storageBucket;
+    const { adminFirestore } = initializeAdminApp();
     
-    console.log(`Using bucket name from config: ${bucketName}`);
-    if (!bucketName) {
-        console.error("CRITICAL: Firebase Storage bucket name is not configured in firebaseConfig.");
-        throw new Error("Firebase Storage bucket name is not configured.");
-    }
-    
-    const bucket = adminStorage.bucket(bucketName);
-
     const licenseType = licenseTypes.find(lt => lt.id === licenseId);
     if (!licenseType) {
         throw new Error(`License type with ID "${licenseId}" not found.`);

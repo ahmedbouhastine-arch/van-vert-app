@@ -245,10 +245,11 @@ export function AdminApplicationClient({
 
         const updatedDocs = appState.documents.map(doc => {
             const checkResult = results.find(r => r.name === doc.name);
-            if (checkResult?.isExpiringSoon) {
-                return { ...doc, isExpiringSoon: true, status: 'needs_attention' as const };
+            return {
+                ...doc,
+                isExpiringSoon: checkResult ? checkResult.isExpiringSoon : doc.isExpiringSoon,
+                status: checkResult?.isExpiringSoon ? 'needs_attention' as const : doc.status,
             }
-            return doc;
         });
 
         setAppState(prev => ({ ...prev, documents: updatedDocs }));
@@ -466,7 +467,7 @@ export function AdminApplicationClient({
                             {appState.flightLogs && appState.flightLogs.length > 0 ? (
                                 appState.flightLogs.map(log => (
                                     <TableRow key={log.id}>
-                                        <TableCell>{format(new Date(log.date), 'PPP')}</TableCell>
+                                        <TableCell>{safeFormatDate(log.date, 'PPP')}</TableCell>
                                         <TableCell>{log.aircraft}</TableCell>
                                         <TableCell className="text-right">{log.duration.toFixed(2)}</TableCell>
                                     </TableRow>
