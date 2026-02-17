@@ -23,6 +23,7 @@ import {
   Loader2,
   Download,
   X,
+  RefreshCw,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -137,7 +138,12 @@ export function ApplicationClient({
   const [recencyResult, setRecencyResult] = useState<CheckRecencyOutput | null>(null);
   const [isRecencyChecking, setIsRecencyChecking] = useState(false);
   const [isUploadingLog, setIsUploadingLog] = useState(false);
+  const [totalFlightHours, setTotalFlightHours] = useState(0);
 
+  useEffect(() => {
+    const total = appState.flightLogs?.reduce((sum, log) => sum + (Number(log.duration) || 0), 0) || 0;
+    setTotalFlightHours(total);
+  }, [appState.flightLogs]);
   
   const handlePersistChanges = (updates: Partial<Application>, successToast: {title: string, description?: string} | null) => {
     if (!firestore) return;
@@ -428,6 +434,14 @@ export function ApplicationClient({
     window.open(appState.flightLogPdfUrl, '_blank');
 };
 
+    const handleRecalculateHours = () => {
+        const total = appState.flightLogs?.reduce((sum, log) => sum + (Number(log.duration) || 0), 0) || 0;
+        setTotalFlightHours(total);
+        toast({
+            title: "Total Hours Recalculated",
+            description: `The new total is ${total.toFixed(2)} hours.`
+        });
+    };
   
   useEffect(() => {
     const handleRecencyCheck = async () => {
@@ -503,8 +517,24 @@ export function ApplicationClient({
 
       <Card>
         <CardHeader>
-            <CardTitle>Flight Logs</CardTitle>
-            <CardDescription>Upload a PDF of your flight logbook. The AI will extract recent flights automatically.</CardDescription>
+            <div className="flex items-start justify-between">
+                <div>
+                    <CardTitle>Flight Logs</CardTitle>
+                    <CardDescription>Upload a PDF of your flight logbook. The AI will extract recent flights automatically.</CardDescription>
+                </div>
+                <div className="flex flex-col items-end gap-2">
+                     {totalFlightHours > 0 && (
+                        <div className="text-right">
+                            <p className="text-3xl font-bold">{totalFlightHours.toFixed(2)}</p>
+                            <p className="text-sm text-muted-foreground">Total Hours Logged</p>
+                        </div>
+                    )}
+                    <Button onClick={handleRecalculateHours} variant="secondary" size="sm">
+                        <RefreshCw className="mr-2 h-4 w-4" />
+                        Recalculate
+                    </Button>
+                </div>
+            </div>
         </CardHeader>
         <CardContent>
             {isRecencyChecking ? (
@@ -600,3 +630,5 @@ export function ApplicationClient({
     </div>
   );
 }
+
+    
