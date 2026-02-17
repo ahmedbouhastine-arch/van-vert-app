@@ -169,9 +169,9 @@ export async function uploadDocumentAction(
 
     let detectedExpiryDate: string | null | undefined = undefined;
 
-    if (requiresExpiry && mimeType.startsWith('image/')) {
+    if (requiresExpiry && (mimeType.startsWith('image/') || mimeType === 'application/pdf')) {
         try {
-            const { expiryDate } = await extractExpiryDate({ documentImage: fileDataUri });
+            const { expiryDate } = await extractExpiryDate({ documentDataUri: fileDataUri });
             detectedExpiryDate = expiryDate;
         } catch (e: any) {
             console.error("AI expiry date detection failed:", e);
@@ -251,7 +251,7 @@ export async function getExpiryDateForSingleDocumentAction(
         throw new Error("Document not found in application.");
     }
 
-    if (!docToProcess.fileUrl || !docToProcess.fileType?.startsWith('image/') || !docToProcess.requiresExpiry) {
+    if (!docToProcess.fileUrl || !(docToProcess.fileType?.startsWith('image/') || docToProcess.fileType === 'application/pdf') || !docToProcess.requiresExpiry) {
         return { expiryDate: null };
     }
     if (!docToProcess.fileName) {
@@ -271,7 +271,7 @@ export async function getExpiryDateForSingleDocumentAction(
         const [fileBuffer] = await file.download();
         const dataUri = `data:${docToProcess.fileType};base64,${fileBuffer.toString('base64')}`;
 
-        const { expiryDate } = await extractExpiryDate({ documentImage: dataUri });
+        const { expiryDate } = await extractExpiryDate({ documentDataUri: dataUri });
 
         return { expiryDate: expiryDate || null };
     } catch (error) {
