@@ -44,15 +44,11 @@ const checkRecencyFlow = ai.defineFlow(
     
     const recentFlights = input.flights.filter(flight => {
         try {
-            // Robustly parse YYYY-MM-DD to avoid timezone issues with `new Date()`
-            const parts = flight.date.split('-');
-            if (parts.length !== 3) return false;
-            const year = parseInt(parts[0], 10);
-            const month = parseInt(parts[1], 10) - 1; // Month is 0-indexed in JS Date
-            const day = parseInt(parts[2], 10);
-            if (isNaN(year) || isNaN(month) || isNaN(day)) return false;
-
-            const flightDate = new Date(year, month, day);
+            const flightDate = new Date(flight.date);
+            // Check for invalid date
+            if (isNaN(flightDate.getTime())) {
+                return false;
+            }
             return isAfter(flightDate, sixMonthsAgo);
         } catch (e) {
             return false;
