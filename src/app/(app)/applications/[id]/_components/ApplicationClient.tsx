@@ -30,9 +30,8 @@ import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { format } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
-import { flagExpiringDocuments } from "@/ai/flows/flag-expiring-documents";
 import { checkRecency, type CheckRecencyOutput } from "@/ai/flows/check-recency";
-import { uploadDocumentAction, uploadFlightLogAction, getExpiryDatesFromDocumentsAction } from "@/app/actions";
+import { uploadDocumentAction, uploadFlightLogAction, getExpiryDateForSingleDocumentAction } from "@/app/actions";
 import { useFirestore, errorEmitter, FirestorePermissionError } from "@/firebase";
 import { doc, serverTimestamp, updateDoc, collection, addDoc } from "firebase/firestore";
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
@@ -58,14 +57,20 @@ function DocumentCard({
   onDateChange,
   isSubmitted,
   isUploading,
+  onCheckExpiry,
+  isCheckingExpiry,
 }: {
   doc: ApplicationDocument;
   onUpload: (docId: string) => void;
   onDateChange: (docId: string, date: string) => void;
   isSubmitted: boolean;
   isUploading: boolean;
+  onCheckExpiry: (docId: string) => void;
+  isCheckingExpiry: boolean;
 }) {
   const isButtonDisabled = isSubmitted || isUploading;
+  const isExpiryCheckDisabled = isButtonDisabled || isCheckingExpiry;
+
   return (
     <Card className="overflow-hidden">
       <CardHeader className="flex flex-row items-start justify-between gap-4 bg-muted/50 p-4">
@@ -94,17 +99,25 @@ function DocumentCard({
           </div>
         )}
         {doc.requiresExpiry && (
-          <div className="mt-4 grid w-full max-w-sm items-center gap-1.5">
-            <Label htmlFor={`expiry-${doc.id}`} className="text-xs">
-              Expiry Date
-            </Label>
-            <Input
-              id={`expiry-${doc.id}`}
-              type="date"
-              value={doc.expiryDate || ''}
-              onChange={(e) => onDateChange(doc.id, e.target.value)}
-              disabled={doc.status === "missing" || isSubmitted}
-            />
+          <div className="mt-4 space-y-2">
+            <div className="grid w-full max-w-sm items-center gap-1.5">
+                <Label htmlFor={`expiry-${doc.id}`} className="text-xs">
+                Expiry Date
+                </Label>
+                <Input
+                id={`expiry-${doc.id}`}
+                type="date"
+                value={doc.expiryDate || ''}
+                onChange={(e) => onDateChange(doc.id, e.target.value)}
+                disabled={doc.status === "missing" || isSubmitted}
+                />
+            </div>
+            {doc.status !== 'missing' && (
+                <Button variant="secondary" size="sm" onClick={() => onCheckExpiry(doc.id)} disabled={isExpiryCheckDisabled} className="w-full max-w-sm">
+                    {isCheckingExpiry ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Bot className="mr-2 h-4 w-4" />}
+                    AI Check Expiry
+                </Button>
+            )}
           </div>
         )}
         {doc.isExpiringSoon && (
@@ -130,6 +143,7 @@ export function ApplicationClient({
   const [isPending, startTransition] = useTransition();
   const [uploadingDocId, setUploadingDocId] = useState<string | null>(null);
   const [activeUploadDocId, setActiveUploadDocId] = useState<string | null>(null);
+  const [checkingExpiryDocId, setCheckingExpiryDocId] = useState<string | null>(null);
   const { toast } = useToast();
   const firestore = useFirestore();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -279,57 +293,35 @@ export function ApplicationClient({
     );
   };
   
-  const handleCheckExpiry = () => {
+  const handleCheckSingleExpiry = (docId: string) => {
     startTransition(async () => {
-        toast({ title: 'AI Check In Progress...', description: 'Analyzing documents to find expiry dates.' });
+        setCheckingExpiryDocId(docId);
+        toast({ title: 'AI Check In Progress...', description: 'Analyzing document to find expiry date.' });
+        
+        try {
+            const { expiryDate } = await getExpiryDateForSingleDocumentAction(appState.id, docId);
 
-        // Call the new server action
-        const foundDates = await getExpiryDatesFromDocumentsAction(appState.id, appState.documents);
-
-        if (foundDates.length === 0) {
-            toast({ title: 'AI Check Complete', description: 'No new expiry dates were found.' });
-            return;
+            if (expiryDate) {
+                const newDocuments = appState.documents.map(doc => 
+                    doc.id === docId ? { ...doc, expiryDate: expiryDate } : doc
+                );
+                setAppState(prev => ({ ...prev, documents: newDocuments }));
+                
+                handlePersistChanges(
+                    { documents: newDocuments },
+                    { 
+                        title: "AI Success!", 
+                        description: `Detected expiry date: ${format(new Date(expiryDate), 'PPP')}.` 
+                    }
+                );
+            } else {
+                 toast({ title: 'AI Check Complete', description: 'No expiry date was found in the document.' });
+            }
+        } catch (error: any) {
+             toast({ variant: 'destructive', title: 'AI Check Failed', description: error.message });
+        } finally {
+            setCheckingExpiryDocId(null);
         }
-
-        // Update the documents with the new dates
-        let docsWithNewDates = appState.documents.map(doc => {
-            const found = foundDates.find(f => f.docId === doc.id);
-            if (found) {
-                return { ...doc, expiryDate: found.expiryDate };
-            }
-            return doc;
-        });
-
-        // Now, run the flagging logic on the updated set of documents
-        const docsToFlag = docsWithNewDates
-            .filter(doc => doc.requiresExpiry && doc.expiryDate)
-            .map(doc => ({ name: doc.name, expiryDate: doc.expiryDate! }));
-        
-        const flaggingResults = await flagExpiringDocuments({
-            documents: docsToFlag,
-            daysUntilExpiry: 90,
-        });
-
-        const finalDocs = docsWithNewDates.map(doc => {
-            const flagResult = flaggingResults.find(r => r.name === doc.name);
-            if (flagResult?.isExpiringSoon) {
-                // If expiring soon, update the flag and status
-                return { ...doc, isExpiringSoon: true, status: 'needs_attention' as const };
-            }
-            return doc;
-        });
-        
-        setAppState(prev => ({ ...prev, documents: finalDocs }));
-
-        const expiringCount = flaggingResults.filter(r => r.isExpiringSoon).length;
-
-        handlePersistChanges(
-            { documents: finalDocs },
-            {
-              title: "AI Check Complete",
-              description: `${foundDates.length} expiry date(s) found. ${expiringCount > 0 ? `${expiringCount} document(s) are expiring soon.` : ''}`,
-            }
-        );
     });
   };
 
@@ -503,6 +495,8 @@ export function ApplicationClient({
             onDateChange={handleDateChange}
             isSubmitted={isSubmitted}
             isUploading={uploadingDocId === doc.id}
+            onCheckExpiry={handleCheckSingleExpiry}
+            isCheckingExpiry={checkingExpiryDocId === doc.id}
           />
         ))}
       </div>
@@ -607,16 +601,12 @@ export function ApplicationClient({
         <CardHeader>
             <CardTitle>Next Steps</CardTitle>
         </CardHeader>
-        <CardContent className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            <Button onClick={handleCheckExpiry} disabled={isPending || isSubmitted} variant="secondary">
-                {isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Bot className="mr-2 h-4 w-4" />}
-                AI Check Document Expiry
-            </Button>
+        <CardContent className="grid sm:grid-cols-2 gap-4">
             <Button onClick={handleSaveDraft} disabled={isPending || isSubmitted} variant="outline">
                 {isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
                 Save Draft
             </Button>
-            <Button onClick={handleSubmit} disabled={!allDocsUploaded || isSubmitted || isPending}>
+            <Button onClick={handleSubmit} disabled={!allDocsUploaded || isSubmitted || isPending} className="sm:col-start-2">
                 <Check className="mr-2 h-4 w-4" /> 
                 {isSubmitted ? 'Submitted' : 'Submit Application'}
             </Button>
