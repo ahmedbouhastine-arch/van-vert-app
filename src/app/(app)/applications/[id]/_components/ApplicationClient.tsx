@@ -31,7 +31,7 @@ import { format } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
 import { flagExpiringDocuments } from "@/ai/flows/flag-expiring-documents";
 import { checkRecency, type CheckRecencyOutput } from "@/ai/flows/check-recency";
-import { uploadDocumentAction, uploadFlightLogAction } from "@/app/actions";
+import { uploadDocumentAction, uploadFlightLogAction, getExpiryDatesFromDocumentsAction } from "@/app/actions";
 import { useFirestore, errorEmitter, FirestorePermissionError } from "@/firebase";
 import { doc, serverTimestamp, updateDoc, collection, addDoc } from "firebase/firestore";
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
@@ -50,25 +50,6 @@ const safeFormatDate = (date: FirebaseTimestamp | Date | string | undefined | nu
     return "Invalid Date";
   }
 };
-
-async function checkExpiryAction(documents: ApplicationDocument[]) {
-    const docsToCheck = documents
-      .filter((doc) => doc.status === "uploaded" && doc.requiresExpiry && doc.expiryDate)
-      .map((doc) => ({
-        name: doc.name,
-        expiryDate: doc.expiryDate!,
-      }));
-  
-    if (docsToCheck.length === 0) {
-      return [];
-    }
-  
-    const results = await flagExpiringDocuments({
-      documents: docsToCheck,
-      daysUntilExpiry: 90,
-    });
-    return results;
-  }
 
 function DocumentCard({
   doc,
@@ -213,7 +194,7 @@ export function ApplicationClient({
             reader.onerror = (error) => reject(error);
         });
 
-        const { publicUrl, expiryDate: detectedExpiryDate } = await uploadDocumentAction(
+        const { publicUrl, expiryDate: detectedExpiryDate, mimeType } = await uploadDocumentAction(
             appState.id,
             activeUploadDocId,
             dataUrl,
@@ -238,6 +219,7 @@ export function ApplicationClient({
                     requiresExpiry: doc.requiresExpiry,
                     status: "uploaded" as const,
                     fileName: file.name,
+                    fileType: mimeType,
                     fileUrl: publicUrl,
                     uploadedAt: new Date().toISOString(),
                     expiryDate: detectedExpiryDate || doc.expiryDate || '',
@@ -249,6 +231,7 @@ export function ApplicationClient({
                 ...doc,
                 fileName: doc.fileName || '',
                 fileUrl: doc.fileUrl || '',
+                fileType: doc.fileType || '',
                 uploadedAt: doc.uploadedAt || '',
                 expiryDate: doc.expiryDate || '',
                 isExpiringSoon: doc.isExpiringSoon || false,
@@ -292,29 +275,55 @@ export function ApplicationClient({
   
   const handleCheckExpiry = () => {
     startTransition(async () => {
-        toast({ title: 'AI Check In Progress...', description: 'Checking for documents that are expiring soon.' });
-        const results = await checkExpiryAction(appState.documents);
+        toast({ title: 'AI Check In Progress...', description: 'Analyzing documents to find expiry dates.' });
 
-        if (results.length === 0) {
-            toast({ title: 'AI Check Complete', description: 'No documents are expiring within 90 days.' });
+        // Call the new server action
+        const foundDates = await getExpiryDatesFromDocumentsAction(appState.id, appState.documents);
+
+        if (foundDates.length === 0) {
+            toast({ title: 'AI Check Complete', description: 'No new expiry dates were found.' });
             return;
         }
 
-        const updatedDocs = appState.documents.map(doc => {
-            const checkResult = results.find(r => r.name === doc.name);
-            if (checkResult?.isExpiringSoon) {
-                return { ...doc, isExpiringSoon: true, status: 'needs_attention' as const };
+        // Update the documents with the new dates
+        let docsWithNewDates = appState.documents.map(doc => {
+            const found = foundDates.find(f => f.docId === doc.id);
+            if (found) {
+                return { ...doc, expiryDate: found.expiryDate };
             }
             return doc;
         });
 
-        setAppState(prev => ({ ...prev, documents: updatedDocs }));
+        // Now, run the flagging logic on the updated set of documents
+        const docsToFlag = docsWithNewDates
+            .filter(doc => doc.requiresExpiry && doc.expiryDate)
+            .map(doc => ({ name: doc.name, expiryDate: doc.expiryDate! }));
+        
+        const flaggingResults = await flagExpiringDocuments({
+            documents: docsToFlag,
+            daysUntilExpiry: 90,
+        });
 
-        toast({
-            variant: 'destructive',
-            title: 'Action Required',
-            description: `${results.filter(r => r.isExpiringSoon).length} document(s) are expiring soon.`,
-          });
+        const finalDocs = docsWithNewDates.map(doc => {
+            const flagResult = flaggingResults.find(r => r.name === doc.name);
+            if (flagResult?.isExpiringSoon) {
+                // If expiring soon, update the flag and status
+                return { ...doc, isExpiringSoon: true, status: 'needs_attention' as const };
+            }
+            return doc;
+        });
+        
+        setAppState(prev => ({ ...prev, documents: finalDocs }));
+
+        const expiringCount = flaggingResults.filter(r => r.isExpiringSoon).length;
+
+        handlePersistChanges(
+            { documents: finalDocs },
+            {
+              title: "AI Check Complete",
+              description: `${foundDates.length} expiry date(s) found. ${expiringCount > 0 ? `${expiringCount} document(s) are expiring soon.` : ''}`,
+            }
+        );
     });
   };
 
@@ -591,7 +600,3 @@ export function ApplicationClient({
     </div>
   );
 }
-
-    
-
-    

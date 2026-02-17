@@ -30,6 +30,7 @@ export type ApplicationDocument = {
   status: DocumentStatus;
   fileUrl?: string;
   fileName?: string;
+  fileType?: string;
   uploadedAt?: string; // ISO Date string
   requiresExpiry: boolean;
   expiryDate?: string; // YYYY-MM-DD
