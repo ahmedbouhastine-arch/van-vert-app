@@ -201,6 +201,8 @@ export function AdminApplicationClient({
 
   const isAdminOrHigher = claims?.role === 'admin' || claims?.role === 'head-admin';
 
+  const totalFlightHours = appState.flightLogs?.reduce((sum, log) => sum + (Number(log.duration) || 0), 0);
+
   useEffect(() => {
     const handleRecencyCheck = async () => {
         if (!appState.flightLogs || appState.flightLogs.length === 0) {
@@ -416,10 +418,20 @@ export function AdminApplicationClient({
 
              <Card>
                 <CardHeader>
-                    <CardTitle>Applicant's Flight Logs</CardTitle>
-                    <CardDescription>
-                        A read-only view of the logs submitted by the applicant.
-                    </CardDescription>
+                    <div className="flex items-center justify-between">
+                        <div>
+                            <CardTitle>Applicant's Flight Logs</CardTitle>
+                            <CardDescription>
+                                A read-only view of the logs submitted by the applicant.
+                            </CardDescription>
+                        </div>
+                        {totalFlightHours && totalFlightHours > 0 && (
+                            <div className="text-right">
+                                <p className="text-3xl font-bold">{totalFlightHours.toFixed(2)}</p>
+                                <p className="text-sm text-muted-foreground">Total Hours Logged</p>
+                            </div>
+                        )}
+                    </div>
                 </CardHeader>
                 <CardContent>
                     <div className="border rounded-md">
