@@ -5,7 +5,7 @@ import { initializeAdminApp } from '@/firebase/admin-init';
 import { firebaseConfig } from '@/firebase/config';
 import { extractExpiryDate } from '@/ai/flows/extract-expiry-date';
 import { extractFlightLogs } from '@/ai/flows/extract-flight-logs';
-import type { FlightLog, ApplicationDocument } from '@/types';
+import type { FlightLog, ApplicationDocument, Application } from '@/types';
 import { v4 as uuidv4 } from 'uuid';
 import { licenseTypes } from '@/lib/licensing';
 import admin from 'firebase-admin';
@@ -62,24 +62,7 @@ export async function createApplicationAction(
 
     const documentPromises = licenseType.documentRequirements.map(async (req) => {
         const docInstanceId = uuidv4();
-        const placeholderFileName = 'placeholder.txt';
-        const storagePath = `applications/${newAppId}/${docInstanceId}/${placeholderFileName}`;
-        const file = bucket.file(storagePath);
         
-        try {
-            console.log(`Attempting to create placeholder file at path: ${storagePath}`);
-            await file.save(Buffer.from(''), {
-                contentType: 'text/plain',
-                public: true,
-            });
-            console.log(`Placeholder created for document: ${req.name}`);
-        } catch (e: any) {
-            console.error(`Failed to create placeholder for ${req.name} at ${storagePath}`);
-            handleStorageError(e, storagePath);
-        }
-        
-        const publicUrl = `https://storage.googleapis.com/${bucket.name}/${storagePath}`;
-
         const doc: ApplicationDocument = {
             id: docInstanceId,
             docRequirementId: req.id,
@@ -87,9 +70,9 @@ export async function createApplicationAction(
             description: req.description,
             status: 'missing',
             requiresExpiry: req.requiresExpiry,
-            fileUrl: publicUrl,
-            fileName: placeholderFileName,
             // Explicitly initialize optional fields to prevent 'undefined' errors in Firestore
+            fileUrl: '',
+            fileName: '',
             fileType: '',
             uploadedAt: '',
             expiryDate: '',
@@ -99,7 +82,7 @@ export async function createApplicationAction(
     });
 
     const documents = await Promise.all(documentPromises);
-    console.log('All placeholder files created successfully.');
+    console.log('All placeholder fields initialized for new application.');
 
     const appData = {
         id: newAppId,
@@ -245,54 +228,54 @@ export async function uploadFlightLogAction(
     return { publicUrl, extractedLogs };
 }
 
-export async function getExpiryDatesFromDocumentsAction(
+export async function getExpiryDateForSingleDocumentAction(
     applicationId: string,
-    documents: ApplicationDocument[]
-): Promise<{ docId: string, expiryDate: string }[]> {
-    const { adminStorage } = initializeAdminApp();
+    docId: string
+): Promise<{ expiryDate: string | null }> {
+    const { adminFirestore, adminStorage } = initializeAdminApp();
     const bucketName = firebaseConfig.storageBucket;
     if (!bucketName) {
         throw new Error("Firebase Storage bucket name is not configured.");
     }
     const bucket = adminStorage.bucket(bucketName);
 
-    const docsToProcess = documents.filter(
-        (doc) => doc.fileUrl && doc.fileType?.startsWith('image/') && doc.requiresExpiry && !doc.expiryDate
-    );
+    const appRef = adminFirestore.collection('applications').doc(applicationId);
+    const appSnapshot = await appRef.get();
+    if (!appSnapshot.exists) {
+        throw new Error("Application not found.");
+    }
+    const application = appSnapshot.data() as Application;
 
-    if (docsToProcess.length === 0) {
-        return [];
+    const docToProcess = application.documents.find(d => d.id === docId);
+    if (!docToProcess) {
+        throw new Error("Document not found in application.");
     }
 
-    const results = await Promise.all(
-        docsToProcess.map(async (doc) => {
-            if (!doc.fileName) return null;
-            // Reconstruct storage path from what we know
-            const storagePath = `applications/${applicationId}/${doc.id}/${doc.fileName}`;
-            const file = bucket.file(storagePath);
-            
-            try {
-                const [exists] = await file.exists();
-                if (!exists) {
-                    console.warn(`File not found in storage, skipping AI check: ${storagePath}`);
-                    return null;
-                }
+    if (!docToProcess.fileUrl || !docToProcess.fileType?.startsWith('image/') || !docToProcess.requiresExpiry) {
+        return { expiryDate: null };
+    }
+    if (!docToProcess.fileName) {
+         throw new Error("Document file name is missing, cannot process.");
+    }
+    
+    const storagePath = `applications/${applicationId}/${docToProcess.id}/${docToProcess.fileName}`;
+    const file = bucket.file(storagePath);
 
-                const [fileBuffer] = await file.download();
-                const dataUri = `data:${doc.fileType};base64,${fileBuffer.toString('base64')}`;
+    try {
+        const [exists] = await file.exists();
+        if (!exists) {
+            console.warn(`File not found in storage, skipping AI check: ${storagePath}`);
+            return { expiryDate: null };
+        }
 
-                const { expiryDate } = await extractExpiryDate({ documentImage: dataUri });
+        const [fileBuffer] = await file.download();
+        const dataUri = `data:${docToProcess.fileType};base64,${fileBuffer.toString('base64')}`;
 
-                if (expiryDate) {
-                    return { docId: doc.id, expiryDate };
-                }
-                return null;
-            } catch (error) {
-                console.error(`Error processing document ${doc.id} for expiry date:`, error);
-                return null; // Don't let one failure stop the whole batch
-            }
-        })
-    );
+        const { expiryDate } = await extractExpiryDate({ documentImage: dataUri });
 
-    return results.filter((result): result is { docId: string, expiryDate: string } => result !== null);
+        return { expiryDate: expiryDate || null };
+    } catch (error) {
+        console.error(`Error processing document ${docToProcess.id} for expiry date:`, error);
+        throw new Error("Failed to process document with AI.");
+    }
 }
