@@ -1,7 +1,7 @@
 
 'use server';
 /**
- * @fileOverview Extracts the expiry date from a document image.
+ * @fileOverview Extracts the expiry date from a document image or PDF.
  *
  * - extractExpiryDate - A function that handles the expiry date extraction process.
  * - ExtractExpiryDateInput - The input type for the extractExpiryDate function.
@@ -31,7 +31,6 @@ export async function extractExpiryDate(input: ExtractExpiryDateInput): Promise<
 
 const prompt = ai.definePrompt({
   name: 'extractExpiryDatePrompt',
-  model: 'googleai/gemini-1.5-flash-latest',
   input: {schema: ExtractExpiryDateInputSchema},
   output: {schema: ExtractExpiryDateOutputSchema},
   prompt: `You are an expert at processing official documents. Your task is to find and extract the expiry date from the provided document image or PDF.
