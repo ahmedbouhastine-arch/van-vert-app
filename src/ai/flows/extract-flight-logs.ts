@@ -1,4 +1,3 @@
-
 'use server';
 /**
  * @fileOverview Extracts flight log data from a PDF document.
@@ -22,7 +21,7 @@ export type ExtractFlightLogsInput = z.infer<typeof ExtractFlightLogsInputSchema
 
 
 const FlightLogEntrySchema = z.object({
-    date: z.string().describe('The date of the flight in YYYY-MM-DD format.'),
+    date: z.string().describe('The date of the flight in strict YYYY-MM-DD format. Do not use words or ordinal suffixes (e.g., "st", "nd", "rd", "th"). Example: "2025-06-09".'),
     aircraft: z.string().describe('The type or registration of the aircraft flown.'),
     duration: z.number().describe('The duration of the flight in hours.'),
     instructorName: z.string().optional().describe('The name of the instructor, if any.'),
@@ -50,7 +49,9 @@ const prompt = ai.definePrompt({
   - The name of the instructor, if listed.
   - Any remarks about the flight.
 
-  Return the data as a structured array of flight log objects. Ensure all dates are in YYYY-MM-DD format.
+  Return the data as a structured array of flight log objects.
+  
+  IMPORTANT: Ensure all dates are in the strict YYYY-MM-DD format. For example, "June 9th, 2025" must be returned as "2025-06-09".
 
   PDF for processing: {{media url=flightLogPdf}}`,
 });

@@ -1,4 +1,3 @@
-
 'use server';
 
 /**
@@ -42,15 +41,25 @@ const checkRecencyFlow = ai.defineFlow(
   async (input) => {
     const sixMonthsAgo = subMonths(new Date(), 6);
     
+    // Helper function to remove ordinal suffixes (st, nd, rd, th) from dates
+    const cleanDateString = (dateStr: string) => {
+      if (!dateStr) return '';
+      return dateStr.replace(/(\d+)(st|nd|rd|th)/, '$1');
+    };
+
     const recentFlights = input.flights.filter(flight => {
         try {
-            const flightDate = new Date(flight.date);
+            // Clean the date string before parsing to handle formats like "June 9th, 2025"
+            const flightDate = new Date(cleanDateString(flight.date));
+            
             // Check for invalid date
             if (isNaN(flightDate.getTime())) {
+                console.warn(`[Recency Check] Invalid date format encountered and could not be parsed: ${flight.date}`);
                 return false;
             }
             return isAfter(flightDate, sixMonthsAgo);
         } catch (e) {
+            console.error(`[Recency Check] Error parsing date: ${flight.date}`, e);
             return false;
         }
     });
