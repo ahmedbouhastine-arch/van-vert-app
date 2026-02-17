@@ -55,6 +55,7 @@ function DocumentCard({
   doc,
   onUpload,
   onDateChange,
+  onClearDate,
   isSubmitted,
   isUploading,
   onCheckExpiry,
@@ -63,6 +64,7 @@ function DocumentCard({
   doc: ApplicationDocument;
   onUpload: (docId: string) => void;
   onDateChange: (docId: string, date: string) => void;
+  onClearDate: (docId: string) => void;
   isSubmitted: boolean;
   isUploading: boolean;
   onCheckExpiry: (docId: string) => void;
@@ -104,13 +106,25 @@ function DocumentCard({
                 <Label htmlFor={`expiry-${doc.id}`} className="text-xs">
                 Expiry Date
                 </Label>
-                <Input
-                id={`expiry-${doc.id}`}
-                type="date"
-                value={doc.expiryDate || ''}
-                onChange={(e) => onDateChange(doc.id, e.target.value)}
-                disabled={doc.status === "missing" || isSubmitted}
-                />
+                <div className="flex w-full max-w-sm items-center space-x-2">
+                    <Input
+                    id={`expiry-${doc.id}`}
+                    type="date"
+                    value={doc.expiryDate || ''}
+                    onChange={(e) => onDateChange(doc.id, e.target.value)}
+                    disabled={doc.status === "missing" || isSubmitted}
+                    />
+                    <Button
+                        type="button"
+                        variant="outline"
+                        size="icon"
+                        onClick={() => onClearDate(doc.id)}
+                        disabled={doc.status === 'missing' || isSubmitted || !doc.expiryDate}
+                        aria-label="Clear date"
+                    >
+                        <X className="h-4 w-4" />
+                    </Button>
+                </div>
             </div>
             {doc.status !== 'missing' && (
                 <Button variant="secondary" size="sm" onClick={() => onCheckExpiry(doc.id)} disabled={isExpiryCheckDisabled} className="w-full max-w-sm">
@@ -293,6 +307,19 @@ export function ApplicationClient({
     );
   };
   
+  const handleClearDate = (docId: string) => {
+    const newDocuments = appState.documents.map((doc) =>
+        doc.id === docId ? { ...doc, expiryDate: "" } : doc
+    );
+
+    setAppState((prev) => ({ ...prev, documents: newDocuments }));
+
+    handlePersistChanges(
+        { documents: newDocuments }, 
+        { title: "Expiry Date Cleared", description: "The expiry date has been removed." }
+    );
+  };
+
   const handleCheckSingleExpiry = (docId: string) => {
     startTransition(async () => {
         setCheckingExpiryDocId(docId);
@@ -493,6 +520,7 @@ export function ApplicationClient({
             doc={doc}
             onUpload={handleUploadClick}
             onDateChange={handleDateChange}
+            onClearDate={handleClearDate}
             isSubmitted={isSubmitted}
             isUploading={uploadingDocId === doc.id}
             onCheckExpiry={handleCheckSingleExpiry}
@@ -620,5 +648,3 @@ export function ApplicationClient({
     </div>
   );
 }
-
-    
