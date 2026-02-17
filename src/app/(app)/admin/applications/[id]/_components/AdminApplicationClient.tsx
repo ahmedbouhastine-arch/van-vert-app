@@ -197,14 +197,18 @@ export function AdminApplicationClient({
   const [isPending, startTransition] = useTransition();
   const [recencyResult, setRecencyResult] = useState<CheckRecencyOutput | null>(null);
   const [isRecencyChecking, setIsRecencyChecking] = useState(true);
+  const [totalFlightHours, setTotalFlightHours] = useState(0);
   const { toast } = useToast();
   
   const firestore = useFirestore();
 
   const isAdminOrHigher = claims?.role === 'admin' || claims?.role === 'head-admin';
 
-  const totalFlightHours = appState.flightLogs?.reduce((sum, log) => sum + (Number(log.duration) || 0), 0);
-
+  useEffect(() => {
+    const total = appState.flightLogs?.reduce((sum, log) => sum + (Number(log.duration) || 0), 0) || 0;
+    setTotalFlightHours(total);
+  }, [appState.flightLogs]);
+  
   useEffect(() => {
     const initialRecencyCheck = async () => {
         if (!appState.flightLogs || appState.flightLogs.length === 0) {
@@ -361,6 +365,15 @@ export function AdminApplicationClient({
     }
   };
 
+  const handleRecalculateHours = () => {
+    const total = appState.flightLogs?.reduce((sum, log) => sum + (Number(log.duration) || 0), 0) || 0;
+    setTotalFlightHours(total);
+    toast({
+        title: "Total Hours Recalculated",
+        description: `The new total is ${total.toFixed(2)} hours.`
+    });
+  };
+
   const applicationStatuses: ApplicationStatus[] = ['draft', 'submitted', 'in_review', 'needs_attention', 'approved', 'rejected'];
 
   return (
@@ -418,19 +431,25 @@ export function AdminApplicationClient({
 
              <Card>
                 <CardHeader>
-                    <div className="flex items-center justify-between">
+                    <div className="flex items-start justify-between">
                         <div>
                             <CardTitle>Applicant's Flight Logs</CardTitle>
                             <CardDescription>
                                 A read-only view of the logs submitted by the applicant.
                             </CardDescription>
                         </div>
-                        {totalFlightHours && totalFlightHours > 0 && (
-                            <div className="text-right">
-                                <p className="text-3xl font-bold">{totalFlightHours.toFixed(2)}</p>
-                                <p className="text-sm text-muted-foreground">Total Hours Logged</p>
-                            </div>
-                        )}
+                        <div className="flex flex-col items-end gap-2">
+                             {totalFlightHours > 0 && (
+                                <div className="text-right">
+                                    <p className="text-3xl font-bold">{totalFlightHours.toFixed(2)}</p>
+                                    <p className="text-sm text-muted-foreground">Total Hours Logged</p>
+                                </div>
+                            )}
+                            <Button onClick={handleRecalculateHours} variant="secondary" size="sm">
+                                <RefreshCw className="mr-2 h-4 w-4" />
+                                Recalculate
+                            </Button>
+                        </div>
                     </div>
                 </CardHeader>
                 <CardContent>
