@@ -4,24 +4,24 @@
 
 @layer base {
   :root {
-    --background: 206 33% 95%; /* Light grey */
-    --foreground: 224 71.4% 4.1%; /* Dark blue-ish text */
-    --card: 0 0% 100% / 0.4; /* Semi-transparent white for glass effect */
+    --background: 206 33% 95%;
+    --foreground: 224 71.4% 4.1%;
+    --card: 0 0% 100% / 0.5; /* More transparent for glass effect */
     --card-foreground: 224 71.4% 4.1%;
-    --popover: 0 0% 100% / 0.7; /* Semi-transparent white */
+    --popover: 0 0% 100% / 0.75; /* More transparent */
     --popover-foreground: 224 71.4% 4.1%;
-    --primary: 231 48% 48%; /* Deep blue */
+    --primary: 231 48% 48%;
     --primary-foreground: 0 0% 100%;
-    --secondary: 220 14% 96%;
+    --secondary: 220 14% 96% / 0.5; /* Made transparent */
     --secondary-foreground: 222 47% 11%;
-    --muted: 220 14% 96% / 0.4; /* Semi-transparent for glass effect */
-    --muted-foreground: 220 10% 35%; /* Made darker for better contrast */
-    --accent: 36 100% 50%; /* Orange */
+    --muted: 220 14% 96% / 0.3; /* More transparent */
+    --muted-foreground: 220 10% 35%;
+    --accent: 36 100% 50%;
     --accent-foreground: 24 10% 10%;
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
-    --border: 220 13% 91% / 0.3; /* Lighter border for glass */
-    --input: 220 13% 91% / 0.3;
+    --border: 220 13% 91% / 0.2; /* Even lighter border for glass effect */
+    --input: 220 13% 91% / 0.2; /* Lighter input */
     --ring: 231 48% 48%;
     --radius: 0.5rem;
   }
@@ -65,16 +65,16 @@
     width: 100vw;
     height: 100vh;
     z-index: -1;
-    /* Softened gradient for better readability in light mode */
-    background: linear-gradient(135deg, hsl(231 48% 90%), hsl(var(--background)));
+    /* New vibrant, clear gradient for light theme */
+    background: linear-gradient(135deg, hsl(190 80% 80%), hsl(250 80% 90%));
   }
 
   .dark body::before {
      background: linear-gradient(135deg, hsl(var(--primary) / 0.8), hsl(var(--background)) 80%);
   }
 
-  /* Apply glass effect to components */
-  .bg-card, .bg-popover, .bg-muted, .bg-background, .bg-muted\/40 {
-    @apply bg-card/60 backdrop-blur-md;
+  /* Apply glass effect to components that use these backgrounds */
+  .bg-card, .bg-popover, .bg-muted {
+    @apply backdrop-blur-lg;
   }
 }
