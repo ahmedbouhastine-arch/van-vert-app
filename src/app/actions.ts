@@ -35,6 +35,36 @@ function handleStorageError(e: any, path: string) {
     throw new Error(`Firebase Admin SDK Storage Error on path '${path}': ${errorMessage}`);
 }
 
+/**
+ * Wraps an AI flow call to provide more specific error handling for common
+ * authentication and permission issues with Google Cloud.
+ */
+async function handleGenkitError<T>(promise: Promise<T>): Promise<T> {
+  try {
+    return await promise;
+  } catch (e: any) {
+    const errorMessage = e.message || (e.toString ? e.toString() : '');
+
+    // Handle ADC not found
+    if (errorMessage.includes('Could not find application default credentials')) {
+      throw new Error('AI service authentication failed. This can be fixed by running `gcloud auth application-default login` in your terminal and then restarting the server.');
+    }
+    
+    // Handle Permission Denied (includes common gRPC codes and statuses)
+    if (errorMessage.includes('Permission denied') || errorMessage.includes('PERMISSION_DENIED') || e.code === 7) {
+       throw new Error(`AI service permission denied. Please ensure the "Vertex AI API" is enabled for your Google Cloud project and that your account has the "Vertex AI User" role.`);
+    }
+
+    // Handle Model Not Found
+    if (errorMessage.includes('NOT_FOUND')) {
+        throw new Error(`The specified AI model was not found. This can happen if the model name is incorrect or if your project is not allowlisted for the model. Original error: ${errorMessage}`);
+    }
+
+    // Re-throw the original error if it's not a recognized pattern
+    throw e;
+  }
+}
+
 
 export async function createApplicationAction(
     userId: string,
@@ -162,10 +192,10 @@ export async function uploadDocumentAction(
 
     if (requiresExpiry && (mimeType.startsWith('image/') || mimeType === 'application/pdf')) {
         try {
-            const { expiryDate } = await extractExpiryDate({ documentDataUri: fileDataUri });
+            const { expiryDate } = await handleGenkitError(extractExpiryDate({ documentDataUri: fileDataUri }));
             detectedExpiryDate = expiryDate;
         } catch (e: any) {
-            console.error("AI expiry date detection failed:", e);
+            console.error("AI expiry date detection failed during upload:", e.message);
         }
     }
     
@@ -206,7 +236,7 @@ export async function uploadFlightLogAction(
 
     let extractedLogs: FlightLog[] = [];
     try {
-        const aiResult = await extractFlightLogs({ flightLogPdf: pdfDataUri });
+        const aiResult = await handleGenkitError(extractFlightLogs({ flightLogPdf: pdfDataUri }));
         if (aiResult) {
             extractedLogs = aiResult.map(log => ({ ...log, id: uuidv4(), remarks: log.remarks || '' }));
         }
@@ -262,11 +292,11 @@ export async function getExpiryDateForSingleDocumentAction(
         const [fileBuffer] = await file.download();
         const dataUri = `data:${docToProcess.fileType};base64,${fileBuffer.toString('base64')}`;
 
-        const { expiryDate } = await extractExpiryDate({ documentDataUri: dataUri });
+        const { expiryDate } = await handleGenkitError(extractExpiryDate({ documentDataUri: dataUri }));
 
         return { expiryDate: expiryDate || null };
-    } catch (error) {
+    } catch (error: any) {
         console.error(`Error processing document ${docToProcess.id} for expiry date:`, error);
-        throw new Error("Failed to process document with AI.");
+        throw error;
     }
 }
