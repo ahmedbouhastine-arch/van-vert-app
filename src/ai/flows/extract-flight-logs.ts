@@ -39,7 +39,7 @@ const prompt = ai.definePrompt({
   name: 'extractFlightLogsPrompt',
   input: {schema: ExtractFlightLogsInputSchema},
   output: {schema: ExtractFlightLogsOutputSchema},
-  model: 'googleai/gemini-2.0-flash',
+  model: 'googleai/gemini-1.5-flash-latest',
   prompt: `You are an expert aviation administrator. Your task is to extract flight log entries from the provided PDF document.
 
   Analyze the document and identify all individual flight entries. For each entry, extract the following information:
