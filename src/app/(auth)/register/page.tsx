@@ -24,7 +24,7 @@ import { GoogleIcon } from "@/components/GoogleIcon";
 import { LoadingScreen } from "@/components/LoadingScreen";
 import { signInWithGoogle } from "@/firebase/auth-actions";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { uploadProfilePictureAction } from "@/app/actions";
+import * as serverActions from "@/app/actions";
 
 
 const passwordRequirements = [
@@ -108,7 +108,7 @@ export default function RegisterPage() {
                             reader.onerror = (error) => reject(error);
                         });
 
-                        const uploadResult = await uploadProfilePictureAction(user.uid, dataUrl, avatarFile.name);
+                        const uploadResult = await serverActions.uploadProfilePictureAction(user.uid, dataUrl, avatarFile.name);
                         photoURL = uploadResult.photoURL;
                     }
 
