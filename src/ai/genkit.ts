@@ -9,21 +9,16 @@ const geminiApiKey = process.env.GEMINI_API_KEY;
 
 const plugins: GenkitPlugin[] = [];
 
+// Initialize the googleAI plugin.
+// If a GEMINI_API_KEY is provided, it will be used.
+// Otherwise, the plugin will automatically use Application Default Credentials.
 if (geminiApiKey) {
-  plugins.push(
-    googleAI({
-      apiKey: geminiApiKey,
-    })
-  );
+  plugins.push(googleAI({ apiKey: geminiApiKey }));
 } else {
-  // This will prevent the server from crashing and allows the app to run,
-  // but AI features will be disabled. A warning is logged to the console.
-  console.warn(
-    'WARNING: GEMINI_API_KEY environment variable is not set. AI features will be disabled. Please add the key to your .env file.'
-  );
+  plugins.push(googleAI());
 }
 
 export const ai = genkit({
   plugins: plugins,
-  model: 'googleai/gemini-1.5-flash-latest',
+  model: 'googleai/gemini-2.0-flash',
 });
