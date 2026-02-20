@@ -233,7 +233,7 @@ export function ApplicationClient({
             activeUploadDocId,
             dataUrl,
             file.name,
-            docDefinition.requiresExpiry,
+            true,
         );
 
         if (detectedExpiryDate) {
@@ -474,7 +474,7 @@ export function ApplicationClient({
     };
 
     handleRecencyCheck();
-  }, [appState.flightLogs, toast]);
+  }, [appState.flightLogs]);
 
 
   const allDocsUploaded = appState.documents.every(doc => doc.status !== 'missing');
