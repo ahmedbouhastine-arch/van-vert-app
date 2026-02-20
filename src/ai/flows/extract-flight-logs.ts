@@ -22,9 +22,10 @@ export type ExtractFlightLogsInput = z.infer<typeof ExtractFlightLogsInputSchema
 
 const FlightLogEntrySchema = z.object({
     date: z.string().describe('The date of the flight in strict YYYY-MM-DD format. Do not use words or ordinal suffixes (e.g., "st", "nd", "rd", "th"). Example: "2025-06-09".'),
-    aircraft: z.string().describe('The type or registration of the aircraft flown.'),
+    aircraft: z.string().describe('The standardized model name of the aircraft flown. (e.g., "PA-28-161", "C-172").'),
     duration: z.number().describe('The duration of the flight in hours.'),
-    instructorName: z.string().optional().describe('The name of the instructor, if any.'),
+    isPIC: z.boolean().optional().describe('A boolean flag indicating if the pilot was the Pilot In Command (PIC).'),
+    isSolo: z.boolean().optional().describe('A boolean flag indicating if the flight was a solo flight.'),
     remarks: z.string().optional().describe('Any remarks or notes for the flight.'),
 });
 
@@ -42,17 +43,18 @@ const prompt = ai.definePrompt({
   prompt: `You are an expert aviation administrator. Your task is to extract flight log entries from the provided PDF document.
 
   Analyze the document and identify all individual flight entries. For each entry, extract the following information:
-  - The date of the flight.
-  - The aircraft type or registration.
-  - The flight duration in hours (convert minutes to a decimal of hours if necessary).
-  - The name of the instructor, if listed.
-  - Any remarks about the flight.
+- The date of the flight.
+- The aircraft model, standardized to a common format (e.g., convert \"PA28161\" to \"PA-28-161\"). Remove any tail numbers.
+- The flight duration in hours (convert minutes to a decimal of hours if necessary).
+- A boolean flag \"isPIC\" set to true if the pilot is marked as Pilot In Command.
+- A boolean flag \"isSolo\" set to true if the flight is marked as solo.
+- Any remarks about the flight.
 
-  Return the data as a structured array of flight log objects.
-  
-  IMPORTANT: Ensure all dates are in the strict YYYY-MM-DD format. For example, "June 9th, 2025" must be returned as "2025-06-09".
+Return the data as a structured array of flight log objects.
 
-  PDF for processing: {{media url=flightLogPdf}}`,
+IMPORTANT: Ensure all dates are in the strict YYYY-MM-DD format. For example, \"June 9th, 2025\" must be returned as \"2025-06-09\".
+
+PDF for processing: {{media url=flightLogPdf}}`,
 });
 
 const extractFlightLogsFlow = ai.defineFlow(
@@ -62,7 +64,17 @@ const extractFlightLogsFlow = ai.defineFlow(
     outputSchema: ExtractFlightLogsOutputSchema,
   },
   async (input) => {
-    const {output} = await prompt(input);
-    return output || [];
+    const { output } = await prompt(input);
+
+    if (!output) {
+      return [];
+    }
+
+    // Filter out entries that are missing required fields.
+    const filteredOutput = output.filter(log => {
+      return log.date && log.aircraft && typeof log.duration === 'number';
+    });
+
+    return filteredOutput;
   }
 );

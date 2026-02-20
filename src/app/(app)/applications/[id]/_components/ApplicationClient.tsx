@@ -167,10 +167,18 @@ export function ApplicationClient({
   const [isRecencyChecking, setIsRecencyChecking] = useState(false);
   const [isUploadingLog, setIsUploadingLog] = useState(false);
   const [totalFlightHours, setTotalFlightHours] = useState(0);
+  const [totalPicHours, setTotalPicHours] = useState(0);
+  const [totalSoloHours, setTotalSoloHours] = useState(0);
 
   useEffect(() => {
-    const total = appState.flightLogs?.reduce((sum, log) => sum + (Number(log.duration) || 0), 0) || 0;
+    const logs = appState.flightLogs || [];
+    const total = logs.reduce((sum, log) => sum + (Number(log.duration) || 0), 0);
+    const pic = logs.reduce((sum, log) => log.isPIC ? sum + (Number(log.duration) || 0) : sum, 0);
+    const solo = logs.reduce((sum, log) => log.isSolo ? sum + (Number(log.duration) || 0) : sum, 0);
+    
     setTotalFlightHours(total);
+    setTotalPicHours(pic);
+    setTotalSoloHours(solo);
   }, [appState.flightLogs]);
   
   const handlePersistChanges = (updates: Partial<Application>, successToast: {title: string, description?: string} | null) => {
@@ -436,16 +444,23 @@ export function ApplicationClient({
   const handleDownloadLogPdf = async () => {
     if (!appState.flightLogPdfUrl) return;
     window.open(appState.flightLogPdfUrl, '_blank');
-};
+  };
 
-    const handleRecalculateHours = () => {
-        const total = appState.flightLogs?.reduce((sum, log) => sum + (Number(log.duration) || 0), 0) || 0;
-        setTotalFlightHours(total);
-        toast({
-            title: "Total Hours Recalculated",
-            description: `The new total is ${total.toFixed(2)} hours.`
-        });
-    };
+  const handleRecalculateHours = () => {
+    const logs = appState.flightLogs || [];
+    const total = logs.reduce((sum, log) => sum + (Number(log.duration) || 0), 0);
+    const pic = logs.reduce((sum, log) => log.isPIC ? sum + (Number(log.duration) || 0) : sum, 0);
+    const solo = logs.reduce((sum, log) => log.isSolo ? sum + (Number(log.duration) || 0) : sum, 0);
+    
+    setTotalFlightHours(total);
+    setTotalPicHours(pic);
+    setTotalSoloHours(solo);
+    
+    toast({
+        title: "Hours Recalculated",
+        description: `Totals: ${total.toFixed(2)} hrs, ${pic.toFixed(2)} PIC, ${solo.toFixed(2)} Solo.`
+    });
+  };
   
   useEffect(() => {
     const handleRecencyCheck = async () => {
@@ -474,7 +489,7 @@ export function ApplicationClient({
     };
 
     handleRecencyCheck();
-  }, [appState.flightLogs]);
+  }, [appState.flightLogs, toast]);
 
 
   const allDocsUploaded = appState.documents.every(doc => doc.status !== 'missing');
@@ -530,16 +545,28 @@ export function ApplicationClient({
                     <CardDescription>Upload a PDF of your flight logbook. The AI will extract recent flights automatically.</CardDescription>
                 </div>
                 <div className="flex flex-col items-end gap-2">
-                     {totalFlightHours > 0 && (
-                        <div className="text-right">
-                            <p className="text-3xl font-bold">{totalFlightHours.toFixed(2)}</p>
-                            <p className="text-sm text-muted-foreground">Total Hours Logged</p>
+                    {totalFlightHours > 0 && (
+                        <div className="flex gap-6 text-right">
+                            <div>
+                                <p className="text-3xl font-bold">{totalFlightHours.toFixed(2)}</p>
+                                <p className="text-sm text-muted-foreground">Total Hours</p>
+                            </div>
+                            <div>
+                                <p className="text-3xl font-bold">{totalPicHours.toFixed(2)}</p>
+                                <p className="text-sm text-muted-foreground">PIC Hours</p>
+                            </div>
+                            <div>
+                                <p className="text-3xl font-bold">{totalSoloHours.toFixed(2)}</p>
+                                <p className="text-sm text-muted-foreground">Solo Hours</p>
+                            </div>
                         </div>
                     )}
-                    <Button onClick={handleRecalculateHours} variant="secondary" size="sm">
-                        <RefreshCw className="mr-2 h-4 w-4" />
-                        Recalculate
-                    </Button>
+                    {appState.flightLogs && appState.flightLogs.length > 0 && (
+                        <Button onClick={handleRecalculateHours} variant="secondary" size="sm" className="mt-2">
+                            <RefreshCw className="mr-2 h-4 w-4" />
+                            Recalculate
+                        </Button>
+                    )}
                 </div>
             </div>
         </CardHeader>
@@ -568,27 +595,31 @@ export function ApplicationClient({
                     <TableRow>
                         <TableHead>Date</TableHead>
                         <TableHead>Aircraft</TableHead>
-                        <TableHead>Instructor</TableHead>
+                        <TableHead>Remarks</TableHead>
                         <TableHead className="text-right">Duration (hrs)</TableHead>
                     </TableRow>
                 </TableHeader>
                 <TableBody>
-                    <>
-                        {appState.flightLogs && appState.flightLogs.length > 0 ? (
-                            appState.flightLogs.map(log => (
-                                <TableRow key={log.id}>
-                                    <TableCell>{safeFormatDate(log.date, 'PPP')}</TableCell>
-                                    <TableCell>{log.aircraft}</TableCell>
-                                    <TableCell>{log.instructorName || 'N/A'}</TableCell>
-                                    <TableCell className="text-right">{log.duration.toFixed(2)}</TableCell>
-                                </TableRow>
-                            ))
-                        ) : (
-                            <TableRow>
-                                <TableCell colSpan={4} className="h-24 text-center">No flight logs have been extracted yet.</TableCell>
+                    {appState.flightLogs && appState.flightLogs.length > 0 ? (
+                        appState.flightLogs.map(log => (
+                            <TableRow key={log.id}>
+                                <TableCell>{safeFormatDate(log.date, 'PPP')}</TableCell>
+                                <TableCell>
+                                    <div className="font-medium">{log.aircraft}</div>
+                                    <div className="flex gap-2 text-xs text-muted-foreground">
+                                        {log.isPIC && <span className="font-bold">PIC</span>}
+                                        {log.isSolo && <span className="font-bold">SOLO</span>}
+                                    </div>
+                                </TableCell>
+                                <TableCell className="max-w-[200px] truncate" title={log.remarks}>{log.remarks || 'N/A'}</TableCell>
+                                <TableCell className="text-right">{log.duration.toFixed(2)}</TableCell>
                             </TableRow>
-                        )}
-                    </>
+                        ))
+                    ) : (
+                        <TableRow>
+                            <TableCell colSpan={4} className="h-24 text-center">No flight logs have been extracted yet.</TableCell>
+                        </TableRow>
+                    )}
                 </TableBody>
             </Table>
         </CardContent>
@@ -623,7 +654,7 @@ export function ApplicationClient({
                 <Check className="mr-2 h-4 w-4" /> 
                 {isSubmitted ? 'Submitted' : 'Submit Application'}
             </Button>
-        </Content>
+        </CardContent>
         {!allDocsUploaded && !isSubmitted && (
              <CardFooter>
                  <p className="text-sm text-muted-foreground">You must upload all required documents before submitting.</p>
