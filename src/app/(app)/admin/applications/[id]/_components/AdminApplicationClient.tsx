@@ -30,7 +30,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
-import { flagExpiringDocuments } from "@/ai/flows/flag-expiring-documents";
+import { flagExpiringDocuments, FlagExpiringDocumentsOutput } from "@/ai/flows/flag-expiring-documents";
 import { checkRecency } from "@/ai/flows/check-recency";
 import type { CheckRecencyOutput } from "@/ai/flows/check-recency";
 import { cn } from "@/lib/utils";
@@ -54,7 +54,7 @@ const safeFormatDate = (date: FirebaseTimestamp | Date | string | undefined | nu
 };
 
 
-async function checkExpiryAction(documents: ApplicationDocument[]) {
+async function checkExpiryAction(documents: ApplicationDocument[]): Promise<FlagExpiringDocumentsOutput> {
     const docsToCheck = documents
       .filter((doc) => doc.status !== "missing" && doc.requiresExpiry && doc.expiryDate)
       .map((doc) => ({

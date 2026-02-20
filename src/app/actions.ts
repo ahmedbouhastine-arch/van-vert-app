@@ -166,7 +166,7 @@ export async function uploadDocumentAction(
     fileDataUri: string, 
     fileName: string,
     requiresExpiry: boolean,
-): Promise<{ publicUrl: string; expiryDate: string | null | undefined; mimeType: string }> {
+): Promise<{ publicUrl: string; expiryDate: string | null; mimeType: string }> {
     const { adminStorage } = initializeAdminApp();
     const bucketName = firebaseConfig.storageBucket;
     if (!bucketName) {
@@ -200,7 +200,7 @@ export async function uploadDocumentAction(
     }
     
     const publicUrl = `https://storage.googleapis.com/${bucket.name}/${storagePath}`;
-    return { publicUrl, expiryDate: detectedExpiryDate, mimeType };
+    return { publicUrl, expiryDate: detectedExpiryDate || null, mimeType };
 }
 
 

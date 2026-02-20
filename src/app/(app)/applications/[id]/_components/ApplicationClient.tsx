@@ -31,7 +31,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { format } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
 import { checkRecency, type CheckRecencyOutput } from "@/ai/flows/check-recency";
-import {uploadDocumentAction, uploadFlightLogAction, getExpiryDateForSingleDocumentAction} from "@/app/actions";
+import * as serverActions from "@/app/actions";
 import { useFirestore, errorEmitter, FirestorePermissionError } from "@/firebase";
 import { doc, serverTimestamp, updateDoc, collection, addDoc } from "firebase/firestore";
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
@@ -228,7 +228,7 @@ export function ApplicationClient({
             reader.onerror = (error) => reject(error);
         });
 
-        const { publicUrl, expiryDate: detectedExpiryDate, mimeType } = await uploadDocumentAction(
+        const { publicUrl, expiryDate: detectedExpiryDate, mimeType } = await serverActions.uploadDocumentAction(
             appState.id,
             activeUploadDocId,
             dataUrl,
@@ -248,7 +248,7 @@ export function ApplicationClient({
                     ...doc,
                     status: "uploaded" as const,
                     fileName: file.name,
-                    fileType: mimeType,
+                    fileType: mimeType || '',
                     fileUrl: publicUrl,
                     uploadedAt: new Date().toISOString(),
                     expiryDate: detectedExpiryDate || doc.expiryDate || '',
@@ -311,7 +311,7 @@ export function ApplicationClient({
         toast({ title: 'AI Check In Progress...', description: 'Analyzing document to find expiry date.' });
         
         try {
-            const { expiryDate } = await getExpiryDateForSingleDocumentAction(appState.id, docId);
+            const { expiryDate } = await serverActions.getExpiryDateForSingleDocumentAction(appState.id, docId);
 
             if (expiryDate) {
                 const newDocuments = appState.documents.map(doc => 
@@ -405,7 +405,7 @@ export function ApplicationClient({
             reader.onerror = (error) => reject(error);
         });
         
-        const { publicUrl, extractedLogs } = await uploadFlightLogAction(
+        const { publicUrl, extractedLogs } = await serverActions.uploadFlightLogAction(
             appState.id,
             pdfDataUri,
             file.name,
