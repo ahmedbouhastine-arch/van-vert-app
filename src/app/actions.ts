@@ -166,6 +166,7 @@ export async function uploadDocumentAction(
             detectedExpiryDate = expiryDate;
         } catch (e: any) {
             console.error("AI expiry date detection failed:", e);
+            throw e; // Re-throw the error to be caught by the client
         }
     }
     
