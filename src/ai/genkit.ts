@@ -15,5 +15,5 @@ const plugins: GenkitPlugin[] = [
 
 export const ai = genkit({
   plugins: plugins,
-  model: 'gemini-1.5-flash-latest',
+  model: 'googleai/gemini-2.0-flash',
 });
