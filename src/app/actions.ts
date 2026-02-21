@@ -1,5 +1,6 @@
 'use server';
 
+import 'server-only';
 import { initializeAdminApp } from '@/firebase/admin-init';
 import { firebaseConfig } from '@/firebase/config';
 import { extractExpiryDate } from '@/ai/flows/extract-expiry-date';

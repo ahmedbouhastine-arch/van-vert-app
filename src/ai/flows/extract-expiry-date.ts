@@ -1,4 +1,3 @@
-
 'use server';
 /**
  * @fileOverview Extracts the expiry date from a document image or PDF.

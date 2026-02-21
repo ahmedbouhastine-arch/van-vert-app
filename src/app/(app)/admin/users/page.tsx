@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useUser, useFirestore, useCollection, useMemoFirebase, errorEmitter, FirestorePermissionError } from "@/firebase";
@@ -64,7 +63,7 @@ function UserRow({
                         <div className="font-medium">{user.displayName}</div>
                         <div className="text-xs text-muted-foreground">{user.email}</div>
                     </div>
-                </div>
+                </div
             </TableCell>
             <TableCell>
                 {canPerformActions ? (
