@@ -100,14 +100,11 @@ export default function RegisterPage() {
                 
                 try {
                     if (avatarFile) {
-                        const reader = new FileReader();
-                        reader.readAsDataURL(avatarFile);
-                        const dataUrl = await new Promise<string>((resolve, reject) => {
-                            reader.onload = () => resolve(reader.result as string);
-                            reader.onerror = (error) => reject(error);
-                        });
+                        const uploadFormData = new FormData();
+                        uploadFormData.append('userId', user.uid);
+                        uploadFormData.append('file', avatarFile);
 
-                        const uploadResult = await serverActions.uploadProfilePictureAction(user.uid, dataUrl, avatarFile.name);
+                        const uploadResult = await serverActions.uploadProfilePictureAction(uploadFormData);
                         photoURL = uploadResult.photoURL;
                     }
 

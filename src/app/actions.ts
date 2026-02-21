@@ -1,7 +1,7 @@
 'use server';
 
 import 'server-only';
-import { initializeAdminApp } from '@/firebase/admin-init';
+import { adminFirestore, adminStorage } from '@/lib/firebase-admin-prewarmed';
 import { firebaseConfig } from '@/firebase/config';
 import { extractExpiryDate } from '@/ai/flows/extract-expiry-date';
 import { extractFlightLogs } from '@/ai/flows/extract-flight-logs';
@@ -10,100 +10,76 @@ import { v4 as uuidv4 } from 'uuid';
 import { licenseTypes } from '@/lib/licensing';
 import admin from 'firebase-admin';
 
-// Helper to decode data URI
-function decodeDataUri(dataUri: string) {
-    const parts = dataUri.split(',');
-    const mimeType = parts[0].match(/:(.*?);/)?.[1];
-    const base64Data = parts[1];
-    if (!mimeType || !base64Data) {
-        throw new Error('Invalid data URI');
-    }
-    const buffer = Buffer.from(base64Data, 'base64');
-    return { buffer, mimeType };
+// Helper to handle timeouts
+async function withTimeout<T>(promise: Promise<T>, timeoutMs: number = 28000): Promise<T> {
+    return Promise.race([
+        promise,
+        new Promise<never>((_, reject) =>
+            setTimeout(() => reject(new Error('Operation timed out')), timeoutMs)
+        )
+    ]);
 }
 
-function handleStorageError(e: any, path: string) {
-    const errorMessage = e.message || '';
-    if (errorMessage.includes('Could not refresh access token') || errorMessage.includes('credential')) {
-        throw new Error('Firebase Admin SDK failed to authenticate. This is a common issue in development environments. Please run `gcloud auth application-default login` in your terminal and restart the server.');
-    }
-    // The "bucket not found" error is often a permissions issue.
-    if (e.code === 404 || errorMessage.includes('does not exist')) {
-        throw new Error(`The storage bucket was not found, which often indicates a permission issue with the Admin SDK. Please ensure your Application Default Credentials are valid by running 'gcloud auth application-default login'. Original error: ${errorMessage}`);
-    }
+// Memory efficient chunk processing (simulated for storage upload which handles streams)
+async function uploadStreamToStorage(bucket: any, path: string, stream: ReadableStream, mimeType: string) {
+    const file = bucket.file(path);
+    const writeStream = file.createWriteStream({
+        metadata: { contentType: mimeType },
+        public: true,
+    });
 
-    throw new Error(`Firebase Admin SDK Storage Error on path '${path}': ${errorMessage}`);
+    const reader = stream.getReader();
+    let chunkNum = 0;
+
+    try {
+        while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            
+            writeStream.write(value);
+            chunkNum++;
+            
+            if (chunkNum % 5 === 0) { // Log progress every few chunks
+                console.log(`📦 CHUNK ${chunkNum} processed. Memory: ${Math.round(process.memoryUsage().heapUsed / 1024 / 1024)} MB`);
+            }
+
+            // Force garbage collection if available (requires --expose-gc flag)
+            if (global.gc) global.gc();
+        }
+        writeStream.end();
+
+        return new Promise<string>((resolve, reject) => {
+            writeStream.on('finish', () => resolve(`https://storage.googleapis.com/${bucket.name}/${path}`));
+            writeStream.on('error', reject);
+        });
+    } catch (error) {
+        writeStream.destroy();
+        throw error;
+    }
 }
-
-/**
- * Wraps an AI flow call to provide more specific error handling for common
- * authentication and permission issues with Google Cloud.
- */
-async function handleGenkitError<T>(promise: Promise<T>): Promise<T> {
-  try {
-    return await promise;
-  } catch (e: any) {
-    const errorMessage = e.message || (e.toString ? e.toString() : '');
-
-    // Handle ADC not found
-    if (errorMessage.includes('Could not find application default credentials')) {
-      throw new Error('AI service authentication failed. This can be fixed by running `gcloud auth application-default login` in your terminal and then restarting the server.');
-    }
-    
-    // Handle Permission Denied (includes common gRPC codes and statuses)
-    if (errorMessage.includes('Permission denied') || errorMessage.includes('PERMISSION_DENIED') || e.code === 7) {
-       throw new Error(`AI service permission denied. Please ensure the "Vertex AI API" is enabled for your Google Cloud project and that your account has the "Vertex AI User" role.`);
-    }
-
-    // Handle Model Not Found
-    if (errorMessage.includes('NOT_FOUND')) {
-        throw new Error(`The specified AI model was not found. This can happen if the model name is incorrect or if your project is not allowlisted for the model. Original error: ${errorMessage}`);
-    }
-
-    // Re-throw the original error if it's not a recognized pattern
-    throw e;
-  }
-}
-
 
 export async function createApplicationAction(
     userId: string,
     licenseId: string,
 ): Promise<{ applicationId: string }> {
-    console.log('--- Starting createApplicationAction ---');
-    const { adminFirestore } = initializeAdminApp();
-    
     const licenseType = licenseTypes.find(lt => lt.id === licenseId);
-    if (!licenseType) {
-        throw new Error(`License type with ID "${licenseId}" not found.`);
-    }
+    if (!licenseType) throw new Error(`License type with ID "${licenseId}" not found.`);
 
     const newAppId = uuidv4();
-    console.log(`Generated new Application ID: ${newAppId}`);
-
-    const documentPromises = licenseType.documentRequirements.map(async (req) => {
-        const docInstanceId = uuidv4();
-        
-        const doc: ApplicationDocument = {
-            id: docInstanceId,
-            docRequirementId: req.id,
-            name: req.name,
-            description: req.description,
-            status: 'missing',
-            requiresExpiry: req.requiresExpiry,
-            // Explicitly initialize optional fields to prevent 'undefined' errors in Firestore
-            fileUrl: '',
-            fileName: '',
-            fileType: '',
-            uploadedAt: '',
-            expiryDate: '',
-            isExpiringSoon: false,
-        };
-        return doc;
-    });
-
-    const documents = await Promise.all(documentPromises);
-    console.log('All placeholder fields initialized for new application.');
+    const documents = licenseType.documentRequirements.map((req) => ({
+        id: uuidv4(),
+        docRequirementId: req.id,
+        name: req.name,
+        description: req.description,
+        status: 'missing' as const,
+        requiresExpiry: req.requiresExpiry,
+        fileUrl: '',
+        fileName: '',
+        fileType: '',
+        uploadedAt: '',
+        expiryDate: '',
+        isExpiringSoon: false,
+    }));
 
     const appData = {
         id: newAppId,
@@ -118,185 +94,121 @@ export async function createApplicationAction(
         flightLogPdfUrl: "",
     };
     
-    console.log('Writing new application data to Firestore...');
     await adminFirestore.collection('applications').doc(newAppId).set(appData);
-    console.log('--- Finished createApplicationAction ---');
-
     return { applicationId: newAppId };
 }
 
+export async function uploadDocumentAction(formData: FormData) {
+    const applicationId = formData.get('applicationId') as string;
+    const docId = formData.get('docId') as string;
+    const file = formData.get('file') as File;
+    const requiresExpiry = formData.get('requiresExpiry') === 'true';
 
-export async function uploadProfilePictureAction(
-    userId: string,
-    fileDataUri: string,
-    fileName: string,
-): Promise<{ photoURL: string }> {
-    const { adminStorage } = initializeAdminApp();
+    console.time(`📦 UPLOAD DOC: ${file.name}`);
+    console.log(`📄 FILE: ${file.name} (${Math.round(file.size / 1024 / 1024)} MB)`);
+
     const bucketName = firebaseConfig.storageBucket;
-    if (!bucketName) {
-        throw new Error("Firebase Storage bucket name is not configured.");
-    }
+    if (!bucketName) throw new Error("Firebase Storage bucket name is not configured.");
     const bucket = adminStorage.bucket(bucketName);
-
-    const { buffer, mimeType } = decodeDataUri(fileDataUri);
-    const storagePath = `profile-pictures/${userId}/${fileName}`;
-    const file = bucket.file(storagePath);
+    
+    const storagePath = `applications/${applicationId}/${docId}/${file.name}`;
     
     try {
-        await file.save(buffer, {
-            contentType: mimeType,
-            public: true,
-        });
+        const publicUrl = await uploadStreamToStorage(bucket, storagePath, file.stream(), file.type);
         
-        const photoURL = `https://storage.googleapis.com/${bucket.name}/${storagePath}`;
-        return { photoURL };
-
-    } catch (e: any) {
-       handleStorageError(e, storagePath);
-       // The line below will not be reached because handleStorageError throws,
-       // but it's needed for TypeScript to know the function has a return path.
-       return { photoURL: '' };
-    }
-}
-
-
-export async function uploadDocumentAction(
-    applicationId: string, 
-    docId: string,
-    fileDataUri: string, 
-    fileName: string,
-    requiresExpiry: boolean,
-): Promise<{ publicUrl: string; expiryDate: string | null; mimeType: string }> {
-    const { adminStorage } = initializeAdminApp();
-    const bucketName = firebaseConfig.storageBucket;
-    if (!bucketName) {
-        throw new Error("Firebase Storage bucket name is not configured.");
-    }
-    const bucket = adminStorage.bucket(bucketName);
-    
-    const { buffer, mimeType } = decodeDataUri(fileDataUri);
-    
-    const storagePath = `applications/${applicationId}/${docId}/${fileName}`;
-    const file = bucket.file(storagePath);
-    
-    try {
-        await file.save(buffer, { 
-            contentType: mimeType,
-            public: true,
-        });
-    } catch (e: any) {
-        handleStorageError(e, storagePath);
-    }
-
-    let detectedExpiryDate: string | null | undefined = undefined;
-
-    if (requiresExpiry && (mimeType.startsWith('image/') || mimeType === 'application/pdf')) {
-        try {
-            const { expiryDate } = await handleGenkitError(extractExpiryDate({ documentDataUri: fileDataUri }));
-            detectedExpiryDate = expiryDate;
-        } catch (e: any) {
-            console.error("AI expiry date detection failed during upload:", e.message);
+        let detectedExpiryDate: string | null = null;
+        if (requiresExpiry && (file.type.startsWith('image/') || file.type === 'application/pdf')) {
+            try {
+                // AI processing still requires data URI or buffer for current implementation
+                const buffer = Buffer.from(await file.arrayBuffer());
+                const dataUri = `data:${file.type};base64,${buffer.toString('base64')}`;
+                const { expiryDate } = await withTimeout(extractExpiryDate({ documentDataUri: dataUri }));
+                detectedExpiryDate = expiryDate;
+            } catch (e: any) {
+                console.error("AI expiry date detection failed:", e.message);
+            }
         }
-    }
-    
-    const publicUrl = `https://storage.googleapis.com/${bucket.name}/${storagePath}`;
-    return { publicUrl, expiryDate: detectedExpiryDate || null, mimeType };
-}
 
-
-export async function uploadFlightLogAction(
-    applicationId: string,
-    pdfDataUri: string,
-    fileName: string,
-): Promise<{ publicUrl: string; extractedLogs: FlightLog[] }> {
-    const { adminStorage } = initializeAdminApp();
-    const bucketName = firebaseConfig.storageBucket;
-     if (!bucketName) {
-        throw new Error("Firebase Storage bucket name is not configured.");
-    }
-    const bucket = adminStorage.bucket(bucketName);
-    
-    const { buffer, mimeType } = decodeDataUri(pdfDataUri);
-
-    if (mimeType !== 'application/pdf') {
-        throw new Error('Invalid file type. Only PDF is allowed for flight logs.');
-    }
-    
-    const storagePath = `applications/${applicationId}/${fileName}`;
-    const file = bucket.file(storagePath);
-
-    try {
-        await file.save(buffer, { 
-            contentType: mimeType,
-            public: true,
-        });
+        console.timeEnd(`📦 UPLOAD DOC: ${file.name}`);
+        return { publicUrl, expiryDate: detectedExpiryDate, mimeType: file.type };
     } catch (e: any) {
-        handleStorageError(e, storagePath);
-    }
-
-    let extractedLogs: FlightLog[] = [];
-    try {
-        const aiResult = await handleGenkitError(extractFlightLogs({ flightLogPdf: pdfDataUri }));
-        if (aiResult) {
-            extractedLogs = aiResult.map(log => ({ ...log, id: uuidv4(), remarks: log.remarks || '' }));
-        }
-    } catch (e: any) {
-        console.error("AI flight log extraction failed:", e);
+        console.error('💥 UPLOAD ERROR:', e);
         throw e;
     }
+}
+
+export async function uploadFlightLogAction(formData: FormData) {
+    const applicationId = formData.get('applicationId') as string;
+    const file = formData.get('file') as File;
+
+    console.time(`📦 UPLOAD FLIGHT LOG: ${file.name}`);
+    console.log(`📄 FILE: ${file.name} (${Math.round(file.size / 1024 / 1024)} MB)`);
+
+    if (file.type !== 'application/pdf') throw new Error('Invalid file type. Only PDF is allowed.');
+
+    const bucketName = firebaseConfig.storageBucket;
+    if (!bucketName) throw new Error("Firebase Storage bucket name is not configured.");
+    const bucket = adminStorage.bucket(bucketName);
     
-    const publicUrl = `https://storage.googleapis.com/${bucket.name}/${storagePath}`;
-    return { publicUrl, extractedLogs };
+    const storagePath = `applications/${applicationId}/${file.name}`;
+
+    try {
+        const publicUrl = await uploadStreamToStorage(bucket, storagePath, file.stream(), file.type);
+        
+        let extractedLogs: FlightLog[] = [];
+        try {
+            const buffer = Buffer.from(await file.arrayBuffer());
+            const pdfDataUri = `data:${file.type};base64,${buffer.toString('base64')}`;
+            const aiResult = await withTimeout(extractFlightLogs({ flightLogPdf: pdfDataUri }));
+            if (aiResult) {
+                extractedLogs = aiResult.map(log => ({ ...log, id: uuidv4(), remarks: log.remarks || '' }));
+            }
+        } catch (e: any) {
+            console.error("AI extraction failed:", e);
+        }
+
+        console.timeEnd(`📦 UPLOAD FLIGHT LOG: ${file.name}`);
+        return { publicUrl, extractedLogs };
+    } catch (e: any) {
+        console.error('💥 FLIGHT LOG ERROR:', e);
+        throw e;
+    }
+}
+
+export async function uploadProfilePictureAction(formData: FormData) {
+    const userId = formData.get('userId') as string;
+    const file = formData.get('file') as File;
+
+    const bucketName = firebaseConfig.storageBucket;
+    if (!bucketName) throw new Error("Firebase Storage bucket name is not configured.");
+    const bucket = adminStorage.bucket(bucketName);
+    
+    const storagePath = `profile-pictures/${userId}/${file.name}`;
+    
+    const photoURL = await uploadStreamToStorage(bucket, storagePath, file.stream(), file.type);
+    return { photoURL };
 }
 
 export async function getExpiryDateForSingleDocumentAction(
     applicationId: string,
     docId: string
 ): Promise<{ expiryDate: string | null }> {
-    const { adminFirestore, adminStorage } = initializeAdminApp();
     const bucketName = firebaseConfig.storageBucket;
-    if (!bucketName) {
-        throw new Error("Firebase Storage bucket name is not configured.");
-    }
+    if (!bucketName) throw new Error("Firebase Storage bucket name is not configured.");
     const bucket = adminStorage.bucket(bucketName);
 
     const appRef = adminFirestore.collection('applications').doc(applicationId);
     const appSnapshot = await appRef.get();
-    if (!appSnapshot.exists) {
-        throw new Error("Application not found.");
-    }
+    if (!appSnapshot.exists) throw new Error("Application not found.");
     const application = appSnapshot.data() as Application;
 
     const docToProcess = application.documents.find(d => d.id === docId);
-    if (!docToProcess) {
-        throw new Error("Document not found in application.");
-    }
+    if (!docToProcess || !docToProcess.fileUrl || !docToProcess.fileName) throw new Error("Invalid document.");
 
-    if (!docToProcess.fileUrl || !(docToProcess.fileType?.startsWith('image/') || docToProcess.fileType === 'application/pdf') || !docToProcess.requiresExpiry) {
-        return { expiryDate: null };
-    }
-    if (!docToProcess.fileName) {
-         throw new Error("Document file name is missing, cannot process.");
-    }
-    
-    const storagePath = `applications/${applicationId}/${docToProcess.id}/${docToProcess.fileName}`;
-    const file = bucket.file(storagePath);
+    const file = bucket.file(`applications/${applicationId}/${docId}/${docToProcess.fileName}`);
+    const [fileBuffer] = await file.download();
+    const dataUri = `data:${docToProcess.fileType};base64,${fileBuffer.toString('base64')}`;
 
-    try {
-        const [exists] = await file.exists();
-        if (!exists) {
-            console.warn(`File not found in storage, skipping AI check: ${storagePath}`);
-            return { expiryDate: null };
-        }
-
-        const [fileBuffer] = await file.download();
-        const dataUri = `data:${docToProcess.fileType};base64,${fileBuffer.toString('base64')}`;
-
-        const { expiryDate } = await handleGenkitError(extractExpiryDate({ documentDataUri: dataUri }));
-
-        return { expiryDate: expiryDate || null };
-    } catch (error: any) {
-        console.error(`Error processing document ${docToProcess.id} for expiry date:`, error);
-        throw error;
-    }
+    const { expiryDate } = await withTimeout(extractExpiryDate({ documentDataUri: dataUri }));
+    return { expiryDate: expiryDate || null };
 }

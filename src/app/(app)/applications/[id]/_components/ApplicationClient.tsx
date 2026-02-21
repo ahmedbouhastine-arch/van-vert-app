@@ -34,7 +34,6 @@ import { getExpiryDateForSingleDocumentAction, uploadDocumentAction, uploadFligh
 import { useFirestore, errorEmitter, FirestorePermissionError } from "@/firebase";
 import { doc, serverTimestamp, updateDoc, collection, addDoc } from "firebase/firestore";
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
-import { v4 as uuidv4 } from 'uuid';
 
 // Helper function to safely format dates, whether they are Timestamps or strings
 const safeFormatDate = (date: FirebaseTimestamp | Date | string | undefined | null, formatString: string) => {
@@ -228,20 +227,13 @@ export function ApplicationClient({
     toast({ title: 'Upload Started', description: 'Your document is being uploaded and processed.' });
 
     try {
-        const reader = new FileReader();
-        reader.readAsDataURL(file);
-        const dataUrl = await new Promise<string>((resolve, reject) => {
-            reader.onload = () => resolve(reader.result as string);
-            reader.onerror = (error) => reject(error);
-        });
+        const formData = new FormData();
+        formData.append('applicationId', appState.id);
+        formData.append('docId', activeUploadDocId);
+        formData.append('file', file);
+        formData.append('requiresExpiry', docDefinition.requiresExpiry ? 'true' : 'false');
 
-        const { publicUrl, expiryDate: detectedExpiryDate, mimeType } = await uploadDocumentAction(
-            appState.id,
-            activeUploadDocId,
-            dataUrl,
-            file.name,
-            true,
-        );
+        const { publicUrl, expiryDate: detectedExpiryDate, mimeType } = await uploadDocumentAction(formData);
 
         if (detectedExpiryDate) {
             toast({ title: 'AI Success!', description: `Detected expiry date: ${format(new Date(detectedExpiryDate), 'PPP')}` });
@@ -275,7 +267,6 @@ export function ApplicationClient({
             title: "Upload Failed",
             description: error.message || "There was an error uploading your file.",
         });
-        setAppState(initialApplication);
     } finally {
         setUploadingDocId(null);
         setActiveUploadDocId(null);
@@ -405,18 +396,11 @@ export function ApplicationClient({
     toast({ title: 'AI Processing Started', description: 'Your flight log is being analyzed. This may take a moment.' });
 
     try {
-        const reader = new FileReader();
-        reader.readAsDataURL(file);
-        const pdfDataUri = await new Promise<string>((resolve, reject) => {
-            reader.onload = () => resolve(reader.result as string);
-            reader.onerror = (error) => reject(error);
-        });
-        
-        const { publicUrl, extractedLogs } = await uploadFlightLogAction(
-            appState.id,
-            pdfDataUri,
-            file.name,
-        );
+        const formData = new FormData();
+        formData.append('applicationId', appState.id);
+        formData.append('file', file);
+
+        const { publicUrl, extractedLogs } = await uploadFlightLogAction(formData);
 
         setAppState(prev => ({ ...prev, flightLogs: extractedLogs, flightLogPdfUrl: publicUrl }));
         
