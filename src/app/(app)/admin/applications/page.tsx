@@ -1,11 +1,11 @@
 "use client";
 import { collection, query, where } from 'firebase/firestore';
 import { useCollection } from 'react-firebase-hooks/firestore';
-
-import { firestore } from '@/firebase';
+import { useFirestore } from "@/firebase";
 import Link from 'next/link';
 
 function AdminApplicationsPage() {
+  const firestore = useFirestore();
   const applicationsRef = collection(firestore, 'applications');
 
   const allQuery = query(applicationsRef);
