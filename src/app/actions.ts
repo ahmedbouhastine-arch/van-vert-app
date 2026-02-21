@@ -11,7 +11,7 @@ import { licenseTypes } from '@/lib/licensing';
 import admin from 'firebase-admin';
 
 // Helper to handle timeouts
-async function withTimeout<T>(promise: Promise<T>, timeoutMs: number = 28000): Promise<T> {
+async function withTimeout<T>(promise: Promise<T>, timeoutMs: number = 120000): Promise<T> {
     return Promise.race([
         promise,
         new Promise<never>((_, reject) =>
@@ -59,12 +59,9 @@ export async function uploadFlightLogAction(formData: FormData) {
     const storagePath = `applications/${applicationId}/${file.name}`;
 
     try {
-        // STEP 1: Fast Stream to Storage (Very memory efficient)
         const publicUrl = await uploadStreamToStorage(bucket, storagePath, file.stream(), file.type);
         console.log("✅ File uploaded to storage:", publicUrl);
 
-        // STEP 2: Process by Reference (The "Surprise" Fix)
-        // We pass the URL, so the AI service handles the heavy lifting, not our server.
         let extractedLogs: FlightLog[] = [];
         try {
             const aiResult = await withTimeout(extractFlightLogs({ storagePath: publicUrl }));
@@ -73,6 +70,8 @@ export async function uploadFlightLogAction(formData: FormData) {
             }
         } catch (e: any) {
             console.error("❌ AI extraction failed (but file is saved):", e.message);
+            // Re-throw the error so it's propagated up to the client
+            throw e; 
         }
 
         console.timeEnd(`🚀 PRO PROCESS: ${file.name}`);
@@ -82,9 +81,6 @@ export async function uploadFlightLogAction(formData: FormData) {
         throw e;
     }
 }
-
-// ... rest of your actions remain the same (createApplicationAction, etc)
-// Note: I'm keeping the file small for this demo, you should keep your other functions.
 
 export async function createApplicationAction(
     userId: string,
@@ -147,6 +143,7 @@ export async function uploadDocumentAction(formData: FormData) {
                 detectedExpiryDate = expiryDate;
             } catch (e: any) {
                 console.error("AI expiry date detection failed:", e.message);
+                throw e; // Re-throw to propagate the error
             }
         }
         return { publicUrl, expiryDate: detectedExpiryDate, mimeType: file.type };
