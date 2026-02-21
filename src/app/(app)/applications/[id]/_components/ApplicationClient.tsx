@@ -412,23 +412,17 @@ export function ApplicationClient({
             reader.onerror = (error) => reject(error);
         });
         
-        const result = await uploadFlightLogAction(
+        const { publicUrl, extractedLogs } = await uploadFlightLogAction(
             appState.id,
             pdfDataUri,
             file.name,
         );
 
-        if (result.error) {
-            throw new Error(result.error);
-        }
-
-        const { publicUrl, extractedLogs } = result;
-
-        setAppState(prev => ({ ...prev, flightLogs: extractedLogs!, flightLogPdfUrl: publicUrl! }));
+        setAppState(prev => ({ ...prev, flightLogs: extractedLogs, flightLogPdfUrl: publicUrl }));
         
         handlePersistChanges({ flightLogs: extractedLogs, flightLogPdfUrl: publicUrl }, {
             title: "AI Analysis Complete",
-            description: `${extractedLogs!.length} recent flight logs have been extracted and saved.`,
+            description: `${extractedLogs.length} recent flight logs have been extracted and saved.`,
         });
 
     } catch (error: any) {
