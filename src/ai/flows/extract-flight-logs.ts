@@ -1,32 +1,21 @@
 'use server';
-/**
- * @fileOverview Extracts flight log data from a PDF document.
- *
- * - extractFlightLogs - A function that handles the flight log extraction process.
- * - ExtractFlightLogsInput - The input type for the extractFlightLogs function.
- * - ExtractFlightLogsOutput - The return type for the extractFlightLogs function.
- */
 
 import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
 
 const ExtractFlightLogsInputSchema = z.object({
-  flightLogPdf: z
-    .string()
-    .describe(
-      "A PDF file of a pilot's flight log, as a data URI that must include a MIME type and use Base64 encoding. Expected format: 'data:application/pdf;base64,<encoded_data>'."
-    ),
+  flightLogPdf: z.string().optional().describe("Data URI of the PDF (deprecated for large files)"),
+  storagePath: z.string().optional().describe("The path to the PDF in Firebase Storage"),
 });
 export type ExtractFlightLogsInput = z.infer<typeof ExtractFlightLogsInputSchema>;
 
-
 const FlightLogEntrySchema = z.object({
-    date: z.string().describe('The date of the flight in strict YYYY-MM-DD format. Do not use words or ordinal suffixes (e.g., "st", "nd", "rd", "th"). Example: "2025-06-09".'),
-    aircraft: z.string().describe('The standardized model name of the aircraft flown. (e.g., "PA-28-161", "C-172").'),
-    duration: z.number().describe('The duration of the flight in hours.'),
-    isPIC: z.boolean().optional().describe('A boolean flag indicating if the pilot was the Pilot In Command (PIC).'),
-    isSolo: z.boolean().optional().describe('A boolean flag indicating if the flight was a solo flight.'),
-    remarks: z.string().optional().describe('Any remarks or notes for the flight.'),
+    date: z.string().describe('YYYY-MM-DD format.'),
+    aircraft: z.string().describe('Standardized aircraft model.'),
+    duration: z.number().describe('Hours.'),
+    isPIC: z.boolean().optional(),
+    isSolo: z.boolean().optional(),
+    remarks: z.string().optional(),
 });
 
 const ExtractFlightLogsOutputSchema = z.array(FlightLogEntrySchema);
@@ -36,27 +25,6 @@ export async function extractFlightLogs(input: ExtractFlightLogsInput): Promise<
   return extractFlightLogsFlow(input);
 }
 
-const prompt = ai.definePrompt({
-  name: 'extractFlightLogsPrompt',
-  input: {schema: ExtractFlightLogsInputSchema},
-  output: {schema: ExtractFlightLogsOutputSchema},
-  prompt: `You are an expert aviation administrator. Your task is to extract flight log entries from the provided PDF document.
-
-  Analyze the document and identify all individual flight entries. For each entry, extract the following information:
-- The date of the flight.
-- The aircraft model, standardized to a common format (e.g., convert \"PA28161\" to \"PA-28-161\"). Remove any tail numbers.
-- The flight duration in hours (convert minutes to a decimal of hours if necessary).
-- A boolean flag \"isPIC\" set to true if the pilot is marked as Pilot In Command.
-- A boolean flag \"isSolo\" set to true if the flight is marked as solo.
-- Any remarks about the flight.
-
-Return the data as a structured array of flight log objects.
-
-IMPORTANT: Ensure all dates are in the strict YYYY-MM-DD format. For example, \"June 9th, 2025\" must be returned as \"2025-06-09\".
-
-PDF for processing: {{media url=flightLogPdf}}`,
-});
-
 const extractFlightLogsFlow = ai.defineFlow(
   {
     name: 'extractFlightLogsFlow',
@@ -64,17 +32,27 @@ const extractFlightLogsFlow = ai.defineFlow(
     outputSchema: ExtractFlightLogsOutputSchema,
   },
   async (input) => {
-    const { output } = await prompt(input);
+    // If we have a storage path, we use the media block with a direct URL (Gemini can handle this)
+    // For this implementation, we'll assume the action provides the public URL.
+    const mediaUrl = input.flightLogPdf || input.storagePath;
 
-    if (!output) {
-      return [];
-    }
+    if (!mediaUrl) throw new Error("No PDF source provided.");
 
-    // Filter out entries that are missing required fields.
-    const filteredOutput = output.filter(log => {
-      return log.date && log.aircraft && typeof log.duration === 'number';
+    const { output } = await ai.generate({
+        model: 'googleai/gemini-2.0-flash',
+        prompt: `You are an expert aviation administrator. Extract flight log entries from this PDF.
+        Return a structured array of flight log objects.
+        Fields: date (YYYY-MM-DD), aircraft (model), duration (hours), isPIC (bool), isSolo (bool), remarks.
+        Standardize aircraft names (e.g., "PA28" -> "PA-28-161").`,
+        output: { schema: ExtractFlightLogsOutputSchema },
+        messages: [
+            {
+                role: 'user',
+                content: [{ media: { url: mediaUrl, contentType: 'application/pdf' } }]
+            }
+        ]
     });
 
-    return filteredOutput;
+    return output?.filter(log => log.date && log.aircraft) || [];
   }
 );
