@@ -38,7 +38,10 @@ const nextConfig: NextConfig = {
   experimental: {
     serverActions: {
       bodySizeLimit: '100mb',
-      allowedOrigins: ["https://3000-firebase-pilotpack-pre-1769026686788.cluster-cbeiita7rbe7iuwhvjs5zww2i4.cloudworkstations.dev"],
+      allowedOrigins: [
+        "van-vert-app--REDACTED_FIREBASE_PROJECT_ID.europe-west4.hosted.app",
+        "3000-firebase-pilotpack-pre-1769026686788.cluster-cbeiita7rbe7iuwhvjs5zww2i4.cloudworkstations.dev"
+      ],
     },
   },
 };
