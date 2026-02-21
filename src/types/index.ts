@@ -57,6 +57,7 @@ export type Application = {
   documents: ApplicationDocument[];
   flightLogs: FlightLog[];
   flightLogPdfUrl?: string;
+  logbookFormat?: 'standard' | 'combined' | 'simple'; // New field to infer AI interpretation
   submittedAt?: FirebaseTimestamp;
   updatedAt: FirebaseTimestamp;
   createdAt?: FirebaseTimestamp;

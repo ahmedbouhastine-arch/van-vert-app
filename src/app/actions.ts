@@ -5,7 +5,7 @@ import { adminFirestore, adminStorage } from '@/lib/firebase-admin-prewarmed';
 import { firebaseConfig } from '@/firebase/config';
 import { extractExpiryDate } from '@/ai/flows/extract-expiry-date';
 import { extractFlightLogs } from '@/ai/flows/extract-flight-logs';
-import type { FlightLog, ApplicationDocument, Application } from '@/types';
+import type { FlightLog, ApplicationDocument, Application, LogbookFormat } from '@/types';
 import { v4 as uuidv4 } from 'uuid';
 import { licenseTypes } from '@/lib/licensing';
 import admin from 'firebase-admin';
@@ -46,7 +46,7 @@ async function uploadStreamToStorage(bucket: any, path: string, stream: Readable
     }
 }
 
-export async function uploadFlightLogAction(formData: FormData) {
+export async function uploadFlightLogAction(formData: FormData): Promise<{ publicUrl: string; extractedLogs: FlightLog[]; logbookFormat: LogbookFormat; }> {
     const applicationId = formData.get('applicationId') as string;
     const file = formData.get('file') as File;
 
@@ -63,19 +63,21 @@ export async function uploadFlightLogAction(formData: FormData) {
         console.log("✅ File uploaded to storage:", publicUrl);
 
         let extractedLogs: FlightLog[] = [];
+        let logbookFormat: LogbookFormat = 'simple';
+        
         try {
             const aiResult = await withTimeout(extractFlightLogs({ storagePath: publicUrl }));
             if (aiResult) {
-                extractedLogs = aiResult.map(log => ({ ...log, id: uuidv4(), remarks: log.remarks || '' }));
+                extractedLogs = aiResult.flights.map(log => ({ ...log, id: uuidv4() }));
+                logbookFormat = aiResult.logbookFormat;
             }
         } catch (e: any) {
             console.error("❌ AI extraction failed (but file is saved):", e.message);
-            // Re-throw the error so it's propagated up to the client
             throw e; 
         }
 
         console.timeEnd(`🚀 PRO PROCESS: ${file.name}`);
-        return { publicUrl, extractedLogs };
+        return { publicUrl, extractedLogs, logbookFormat };
     } catch (e: any) {
         console.error('💥 CRITICAL ERROR:', e);
         throw e;
@@ -116,6 +118,7 @@ export async function createApplicationAction(
         documents: documents,
         flightLogs: [],
         flightLogPdfUrl: "",
+        logbookFormat: 'simple' as LogbookFormat
     };
     
     await adminFirestore.collection('applications').doc(newAppId).set(appData);
@@ -138,7 +141,6 @@ export async function uploadDocumentAction(formData: FormData) {
         let detectedExpiryDate: string | null = null;
         if (requiresExpiry && (file.type.startsWith('image/') || file.type === 'application/pdf')) {
             try {
-                // For regular documents, we can also use storagePath for AI if updated
                 const { expiryDate } = await withTimeout(extractExpiryDate({ documentDataUri: publicUrl }));
                 detectedExpiryDate = expiryDate;
             } catch (e: any) {

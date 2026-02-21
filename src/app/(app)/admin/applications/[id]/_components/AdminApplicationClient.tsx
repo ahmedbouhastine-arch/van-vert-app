@@ -2,7 +2,7 @@
 "use client";
 
 import { useState, useTransition, useEffect } from "react";
-import type { Application, ApplicationDocument, ApplicationStatus, UserProfile, DocumentStatus, FirebaseTimestamp, FlightLog } from "@/types";
+import type { Application, ApplicationDocument, ApplicationStatus, UserProfile, DocumentStatus, FirebaseTimestamp, FlightLog, LogbookFormat } from "@/types";
 import {
   Card,
   CardContent,
@@ -23,6 +23,7 @@ import {
   X,
   Loader2,
   RefreshCw,
+  Info
 } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { format } from "date-fns";
@@ -53,6 +54,11 @@ const safeFormatDate = (date: FirebaseTimestamp | Date | string | undefined | nu
   }
 };
 
+const logbookFormatDescriptions: Record<LogbookFormat, string> = {
+    standard: "Standard format with distinct columns for PIC, Solo, and Dual time.",
+    combined: "Combined format where PIC/Solo time is often the same as total duration.",
+    simple: "A basic list of flights with minimal detail."
+}; 
 
 async function checkExpiryAction(documents: ApplicationDocument[]): Promise<FlagExpiringDocumentsOutput> {
     const docsToCheck = documents
@@ -427,7 +433,7 @@ export function AdminApplicationClient({
                     ) : (
                         <p className="text-sm text-muted-foreground">No flight logs available for this application to perform a recency check.</p>
                     )}
-                </CardContent>
+                </Content>
             </Card>
 
              <Card>
@@ -452,6 +458,15 @@ export function AdminApplicationClient({
                             </Button>
                         </div>
                     </div>
+                    {appState.logbookFormat && (
+                        <Alert variant='default' className='mt-4 bg-blue-50 border-blue-200 text-blue-800'>
+                            <Info className="h-4 w-4 !text-blue-800" />
+                            <AlertTitle>Logbook Format: <span className="capitalize">{appState.logbookFormat}</span></AlertTitle>
+                            <AlertDescription>
+                                {logbookFormatDescriptions[appState.logbookFormat]}
+                            </AlertDescription>
+                        </Alert>
+                    )}
                 </CardHeader>
                 <CardContent>
                     <div className="border rounded-md">
