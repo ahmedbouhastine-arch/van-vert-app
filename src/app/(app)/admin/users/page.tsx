@@ -18,14 +18,14 @@ import { Loader2 } from "lucide-react";
 
 type UserWithProfile = UserProfile & { id: string; photoURL?: string; };
 
-function UserRow({ 
-    user, 
+function UserRow({
+    user,
     currentUser,
     currentUserClaims,
     onRoleChange,
     isUpdating
-}: { 
-    user: UserWithProfile, 
+}: {
+    user: UserWithProfile,
     currentUser: User,
     currentUserClaims: any,
     onRoleChange: (userId: string, newRole: 'user' | 'admin' | 'head-admin' | 'reviewer') => void,
@@ -36,7 +36,7 @@ function UserRow({
     const handleUpdate = () => {
         onRoleChange(user.id, selectedRole);
     };
-    
+
     const isCurrentUser = user.id === currentUser.uid || user.email === currentUser.email;
 
     const canPerformActions = (() => {
@@ -63,7 +63,7 @@ function UserRow({
                         <div className="font-medium">{user.displayName}</div>
                         <div className="text-xs text-muted-foreground">{user.email}</div>
                     </div>
-                </div
+                </div>
             </TableCell>
             <TableCell>
                 {canPerformActions ? (
@@ -176,12 +176,12 @@ function AuthorizedUserList({ isAuthorized }: { isAuthorized: boolean }) {
                             {usersIsLoading && isAuthorized && <TableRow><TableCell colSpan={3} className="text-center h-24">Loading users...</TableCell></TableRow>}
                             {!usersIsLoading && (!users || users.length === 0) && <TableRow><TableCell colSpan={3} className="text-center h-24">No users found.</TableCell></TableRow>}
                             {users?.sort((a, b) => (a.displayName || '').localeCompare(b.displayName || '')).map(u => (
-                                <UserRow 
-                                    key={u.id} 
-                                    user={u} 
-                                    currentUser={user} 
-                                    currentUserClaims={claims} 
-                                    onRoleChange={handleRoleChange} 
+                                <UserRow
+                                    key={u.id}
+                                    user={u}
+                                    currentUser={user}
+                                    currentUserClaims={claims}
+                                    onRoleChange={handleRoleChange}
                                     isUpdating={isUpdating === u.id}
                                 />
                             ))}
@@ -205,6 +205,6 @@ export default function UserManagementPage() {
     if (!isAuthorized) {
         redirect('/admin');
     }
-    
+
     return <AuthorizedUserList isAuthorized={isAuthorized} />;
 }

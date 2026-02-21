@@ -1,5 +1,4 @@
 'use client';
-
 import { notFound, useParams } from "next/navigation";
 import { ApplicationClient } from "./_components/ApplicationClient";
 import { useFirestore, useDoc, useMemoFirebase } from "@/firebase";
