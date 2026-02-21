@@ -1,4 +1,3 @@
-
 'use server';
 
 import { initializeAdminApp } from '@/firebase/admin-init';
