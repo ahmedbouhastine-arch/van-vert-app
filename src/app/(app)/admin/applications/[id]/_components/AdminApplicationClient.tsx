@@ -323,7 +323,7 @@ export function AdminApplicationClient({
                  addDoc(notificationsRef, {
                      userId: appState.userId,
                      title: `Application Updated`,
-                     body: `Your '${appState.licenseType}' application is now ${status.replace(/_/g, ' ')}.`,
+                     body: `Your '${appState.licenseType}' application is now ${status.replace(/_/g, ' ')}.`, 
                      href: `/applications/${appState.id}`,
                      isRead: false,
                      createdAt: serverTimestamp(),
@@ -433,7 +433,7 @@ export function AdminApplicationClient({
                     ) : (
                         <p className="text-sm text-muted-foreground">No flight logs available for this application to perform a recency check.</p>
                     )}
-                </Content>
+                </CardContent>
             </Card>
 
              <Card>
