@@ -9,6 +9,7 @@ import type { FlightLog, ApplicationDocument, Application, LogbookFormat } from 
 import { v4 as uuidv4 } from 'uuid';
 import { licenseTypes } from '@/lib/licensing';
 import admin from 'firebase-admin';
+import { getAuthenticatedUser } from '@/lib/auth';
 
 // Helper to handle timeouts
 async function withTimeout<T>(promise: Promise<T>, timeoutMs: number = 120000): Promise<T> {
@@ -47,6 +48,7 @@ async function uploadStreamToStorage(bucket: any, path: string, stream: Readable
 }
 
 export async function uploadFlightLogAction(formData: FormData): Promise<{ publicUrl: string; extractedLogs: FlightLog[]; logbookFormat: LogbookFormat; }> {
+    await getAuthenticatedUser();
     const applicationId = formData.get('applicationId') as string;
     const file = formData.get('file') as File;
 
@@ -85,9 +87,9 @@ export async function uploadFlightLogAction(formData: FormData): Promise<{ publi
 }
 
 export async function createApplicationAction(
-    userId: string,
     licenseId: string,
 ): Promise<{ applicationId: string }> {
+    const user = await getAuthenticatedUser();
     const licenseType = licenseTypes.find(lt => lt.id === licenseId);
     if (!licenseType) throw new Error(`License type with ID "${licenseId}" not found.`);
 
@@ -109,7 +111,7 @@ export async function createApplicationAction(
 
     const appData = {
         id: newAppId,
-        userId: userId,
+        userId: user.uid,
         licenseType: licenseType.name,
         status: 'draft' as const,
         createdAt: admin.firestore.FieldValue.serverTimestamp(),
@@ -126,6 +128,7 @@ export async function createApplicationAction(
 }
 
 export async function uploadDocumentAction(formData: FormData) {
+    await getAuthenticatedUser();
     const applicationId = formData.get('applicationId') as string;
     const docId = formData.get('docId') as string;
     const file = formData.get('file') as File;
@@ -156,12 +159,12 @@ export async function uploadDocumentAction(formData: FormData) {
 }
 
 export async function uploadProfilePictureAction(formData: FormData) {
-    const userId = formData.get('userId') as string;
+    const user = await getAuthenticatedUser();
     const file = formData.get('file') as File;
     const bucketName = firebaseConfig.storageBucket;
     if (!bucketName) throw new Error("Firebase Storage bucket name is not configured.");
     const bucket = adminStorage.bucket(bucketName);
-    const storagePath = `profile-pictures/${userId}/${file.name}`;
+    const storagePath = `profile-pictures/${user.uid}/${file.name}`;
     const photoURL = await uploadStreamToStorage(bucket, storagePath, file.stream(), file.type);
     return { photoURL };
 }
@@ -170,6 +173,7 @@ export async function getExpiryDateForSingleDocumentAction(
     applicationId: string,
     docId: string
 ): Promise<{ expiryDate: string | null }> {
+    await getAuthenticatedUser();
     const appRef = adminFirestore.collection('applications').doc(applicationId);
     const appSnapshot = await appRef.get();
     if (!appSnapshot.exists) throw new Error("Application not found.");
