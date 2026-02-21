@@ -1,5 +1,6 @@
 
 'use server';
+console.log('🚀 ACTIONS MODULE LOADED');
 
 import 'server-only';
 import { adminFirestore, adminStorage } from '@/lib/firebase-admin-prewarmed';
@@ -81,39 +82,18 @@ async function uploadStreamToStorage(bucket: any, path: string, stream: Readable
 }
 
 export async function uploadFlightLogAction(formData: FormData): Promise<{ publicUrl: string; extractedLogs: FlightLog[]; logbookFormat: LogbookFormat; }> {
-    try {
-        await getAuthenticatedUser();
-        const applicationId = formData.get('applicationId') as string;
-        const file = formData.get('file') as File;
-
-        const bucketName = firebaseConfig.storageBucket;
-        if (!bucketName) throw new Error("Firebase Storage bucket name is not configured.");
-        const bucket = adminStorage.bucket(bucketName);
-        
-        const storagePath = `applications/${applicationId}/${file.name}`;
-
-        const publicUrl = await uploadStreamToStorage(bucket, storagePath, file.stream(), file.type);
-
-        let extractedLogs: FlightLog[] = [];
-        let logbookFormat: LogbookFormat = 'simple';
-        
-        try {
-            const aiResult = await withTimeout(extractFlightLogs({ storagePath: publicUrl }));
-            if (aiResult) {
-                extractedLogs = aiResult.flights.map(log => ({ ...log, id: uuidv4() }));
-                logbookFormat = aiResult.logbookFormat;
-            }
-        } catch (e: any) {
-            console.error("AI extraction failed (but file is saved):", e.message);
-            // Don't throw here, just return with empty logs.
-        }
-
-        return { publicUrl, extractedLogs, logbookFormat };
-    } catch (e: any) {
-        handleServerAuthError(e, 'uploadFlightLogAction');
-        // This line will not be reached because handleServerAuthError throws, but it satisfies TypeScript.
-        throw e;
-    }
+  console.log('🚀 SERVER ACTION CALLED: uploadFlightLogAction');
+  
+  const file = formData.get('file');
+  console.log('📄 FILE in uploadFlightLogAction:', !!file, (file as File)?.size);
+  
+  // To avoid breaking the client, return a valid-looking object.
+  // The client will show 0 logs and no URL, but it won't crash.
+  return { 
+    publicUrl: 'debug-url-log', 
+    extractedLogs: [],
+    logbookFormat: 'simple'
+  };
 }
 
 export async function createApplicationAction(
@@ -162,36 +142,17 @@ export async function createApplicationAction(
     }
 }
 
-export async function uploadDocumentAction(formData: FormData) {
-    try {
-        await getAuthenticatedUser();
-        const applicationId = formData.get('applicationId') as string;
-        const docId = formData.get('docId') as string;
-        const file = formData.get('file') as File;
-        const requiresExpiry = formData.get('requiresExpiry') === 'true';
+export async function uploadDocumentAction(formData: FormData): Promise<{ publicUrl: string, expiryDate: string | null, mimeType: string }> {
+    console.log('🚀 SERVER ACTION CALLED: uploadDocumentAction');
+    const file = formData.get('file') as File;
+    console.log('📄 FILE in uploadDocumentAction:', !!file, file?.size);
 
-        const bucketName = firebaseConfig.storageBucket;
-        if (!bucketName) throw new Error("Firebase Storage bucket name is not configured.");
-        const bucket = adminStorage.bucket(bucketName);
-        const storagePath = `applications/${applicationId}/${docId}/${file.name}`;
-        
-        const publicUrl = await uploadStreamToStorage(bucket, storagePath, file.stream(), file.type);
-        let detectedExpiryDate: string | null = null;
-        
-        if (requiresExpiry && (file.type.startsWith('image/') || file.type === 'application/pdf')) {
-            try {
-                const { expiryDate } = await withTimeout(extractExpiryDate({ documentDataUri: publicUrl }));
-                detectedExpiryDate = expiryDate;
-            } catch (e: any) {
-                console.error("AI expiry date detection failed, but upload succeeded:", e.message);
-                // We don't throw here. We've successfully uploaded the file, just AI failed.
-            }
-        }
-        return { publicUrl, expiryDate: detectedExpiryDate, mimeType: file.type };
-    } catch (e: any) {
-       handleServerAuthError(e, 'uploadDocumentAction');
-       throw e;
-    }
+    // SIMPLIFIED RETURN FOR DEBUGGING
+    return {
+        publicUrl: 'debug-url-doc',
+        expiryDate: null,
+        mimeType: file?.type || 'debug/type'
+    };
 }
 
 export async function uploadProfilePictureAction(formData: FormData) {
