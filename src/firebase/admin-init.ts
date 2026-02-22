@@ -15,6 +15,7 @@ export function initializeAdminApp() {
     // when running in a Google Cloud environment like App Hosting.
     // Explicitly setting the storageBucket makes the connection more robust.
     admin.initializeApp({
+        credential: admin.credential.applicationDefault(),
         storageBucket: firebaseConfig.storageBucket,
     });
     

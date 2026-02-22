@@ -94,22 +94,16 @@ export default function RegisterPage() {
                       const uploadFormData = new FormData();
                       uploadFormData.append('userId', user.uid);
                       uploadFormData.append('file', avatarFile);
+                      // Auth state listener handles session, but we need token for secure server action
                       const idToken = await user.getIdToken();
                       uploadFormData.append('idToken', idToken);
-
+                      
                       const uploadResult = await serverActions.uploadProfilePictureAction(uploadFormData);
                       photoURL = uploadResult.photoURL;
                     }
 
-                    // Create session cookie before doing anything else
-                    const idToken = await user.getIdToken();
-                    await fetch('/api/auth/session', {
-                        method: 'POST',
-                        headers: {
-                            'Authorization': `Bearer ${idToken}`
-                        }
-                    });
-
+                    // The onAuthStateChanged listener in FirebaseProvider will handle session creation.
+                    // We just need to ensure the user's profile exists in Firestore and their Auth profile is updated.
                     await Promise.all([
                         updateProfile(user, { displayName: fullName, photoURL }),
                         firestore ? setDoc(doc(firestore, "users", user.uid), {
@@ -123,14 +117,13 @@ export default function RegisterPage() {
                     
                     toast({
                         title: "Registration successful!",
-                        description: "You are now logged in and will be redirected.",
+                        description: "You are now being redirected.",
                     });
 
-                    // Redirect after everything is successful
-                    router.push('/dashboard');
+                    // The redirect will be handled by the middleware after the auth state changes.
 
                 } catch (dbError) {
-                    // If DB write fails after auth user creation, delete the auth user for consistency
+                    // If DB write or profile update fails, delete the auth user for consistency.
                     await deleteUser(user).catch(deleteError => {
                         console.error("Failed to clean up orphaned user:", deleteError);
                     });
@@ -164,11 +157,20 @@ export default function RegisterPage() {
             });
             return;
         }
+        setIsSubmitting(true);
         const result = await signInWithGoogle(auth, firestore);
+        
         if (result.success) {
-            router.push('/dashboard');
+            toast({
+              title: "Sign up Successful",
+              description: "Redirecting to your dashboard...",
+            });
         } else if (result.error) {
-            toast({ variant: 'destructive', title: 'Login Failed', description: result.error });
+            toast({ variant: 'destructive', title: 'Sign up Failed', description: result.error });
+            setIsSubmitting(false); // Re-enable on failure
+        } else {
+            // Handle case where user closes popup
+            setIsSubmitting(false);
         }
     }
 

@@ -40,19 +40,15 @@ export default function LoginPage() {
         const password = formData.get("password") as string;
         
         try {
-            const userCredential = await signInWithEmailAndPassword(auth, email, password);
-            const idToken = await userCredential.user.getIdToken();
-
-            await fetch('/api/auth/session', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${idToken}`,
-                },
+            await signInWithEmailAndPassword(auth, email, password);
+            // On success, the onAuthStateChanged listener in FirebaseProvider
+            // will handle session creation, and the middleware will handle the redirect.
+            // A success toast provides immediate feedback.
+            toast({
+              title: "Login Successful",
+              description: "Redirecting to your dashboard...",
             });
-            
-            // On success, redirect. The middleware will have the session cookie and allow access.
-            router.push('/dashboard');
+
         } catch (error: unknown) {
           let description = "An unexpected error occurred. Please try again.";
           const err = (error as { code?: unknown }) || {};
@@ -78,20 +74,25 @@ export default function LoginPage() {
             });
             return;
         }
-      const result = await signInWithGoogle(auth, firestore);
-      if (result.success) {
-        router.push('/dashboard');
-        return;
-      }
-
-      // If not successful and we have an error, surface it.
-      if (result.error) {
-        toast({ variant: 'destructive', title: 'Login Failed', description: result.error });
-      }
+        setIsSubmitting(true);
+        const result = await signInWithGoogle(auth, firestore);
+        
+        if (result.success) {
+            toast({
+              title: "Login Successful",
+              description: "Redirecting to your dashboard...",
+            });
+        } else if (result.error) {
+            toast({ variant: 'destructive', title: 'Login Failed', description: result.error });
+            setIsSubmitting(false); // Re-enable on failure
+        } else {
+             // Handle case where user closes popup without an error
+            setIsSubmitting(false);
+        }
     }
 
-    // Show a loading screen while the initial user state is being determined.
-    // If a user is found, the middleware will handle redirection.
+    // If a user is already logged in, the middleware should redirect them.
+    // This loading screen handles the initial auth check.
     if (loading) {
       return <LoadingScreen text="Authenticating..." />;
     }
