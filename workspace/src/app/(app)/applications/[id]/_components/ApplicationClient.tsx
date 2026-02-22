@@ -2,7 +2,7 @@
 "use client";
 
 import { useState, useTransition, useRef, useEffect } from "react";
-import type { Application, ApplicationDocument, FirebaseTimestamp } from "@/types";
+import type { Application, ApplicationDocument, FirebaseTimestamp, FlightLog } from "@/types";
 import {
   Card,
   CardContent,
@@ -23,18 +23,19 @@ import {
   Loader2,
   Download,
   X,
-  RefreshCw,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { format } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
+import { flagExpiringDocuments } from "@/ai/flows/flag-expiring-documents";
 import { checkRecency, type CheckRecencyOutput } from "@/ai/flows/check-recency";
-import * as serverActions from '@/app/actions';
-import { useFirestore, errorEmitter, FirestorePermissionError, useAuth } from "@/firebase";
+import { uploadDocumentAction, uploadFlightLogAction } from "@/app/actions";
+import { useFirestore, errorEmitter, FirestorePermissionError } from "@/firebase";
 import { doc, serverTimestamp, updateDoc, collection, addDoc } from "firebase/firestore";
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
+import { v4 as uuidv4 } from 'uuid';
 
 // Helper function to safely format dates, whether they are Timestamps or strings
 const safeFormatDate = (date: FirebaseTimestamp | Date | string | undefined | null, formatString: string) => {
@@ -50,36 +51,39 @@ const safeFormatDate = (date: FirebaseTimestamp | Date | string | undefined | nu
   }
 };
 
-function getErrorMessage(err: unknown): string {
-  if (!err) return 'Unknown error';
-  if (typeof err === 'string') return err;
-  const e = err as { message?: unknown };
-  if (typeof e.message === 'string') return e.message;
-  return 'An unexpected error occurred';
-}
+async function checkExpiryAction(documents: ApplicationDocument[]) {
+    const docsToCheck = documents
+      .filter((doc) => doc.status === "uploaded" && doc.requiresExpiry && doc.expiryDate)
+      .map((doc) => ({
+        name: doc.name,
+        expiryDate: doc.expiryDate!,
+      }));
+  
+    if (docsToCheck.length === 0) {
+      return [];
+    }
+  
+    const results = await flagExpiringDocuments({
+      documents: docsToCheck,
+      daysUntilExpiry: 90,
+    });
+    return results;
+  }
 
 function DocumentCard({
   doc,
   onUpload,
   onDateChange,
-  onClearDate,
   isSubmitted,
   isUploading,
-  onCheckExpiry,
-  isCheckingExpiry,
 }: {
   doc: ApplicationDocument;
   onUpload: (docId: string) => void;
   onDateChange: (docId: string, date: string) => void;
-  onClearDate: (docId: string) => void;
   isSubmitted: boolean;
   isUploading: boolean;
-  onCheckExpiry: (docId: string) => void;
-  isCheckingExpiry: boolean;
 }) {
   const isButtonDisabled = isSubmitted || isUploading;
-  const isExpiryCheckDisabled = isButtonDisabled || isCheckingExpiry;
-
   return (
     <Card className="overflow-hidden">
       <CardHeader className="flex flex-row items-start justify-between gap-4 bg-muted/50 p-4">
@@ -108,37 +112,17 @@ function DocumentCard({
           </div>
         )}
         {doc.requiresExpiry && (
-          <div className="mt-4 space-y-2">
-            <div className="grid w-full max-w-sm items-center gap-1.5">
-                <Label htmlFor={`expiry-${doc.id}`} className="text-xs">
-                Expiry Date
-                </Label>
-                <div className="flex w-full max-w-sm items-center space-x-2">
-                    <Input
-                    id={`expiry-${doc.id}`}
-                    type="date"
-                    value={doc.expiryDate || ''}
-                    onChange={(e) => onDateChange(doc.id, e.target.value)}
-                    disabled={doc.status === "missing" || isSubmitted}
-                    />
-                    <Button
-                        type="button"
-                        variant="outline"
-                        size="icon"
-                        onClick={() => onClearDate(doc.id)}
-                        disabled={doc.status === 'missing' || isSubmitted || !doc.expiryDate}
-                        aria-label="Clear date"
-                    >
-                        <X className="h-4 w-4" />
-                    </Button>
-                </div>
-            </div>
-            {doc.status !== 'missing' && (
-                <Button variant="secondary" size="sm" onClick={() => onCheckExpiry(doc.id)} disabled={isExpiryCheckDisabled} className="w-full max-w-sm">
-                    {isCheckingExpiry ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Bot className="mr-2 h-4 w-4" />}
-                    AI Check Expiry
-                </Button>
-            )}
+          <div className="mt-4 grid w-full max-w-sm items-center gap-1.5">
+            <Label htmlFor={`expiry-${doc.id}`} className="text-xs">
+              Expiry Date
+            </Label>
+            <Input
+              id={`expiry-${doc.id}`}
+              type="date"
+              value={doc.expiryDate || ''}
+              onChange={(e) => onDateChange(doc.id, e.target.value)}
+              disabled={doc.status === "missing" || isSubmitted}
+            />
           </div>
         )}
         {doc.isExpiringSoon && (
@@ -164,30 +148,15 @@ export function ApplicationClient({
   const [isPending, startTransition] = useTransition();
   const [uploadingDocId, setUploadingDocId] = useState<string | null>(null);
   const [activeUploadDocId, setActiveUploadDocId] = useState<string | null>(null);
-  const [checkingExpiryDocId, setCheckingExpiryDocId] = useState<string | null>(null);
   const { toast } = useToast();
   const firestore = useFirestore();
-  const auth = useAuth();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const logPdfInputRef = useRef<HTMLInputElement>(null);
 
   const [recencyResult, setRecencyResult] = useState<CheckRecencyOutput | null>(null);
   const [isRecencyChecking, setIsRecencyChecking] = useState(false);
   const [isUploadingLog, setIsUploadingLog] = useState(false);
-  const [totalFlightHours, setTotalFlightHours] = useState(0);
-  const [totalPicHours, setTotalPicHours] = useState(0);
-  const [totalSoloHours, setTotalSoloHours] = useState(0);
 
-  useEffect(() => {
-    const logs = appState.flightLogs || [];
-    const total = logs.reduce((sum, log) => sum + (Number(log.duration) || 0), 0);
-    const pic = logs.reduce((sum, log) => log.isPIC ? sum + (Number(log.duration) || 0) : sum, 0);
-    const solo = logs.reduce((sum, log) => log.isSolo ? sum + (Number(log.duration) || 0) : sum, 0);
-    
-    setTotalFlightHours(total);
-    setTotalPicHours(pic);
-    setTotalSoloHours(solo);
-  }, [appState.flightLogs]);
   
   const handlePersistChanges = (updates: Partial<Application>, successToast: {title: string, description?: string} | null) => {
     if (!firestore) return;
@@ -204,7 +173,7 @@ export function ApplicationClient({
             toast(successToast);
         }
     })
-    .catch(() => {
+    .catch((error) => {
         const permissionError = new FirestorePermissionError({
             path: appRef.path,
             operation: 'update',
@@ -237,14 +206,23 @@ export function ApplicationClient({
     toast({ title: 'Upload Started', description: 'Your document is being uploaded and processed.' });
 
     try {
-        const idToken = await auth.currentUser?.getIdToken();
-        const formData = new FormData();
-        formData.append('applicationId', appState.id);
-        formData.append('docId', activeUploadDocId);
-        formData.append('file', file);
-        formData.append('requiresExpiry', docDefinition.requiresExpiry ? 'true' : 'false');
+        const reader = new FileReader();
+        reader.readAsDataURL(file);
+        const dataUrl = await new Promise<string>((resolve, reject) => {
+            reader.onload = () => resolve(reader.result as string);
+            reader.onerror = (error) => reject(error);
+        });
 
-    const { publicUrl, expiryDate: detectedExpiryDate, mimeType } = await serverActions.uploadDocumentAction(formData, idToken);
+        // Convert data URL to a Blob/File so the server action receives a proper File object
+        const blob = await (await fetch(dataUrl)).blob();
+        const fileObj = new File([blob], file.name, { type: blob.type });
+        const fd = new FormData();
+        fd.set('applicationId', appState.id);
+        fd.set('docId', activeUploadDocId);
+        fd.set('file', fileObj as any);
+        fd.set('requiresExpiry', docDefinition.requiresExpiry ? 'true' : 'false');
+
+        const { publicUrl, expiryDate: detectedExpiryDate } = await uploadDocumentAction(fd as any);
 
         if (detectedExpiryDate) {
             toast({ title: 'AI Success!', description: `Detected expiry date: ${format(new Date(detectedExpiryDate), 'PPP')}` });
@@ -252,32 +230,33 @@ export function ApplicationClient({
              toast({ variant: "default", title: 'AI Notice', description: 'Could not automatically detect an expiry date. Please enter it manually.' });
         }
 
-        const newDocuments = appState.documents.map((doc) => {
-            if (doc.id === activeUploadDocId) {
-                return {
-                    ...doc,
-                    status: "uploaded" as const,
-                    fileName: file.name,
-                    fileType: mimeType || '',
-                    fileUrl: publicUrl,
-                    uploadedAt: new Date().toISOString(),
-                    expiryDate: detectedExpiryDate || doc.expiryDate || '',
-                };
-            }
-            return doc;
-        });
+        const newDocuments = appState.documents.map((doc) =>
+          doc.id === activeUploadDocId
+            ? {
+                ...doc,
+                status: "uploaded" as const,
+                fileName: file.name,
+                uploadedAt: new Date().toISOString(),
+                fileUrl: publicUrl,
+                // Ensure expiryDate is not undefined to prevent Firestore error
+                expiryDate: detectedExpiryDate || doc.expiryDate || '',
+              }
+            : doc
+        );
         
         setAppState((prev) => ({ ...prev, documents: newDocuments }));
         
         handlePersistChanges({ documents: newDocuments }, { title: "Upload Successful", description: `${file.name} has been uploaded and saved.` });
 
     } catch (error: unknown) {
+      const err = (error as { message?: unknown }) || {};
       console.error("Upload failed:", error);
       toast({
         variant: "destructive",
         title: "Upload Failed",
-        description: getErrorMessage(error) || "There was an error uploading your file.",
+        description: typeof err.message === 'string' ? err.message : "There was an error uploading your file.",
       });
+      setAppState(initialApplication);
     } finally {
         setUploadingDocId(null);
         setActiveUploadDocId(null);
@@ -301,49 +280,31 @@ export function ApplicationClient({
     );
   };
   
-  const handleClearDate = (docId: string) => {
-    const newDocuments = appState.documents.map((doc) =>
-        doc.id === docId ? { ...doc, expiryDate: "" } : doc
-    );
-
-    setAppState((prev) => ({ ...prev, documents: newDocuments }));
-
-    handlePersistChanges(
-        { documents: newDocuments }, 
-        { title: "Expiry Date Cleared", description: "The expiry date has been removed." }
-    );
-  };
-
-  const handleCheckSingleExpiry = (docId: string) => {
+  const handleCheckExpiry = () => {
     startTransition(async () => {
-        setCheckingExpiryDocId(docId);
-        toast({ title: 'AI Check In Progress...', description: 'Analyzing document to find expiry date.' });
-        
-        try {
-          const idToken = await auth.currentUser?.getIdToken();
-          const { expiryDate } = await serverActions.getExpiryDateForSingleDocumentAction(appState.id, docId, idToken);
+        toast({ title: 'AI Check In Progress...', description: 'Checking for documents that are expiring soon.' });
+        const results = await checkExpiryAction(appState.documents);
 
-            if (expiryDate) {
-                const newDocuments = appState.documents.map(doc => 
-                    doc.id === docId ? { ...doc, expiryDate: expiryDate } : doc
-                );
-                setAppState(prev => ({ ...prev, documents: newDocuments }));
-                
-                handlePersistChanges(
-                    { documents: newDocuments },
-                    { 
-                        title: "AI Success!", 
-                        description: `Detected expiry date: ${format(new Date(expiryDate), 'PPP')}.` 
-                    }
-                );
-            } else {
-                 toast({ title: 'AI Check Complete', description: 'No expiry date was found in the document.' });
-            }
-        } catch (error: unknown) {
-          toast({ variant: 'destructive', title: 'AI Check Failed', description: getErrorMessage(error) });
-        } finally {
-            setCheckingExpiryDocId(null);
+        if (results.length === 0) {
+            toast({ title: 'AI Check Complete', description: 'No documents are expiring within 90 days.' });
+            return;
         }
+
+        const updatedDocs = appState.documents.map(doc => {
+            const checkResult = results.find(r => r.name === doc.name);
+            if (checkResult?.isExpiringSoon) {
+                return { ...doc, isExpiringSoon: true, status: 'needs_attention' as const };
+            }
+            return doc;
+        });
+
+        setAppState(prev => ({ ...prev, documents: updatedDocs }));
+
+        toast({
+            variant: 'destructive',
+            title: 'Action Required',
+            description: `${results.filter(r => r.isExpiringSoon).length} document(s) are expiring soon.`,
+          });
     });
   };
 
@@ -387,7 +348,7 @@ export function ApplicationClient({
                 description: "Your application has been submitted for review.",
             });
         })
-        .catch(() => {
+        .catch(e => {
             const permissionError = new FirestorePermissionError({
                 path: appRef.path,
                 operation: 'update',
@@ -408,13 +369,21 @@ export function ApplicationClient({
     toast({ title: 'AI Processing Started', description: 'Your flight log is being analyzed. This may take a moment.' });
 
     try {
-      const idToken = await auth.currentUser?.getIdToken();
+        const reader = new FileReader();
+        reader.readAsDataURL(file);
+        const pdfDataUri = await new Promise<string>((resolve, reject) => {
+            reader.onload = () => resolve(reader.result as string);
+            reader.onerror = (error) => reject(error);
+        });
+        
+        // Convert data URI to Blob/File and send as FormData to server action
+        const pdfBlob = await (await fetch(pdfDataUri)).blob();
+        const pdfFile = new File([pdfBlob], file.name, { type: pdfBlob.type });
+        const fd = new FormData();
+        fd.set('applicationId', appState.id);
+        fd.set('file', pdfFile as any);
 
-      const formData = new FormData();
-      formData.append('applicationId', appState.id);
-      formData.append('file', file);
-
-      const { publicUrl, extractedLogs } = await serverActions.uploadFlightLogAction(formData, idToken);
+        const { publicUrl, extractedLogs } = await uploadFlightLogAction(fd as any);
 
         setAppState(prev => ({ ...prev, flightLogs: extractedLogs, flightLogPdfUrl: publicUrl }));
         
@@ -424,11 +393,12 @@ export function ApplicationClient({
         });
 
     } catch (error: unknown) {
+      const err = (error as { message?: unknown }) || {};
       console.error("Flight log processing failed:", error);
       toast({
         variant: "destructive",
         title: "Processing Failed",
-        description: getErrorMessage(error) || "Could not process the flight log PDF. Please try again.",
+        description: typeof err.message === 'string' ? err.message : "Could not process the flight log PDF. Please try again.",
       });
     } finally {
         setIsUploadingLog(false);
@@ -441,23 +411,8 @@ export function ApplicationClient({
   const handleDownloadLogPdf = async () => {
     if (!appState.flightLogPdfUrl) return;
     window.open(appState.flightLogPdfUrl, '_blank');
-  };
+};
 
-  const handleRecalculateHours = () => {
-    const logs = appState.flightLogs || [];
-    const total = logs.reduce((sum, log) => sum + (Number(log.duration) || 0), 0);
-    const pic = logs.reduce((sum, log) => log.isPIC ? sum + (Number(log.duration) || 0) : sum, 0);
-    const solo = logs.reduce((sum, log) => log.isSolo ? sum + (Number(log.duration) || 0) : sum, 0);
-    
-    setTotalFlightHours(total);
-    setTotalPicHours(pic);
-    setTotalSoloHours(solo);
-    
-    toast({
-        title: "Hours Recalculated",
-        description: `Totals: ${total.toFixed(2)} hrs, ${pic.toFixed(2)} PIC, ${solo.toFixed(2)} Solo.`
-    });
-  };
   
   useEffect(() => {
     const handleRecencyCheck = async () => {
@@ -517,11 +472,8 @@ export function ApplicationClient({
             doc={doc}
             onUpload={handleUploadClick}
             onDateChange={handleDateChange}
-            onClearDate={handleClearDate}
             isSubmitted={isSubmitted}
             isUploading={uploadingDocId === doc.id}
-            onCheckExpiry={handleCheckSingleExpiry}
-            isCheckingExpiry={checkingExpiryDocId === doc.id}
           />
         ))}
       </div>
@@ -536,36 +488,8 @@ export function ApplicationClient({
 
       <Card>
         <CardHeader>
-            <div className="flex items-start justify-between">
-                <div>
-                    <CardTitle>Flight Logs</CardTitle>
-                    <CardDescription>Upload a PDF of your flight logbook. The AI will extract recent flights automatically.</CardDescription>
-                </div>
-                <div className="flex flex-col items-end gap-2">
-                    {totalFlightHours > 0 && (
-                        <div className="flex gap-6 text-right">
-                            <div>
-                                <p className="text-3xl font-bold">{totalFlightHours.toFixed(2)}</p>
-                                <p className="text-sm text-muted-foreground">Total Hours</p>
-                            </div>
-                            <div>
-                                <p className="text-3xl font-bold">{totalPicHours.toFixed(2)}</p>
-                                <p className="text-sm text-muted-foreground">PIC Hours</p>
-                            </div>
-                            <div>
-                                <p className="text-3xl font-bold">{totalSoloHours.toFixed(2)}</p>
-                                <p className="text-sm text-muted-foreground">Solo Hours</p>
-                            </div>
-                        </div>
-                    )}
-                    {appState.flightLogs && appState.flightLogs.length > 0 && (
-                        <Button onClick={handleRecalculateHours} variant="secondary" size="sm" className="mt-2">
-                            <RefreshCw className="mr-2 h-4 w-4" />
-                            Recalculate
-                        </Button>
-                    )}
-                </div>
-            </div>
+            <CardTitle>Flight Logs</CardTitle>
+            <CardDescription>Upload a PDF of your flight logbook. The AI will extract recent flights automatically.</CardDescription>
         </CardHeader>
         <CardContent>
             {isRecencyChecking ? (
@@ -592,31 +516,27 @@ export function ApplicationClient({
                     <TableRow>
                         <TableHead>Date</TableHead>
                         <TableHead>Aircraft</TableHead>
-                        <TableHead>Remarks</TableHead>
+                        <TableHead>Instructor</TableHead>
                         <TableHead className="text-right">Duration (hrs)</TableHead>
                     </TableRow>
                 </TableHeader>
                 <TableBody>
-                    {appState.flightLogs && appState.flightLogs.length > 0 ? (
-                        appState.flightLogs.map(log => (
-                            <TableRow key={log.id}>
-                                <TableCell>{safeFormatDate(log.date, 'PPP')}</TableCell>
-                                <TableCell>
-                                    <div className="font-medium">{log.aircraft}</div>
-                                    <div className="flex gap-2 text-xs text-muted-foreground">
-                                        {log.isPIC && <span className="font-bold">PIC</span>}
-                                        {log.isSolo && <span className="font-bold">SOLO</span>}
-                                    </div>
-                                </TableCell>
-                                <TableCell className="max-w-[200px] truncate" title={log.remarks}>{log.remarks || 'N/A'}</TableCell>
-                                <TableCell className="text-right">{log.duration.toFixed(2)}</TableCell>
+                    <>
+                        {appState.flightLogs && appState.flightLogs.length > 0 ? (
+                            appState.flightLogs.map(log => (
+                                <TableRow key={log.id}>
+                                    <TableCell>{format(new Date(log.date), 'PPP')}</TableCell>
+                                    <TableCell>{log.aircraft}</TableCell>
+                                    <TableCell>{log.instructorName || 'N/A'}</TableCell>
+                                    <TableCell className="text-right">{log.duration.toFixed(2)}</TableCell>
+                                </TableRow>
+                            ))
+                        ) : (
+                            <TableRow>
+                                <TableCell colSpan={4} className="h-24 text-center">No flight logs have been extracted yet.</TableCell>
                             </TableRow>
-                        ))
-                    ) : (
-                        <TableRow>
-                            <TableCell colSpan={4} className="h-24 text-center">No flight logs have been extracted yet.</TableCell>
-                        </TableRow>
-                    )}
+                        )}
+                    </>
                 </TableBody>
             </Table>
         </CardContent>
@@ -642,12 +562,16 @@ export function ApplicationClient({
         <CardHeader>
             <CardTitle>Next Steps</CardTitle>
         </CardHeader>
-        <CardContent className="grid sm:grid-cols-2 gap-4">
+        <CardContent className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            <Button onClick={handleCheckExpiry} disabled={isPending || isSubmitted} variant="secondary">
+                {isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Bot className="mr-2 h-4 w-4" />}
+                AI Check Document Expiry
+            </Button>
             <Button onClick={handleSaveDraft} disabled={isPending || isSubmitted} variant="outline">
                 {isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
                 Save Draft
             </Button>
-            <Button onClick={handleSubmit} disabled={!allDocsUploaded || isSubmitted || isPending} className="sm:col-start-2">
+            <Button onClick={handleSubmit} disabled={!allDocsUploaded || isSubmitted || isPending}>
                 <Check className="mr-2 h-4 w-4" /> 
                 {isSubmitted ? 'Submitted' : 'Submit Application'}
             </Button>

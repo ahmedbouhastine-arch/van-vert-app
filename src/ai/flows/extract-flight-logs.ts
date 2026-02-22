@@ -4,7 +4,7 @@
  */
 
 import {ai} from '@/ai/genkit';
-import {z} from 'genkit';
+import {z} from 'zod';
 
 // 1. INPUT SCHEMA (remains the same)
 const ExtractFlightLogsInputSchema = z.object({
@@ -34,17 +34,22 @@ export async function extractFlightLogs(input: ExtractFlightLogsInput): Promise<
 }
 
 // 3. AI FLOW (Updated with new prompt and logic)
-const extractFlightLogsFlow = ai.defineFlow(
+// Avoid using the unsafe `Function` type by casting to a specific callable
+// signature that accepts the expected parameters.
+const extractFlightLogsFlow = (ai as unknown as { defineFlow: (
+  config: unknown,
+  runner: (input: ExtractFlightLogsInput) => Promise<ExtractFlightLogsOutput | unknown>
+) => unknown }).defineFlow(
   {
     name: 'extractFlightLogsFlow',
     inputSchema: ExtractFlightLogsInputSchema,
     outputSchema: ExtractFlightLogsOutputSchema,
   },
-  async (input) => {
+  async (input: ExtractFlightLogsInput) => {
     const mediaUrl = input.flightLogPdf || input.storagePath;
     if (!mediaUrl) throw new Error("No PDF source provided.");
 
-    const { output } = await ai.generate({
+    const res: unknown = await ai.generate({
         model: 'googleai/gemini-2.0-flash',
         prompt: `You are an expert aviation administrator. Your task is to analyze the provided PDF logbook and perform two steps:
 
@@ -72,20 +77,21 @@ const extractFlightLogsFlow = ai.defineFlow(
             }
         ]
     });
-
+    const output = (res as { output?: unknown } | null | undefined)?.output;
     if (!output) {
-      // On failure, return a default empty structure
       return { flights: [], logbookFormat: 'simple' };
     }
 
-    // Filter out any entries that might have been partially extracted
-    const filteredFlights = output.flights.filter(log => {
-      return log.date && log.aircraft && typeof log.duration === 'number';
+    // Validate/parse the raw output against our Zod schema to ensure correct types
+    const parsed = ExtractFlightLogsOutputSchema.parse(output as unknown);
+
+    const filteredFlights = parsed.flights.filter((log) => {
+      return !!log.date && !!log.aircraft && typeof log.duration === 'number';
     });
 
     return {
-        flights: filteredFlights,
-        logbookFormat: output.logbookFormat || 'simple',
+      flights: filteredFlights,
+      logbookFormat: parsed.logbookFormat,
     };
   }
 );

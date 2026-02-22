@@ -3,7 +3,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState, useRef } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -15,7 +15,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
-import { CheckCircle2, XCircle, Eye, EyeOff, Loader2, User as UserIcon, Camera } from "lucide-react";
+import { CheckCircle2, XCircle, Eye, EyeOff, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { getAuth, createUserWithEmailAndPassword, updateProfile, deleteUser } from "firebase/auth";
 import { useFirebaseApp, useFirestore, useUser } from "@/firebase";
@@ -23,8 +23,6 @@ import { doc, setDoc, serverTimestamp } from "firebase/firestore";
 import { GoogleIcon } from "@/components/GoogleIcon";
 import { LoadingScreen } from "@/components/LoadingScreen";
 import { signInWithGoogle } from "@/firebase/auth-actions";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import * as serverActions from "@/app/actions";
 
 
 const passwordRequirements = [
@@ -40,14 +38,19 @@ export default function RegisterPage() {
     const [password, setPassword] = useState("");
     const [showPassword, setShowPassword] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
-    const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
-    const [avatarFile, setAvatarFile] = useState<File | null>(null);
-    const avatarInputRef = useRef<HTMLInputElement>(null);
 
     const app = useFirebaseApp();
     const auth = getAuth(app);
     const firestore = useFirestore();
-    const { loading } = useUser();
+    const { user, loading, claims } = useUser();
+
+    useEffect(() => {
+        if (!loading && user && claims) {
+            const isAdmin = ['reviewer', 'admin', 'head-admin'].includes(claims.role);
+            const homePath = isAdmin ? '/admin' : '/dashboard';
+            router.push(homePath);
+        }
+    }, [user, loading, claims, router]);
 
     const validatedRequirements = passwordRequirements.map(req => ({
         ...req,
@@ -55,18 +58,6 @@ export default function RegisterPage() {
     }));
 
     const allRequirementsMet = validatedRequirements.every(req => req.isValid);
-
-    const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0];
-        if (file) {
-            setAvatarFile(file);
-            const reader = new FileReader();
-            reader.onloadend = () => {
-                setAvatarPreview(reader.result as string);
-            };
-            reader.readAsDataURL(file);
-        }
-    };
 
     const handleRegister = (event: React.FormEvent<HTMLFormElement>) => {
         event.preventDefault();
@@ -87,75 +78,47 @@ export default function RegisterPage() {
         createUserWithEmailAndPassword(auth, email, password)
             .then(async (userCredential) => {
                 const user = userCredential.user;
-                let photoURL: string | null = null;
-                
                 try {
-                    if (avatarFile) {
-                      const uploadFormData = new FormData();
-                      uploadFormData.append('userId', user.uid);
-                      uploadFormData.append('file', avatarFile);
-                      const idToken = await user.getIdToken();
-                      uploadFormData.append('idToken', idToken);
-
-                      const uploadResult = await serverActions.uploadProfilePictureAction(uploadFormData);
-                      photoURL = uploadResult.photoURL;
-                    }
-
-                    // Create session cookie before doing anything else
-                    const idToken = await user.getIdToken();
-                    await fetch('/api/auth/session', {
-                        method: 'POST',
-                        headers: {
-                            'Authorization': `Bearer ${idToken}`
-                        }
-                    });
-
-                    await Promise.all([
-                        updateProfile(user, { displayName: fullName, photoURL }),
-                        firestore ? setDoc(doc(firestore, "users", user.uid), {
+                    // Update Auth profile & create Firestore document
+                    await updateProfile(user, { displayName: fullName });
+                    if (firestore) {
+                        const userRef = doc(firestore, "users", user.uid);
+                        await setDoc(userRef, {
                             displayName: fullName,
                             email: user.email,
-                            photoURL: photoURL,
+                            photoURL: user.photoURL,
                             role: email === 'head-admin@test.va' ? 'head-admin' : 'user',
                             createdAt: serverTimestamp(),
-                        }) : Promise.reject("Firestore not available")
-                    ]);
-                    
+                        });
+                    }
                     toast({
                         title: "Registration successful!",
                         description: "You are now logged in and will be redirected.",
                     });
-
-                    // Redirect after everything is successful
-                    router.push('/dashboard');
-
-                } catch (dbError) {
-                    // If DB write fails after auth user creation, delete the auth user for consistency
-                    await deleteUser(user).catch(deleteError => {
-                        console.error("Failed to clean up orphaned user:", deleteError);
-                    });
-                    // Rethrow to be caught by the outer .catch
-                    throw dbError;
+                } catch (innerError) {
+                    // If profile/doc creation fails, delete the auth user to stay consistent
+                    await deleteUser(user);
+                    throw innerError; // Rethrow to be caught by the outer .catch
                 }
             })
             .catch((error: unknown) => {
-              const err = (error as { code?: unknown; message?: unknown }) || {};
-              let description = 'An unexpected error occurred during sign-up. Please try again.';
-              if (typeof err.code === 'string' && err.code === 'auth/email-already-in-use') {
-                description = 'An account with this email already exists. Please log in.';
-              } else {
-                console.error('Registration Error: ', error);
-              }
-              toast({
-                variant: 'destructive',
-                title: 'Registration Failed',
-                description: description,
-              });
-              setIsSubmitting(false); // Only re-enable form on failure
+                const err = (error as { code?: unknown; message?: unknown }) || {};
+                let description = 'An unexpected error occurred during sign-up. Please try again.';
+                if (typeof err.code === 'string' && err.code === 'auth/email-already-in-use') {
+                    description = 'An account with this email already exists. Please log in.';
+                } else {
+                    console.error('Registration Error: ', error);
+                }
+                toast({
+                    variant: 'destructive',
+                    title: 'Registration Failed',
+                    description: description,
+                });
+                setIsSubmitting(false); // Only re-enable form on failure
             });
     }
 
-    const handleGoogleLogin = async () => {
+    const handleGoogleLogin = () => {
         if (!firestore) {
             toast({
                 variant: 'destructive',
@@ -164,15 +127,10 @@ export default function RegisterPage() {
             });
             return;
         }
-        const result = await signInWithGoogle(auth, firestore);
-        if (result.success) {
-            router.push('/dashboard');
-        } else if (result.error) {
-            toast({ variant: 'destructive', title: 'Login Failed', description: result.error });
-        }
+        signInWithGoogle(auth, firestore);
     }
 
-    if (loading) {
+    if (loading || user) {
         return <LoadingScreen text="Finalizing account setup..."/>;
     }
 
@@ -186,29 +144,6 @@ export default function RegisterPage() {
       </CardHeader>
       <CardContent>
         <form onSubmit={handleRegister} className="grid gap-4">
-            <div className="flex justify-center mb-4">
-                <input
-                    type="file"
-                    ref={avatarInputRef}
-                    onChange={handleAvatarChange}
-                    className="hidden"
-                    accept="image/png, image/jpeg, image/webp"
-                />
-                <div className="relative">
-                    <Avatar className="h-24 w-24 cursor-pointer" onClick={() => avatarInputRef.current?.click()}>
-                        <AvatarImage src={avatarPreview || undefined} alt="User avatar" />
-                        <AvatarFallback className="text-4xl">
-                           <UserIcon />
-                        </AvatarFallback>
-                    </Avatar>
-                     <div 
-                        className="absolute bottom-0 right-0 flex h-8 w-8 items-center justify-center rounded-full bg-primary text-primary-foreground cursor-pointer border-2 border-background"
-                        onClick={() => avatarInputRef.current?.click()}
-                     >
-                        <Camera className="h-4 w-4" />
-                    </div>
-                </div>
-            </div>
           <div className="grid gap-2">
             <Label htmlFor="full-name">Full Name</Label>
             <Input id="full-name" name="full-name" placeholder="John Pilot" required disabled={isSubmitting} />

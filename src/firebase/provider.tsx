@@ -5,15 +5,15 @@ import React, { DependencyList, createContext, useContext, ReactNode, useMemo, u
 import { FirebaseApp } from 'firebase/app';
 import { Firestore, doc, onSnapshot, DocumentData } from 'firebase/firestore';
 import { Auth, User, onAuthStateChanged, signOut } from 'firebase/auth';
-import { Storage } from 'firebase/storage';
-import { FirebaseErrorListener } from '@/components/FirebaseErrorListener'
+import { FirebaseStorage } from 'firebase/storage';
+import { FirebaseErrorListener } from '@/components/FirebaseErrorListener';
 
 interface FirebaseProviderProps {
   children: ReactNode;
   firebaseApp: FirebaseApp;
   firestore: Firestore;
   auth: Auth;
-  storage: Storage;
+  storage: FirebaseStorage;
 }
 
 // Internal state for user authentication
@@ -30,7 +30,7 @@ export interface FirebaseContextState {
   firebaseApp: FirebaseApp | null;
   firestore: Firestore | null;
   auth: Auth | null; // The Auth service instance
-  storage: Storage | null; // The Storage service instance
+  storage: FirebaseStorage | null; // The Storage service instance
   // User authentication state
   user: User | null;
   claims: DocumentData | null;
@@ -43,7 +43,7 @@ export interface FirebaseServicesAndUser {
   firebaseApp: FirebaseApp;
   firestore: Firestore;
   auth: Auth;
-  storage: Storage;
+  storage: FirebaseStorage;
   user: User | null;
   claims: DocumentData | null;
   isUserLoading: boolean;
@@ -86,10 +86,18 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
     }
   
     setUserAuthState({ user: null, claims: null, isUserLoading: true, userError: null });
-  
+
+    let unsubscribeClaims: (() => void) | null = null;
+
     const unsubscribeAuth = onAuthStateChanged(
       auth,
       (authUser) => {
+        // Clean up any existing claims listener before creating a new one
+        if (unsubscribeClaims) {
+          try { unsubscribeClaims(); } catch (e) { /* ignore */ }
+          unsubscribeClaims = null;
+        }
+
         if (authUser) {
             // User is authenticated on the client.
             // Create the server-side session cookie, then load claims.
@@ -102,10 +110,10 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
                     // Session cookie created. Now load user claims.
                     if (!firestore) {
                         setUserAuthState({ user: authUser, claims: null, isUserLoading: false, userError: new Error("Firestore not available") });
-                        return () => {};
+                        return;
                     }
                     const userDocRef = doc(firestore, `users/${authUser.uid}`);
-                    const unsubscribeClaims = onSnapshot(userDocRef, 
+                    unsubscribeClaims = onSnapshot(userDocRef, 
                         (snapshot) => {
                             const userClaims = snapshot.data() || null;
                             setUserAuthState({ user: authUser, claims: userClaims, isUserLoading: false, userError: null });
@@ -115,7 +123,6 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
                             setUserAuthState({ user: authUser, claims: null, isUserLoading: false, userError: error });
                         }
                     );
-                    return unsubscribeClaims;
                 })
                 .catch(err => {
                     // This is a critical failure. The server session could not be created.
@@ -137,7 +144,13 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
       }
     );
   
-    return () => unsubscribeAuth();
+    // Return cleanup that unsubscribes both auth and claims listeners
+    return () => {
+      try { unsubscribeAuth(); } catch (e) { /* ignore */ }
+      if (unsubscribeClaims) {
+        try { unsubscribeClaims(); } catch (e) { /* ignore */ }
+      }
+    };
   }, [auth, firestore]);
 
   // Memoize the context value
@@ -204,9 +217,9 @@ export const useFirestore = (): Firestore => {
 };
 
 /** Hook to access Firebase Storage instance. */
-export const useStorage = (): Storage => {
+export const useStorage = (): FirebaseStorage => {
   const { storage } = useFirebase();
-  return storage;
+  return storage as FirebaseStorage;
 };
 
 /** Hook to access Firebase App instance. */

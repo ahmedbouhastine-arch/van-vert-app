@@ -2,14 +2,13 @@
 "use client";
 
 import { useState, useTransition, useEffect } from "react";
-import type { Application, ApplicationDocument, ApplicationStatus, UserProfile, DocumentStatus, FirebaseTimestamp, FlightLog, LogbookFormat } from "@/types";
+import type { Application, ApplicationDocument, ApplicationStatus, UserProfile, DocumentStatus, FirebaseTimestamp, LogbookFormat } from "@/types";
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
-  CardFooter,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { StatusBadge, statusConfig } from "@/components/StatusBadge";
@@ -195,8 +194,15 @@ export function AdminApplicationClient({
 }: {
   application: Application;
   user?: UserProfile;
-  claims: any;
+  claims?: { role?: string | null };
 }) {
+  function getErrorMessage(err: unknown): string {
+    if (!err) return 'Unknown error';
+    if (typeof err === 'string') return err;
+    const e = err as { message?: unknown };
+    if (typeof e.message === 'string') return e.message;
+    return 'An unexpected error occurred';
+  }
   const [appState, setAppState] = useState<Application>(initialApplication);
   const [feedback, setFeedback] = useState(initialApplication.feedback || "");
   const [status, setStatus] = useState<ApplicationStatus>(initialApplication.status);
@@ -262,7 +268,7 @@ export function AdminApplicationClient({
         
         if (firestore) {
             const appRef = doc(firestore, 'applications', appState.id);
-            updateDoc(appRef, { documents: updatedDocs }).catch(e => {
+            updateDoc(appRef, { documents: updatedDocs }).catch(() => {
                  const permissionError = new FirestorePermissionError({ path: appRef.path, operation: 'update', requestResourceData: { documents: updatedDocs } });
                  errorEmitter.emit('permission-error', permissionError);
                  toast({ variant: 'destructive', title: 'Save Failed' });
@@ -292,7 +298,7 @@ export function AdminApplicationClient({
         .then(() => {
             toast({ title: "Document Status Updated" });
         })
-        .catch((e) => {
+        .catch(() => {
             const permissionError = new FirestorePermissionError({
                 path: appRef.path,
                 operation: 'update',
@@ -338,22 +344,22 @@ export function AdminApplicationClient({
                 description: "Application status and feedback have been updated.",
             });
         })
-        .catch((e: any) => {
+        .catch((e: unknown) => {
             const permissionError = new FirestorePermissionError({
                 path: appRef.path,
                 operation: 'update',
                 requestResourceData: updatedData,
             });
             errorEmitter.emit('permission-error', permissionError);
+          console.error('Save failed:', e);
+          toast({
+            variant: 'destructive',
+            title: "Save Failed",
+            description: getErrorMessage(e) || "You might not have permissions to perform this action.",
+          });
 
-            toast({
-                variant: 'destructive',
-                title: "Save Failed",
-                description: "You might not have permissions to perform this action.",
-            });
-            
-            setStatus(initialApplication.status);
-            setFeedback(initialApplication.feedback || "");
+          setStatus(initialApplication.status);
+          setFeedback(initialApplication.feedback || "");
         });
     });
   }
@@ -440,7 +446,7 @@ export function AdminApplicationClient({
                 <CardHeader>
                     <div className="flex items-start justify-between">
                         <div>
-                            <CardTitle>Applicant's Flight Logs</CardTitle>
+                            <CardTitle>Applicant&apos;s Flight Logs</CardTitle>
                             <CardDescription>
                                 A read-only view of the logs submitted by the applicant.
                             </CardDescription>

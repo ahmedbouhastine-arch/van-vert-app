@@ -34,15 +34,16 @@ export default function ForgotPasswordPage() {
                 title: 'Reset Link Sent',
                 description: `A password reset link has been sent to ${email}.`,
             });
-        } catch (error: any) {
-            let description = error.message;
-            if (error.code === 'auth/user-not-found') {
-                description = "No account found with this email address.";
+        } catch (error: unknown) {
+            const err = (error as { code?: unknown; message?: unknown }) || {};
+            let description = typeof err.message === 'string' ? err.message : 'Failed to send reset link.';
+            if (typeof err.code === 'string' && err.code === 'auth/user-not-found') {
+              description = "No account found with this email address.";
             }
             toast({
-                variant: 'destructive',
-                title: 'Failed to Send',
-                description: description,
+              variant: 'destructive',
+              title: 'Failed to Send',
+              description: description,
             });
         } finally {
             setIsSubmitting(false);
@@ -73,7 +74,7 @@ export default function ForgotPasswordPage() {
       <CardHeader>
         <CardTitle className="text-2xl font-headline">Forgot Password</CardTitle>
         <CardDescription>
-          Enter your email and we'll send you a link to reset your password.
+          Enter your email and we&apos;ll send you a link to reset your password.
         </CardDescription>
       </CardHeader>
       <CardContent>

@@ -27,11 +27,12 @@ export function UserNav() {
       // Force a hard reload to the login page to ensure all state is cleared.
       // This is more reliable than a client-side redirect for logout.
       window.location.href = "/login";
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const err = (error as { message?: unknown }) || {};
       toast({
         variant: "destructive",
         title: "Logout Failed",
-        description: error.message,
+        description: typeof err.message === 'string' ? err.message : 'Failed to logout.',
       });
     }
   };

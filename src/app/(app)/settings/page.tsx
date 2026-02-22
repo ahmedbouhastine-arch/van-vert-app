@@ -79,13 +79,14 @@ export default function SettingsPage() {
                     title: "Profile Update Saved",
                     description: "Your changes will be reflected shortly.",
                 });
-            } catch (error: any) {
-                // This catches errors from `updateProfile`
-                toast({
-                    variant: 'destructive',
-                    title: 'Update failed',
-                    description: error.message,
-                });
+            } catch (error: unknown) {
+              const err = (error as { message?: unknown }) || {};
+              // This catches errors from `updateProfile`
+              toast({
+                variant: 'destructive',
+                title: 'Update failed',
+                description: typeof err.message === 'string' ? err.message : 'Failed to update profile.',
+              });
             }
         });
     }

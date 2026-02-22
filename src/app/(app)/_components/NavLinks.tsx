@@ -28,8 +28,12 @@ const secondaryLinks: NavLinkItem[] = [
   { href: "/settings", icon: Settings, label: "Settings", for: "all" },
 ];
 
-const createLinks = (links: NavLinkItem[], claims: any, isMobile: boolean = false) => {
-    const pathname = usePathname();
+const createLinks = (
+  links: NavLinkItem[],
+  claims: { role?: string | null } | undefined,
+  isMobile: boolean = false,
+  pathname?: string
+) => {
     const role = claims?.role;
 
     const filteredLinks = links.filter(link => {
@@ -42,9 +46,10 @@ const createLinks = (links: NavLinkItem[], claims: any, isMobile: boolean = fals
     });
 
     return filteredLinks.map(({ href, icon: Icon, label }) => {
+        const current = pathname ?? '/';
         const isActive = (href === "/admin" || href === "/dashboard")
-            ? pathname === href 
-            : (href === "/" ? pathname === href : pathname.startsWith(href));
+          ? current === href 
+          : (href === "/" ? current === href : current.startsWith(href));
         
         if (isMobile) {
             return (
@@ -80,15 +85,18 @@ const createLinks = (links: NavLinkItem[], claims: any, isMobile: boolean = fals
       });
 }
 
-export function MainNavLinks({ claims }: { claims: any }) {
-  return <>{createLinks(mainLinks, claims)}</>;
+export function MainNavLinks({ claims }: { claims?: { role?: string | null } }) {
+  const pathname = usePathname();
+  return <>{createLinks(mainLinks, claims, false, pathname)}</>;
 }
 
-export function SecondaryNavLinks({ claims }: { claims: any }) {
-    return <>{createLinks(secondaryLinks, claims)}</>;
+export function SecondaryNavLinks({ claims }: { claims?: { role?: string | null } }) {
+  const pathname = usePathname();
+  return <>{createLinks(secondaryLinks, claims, false, pathname)}</>;
 }
 
-export function MobileNavLinks({ claims }: { claims: any }) {
-    const allLinks = [...mainLinks, ...secondaryLinks];
-    return <>{createLinks(allLinks, claims, true)}</>
+export function MobileNavLinks({ claims }: { claims?: { role?: string | null } }) {
+  const allLinks = [...mainLinks, ...secondaryLinks];
+  const pathname = usePathname();
+  return <>{createLinks(allLinks, claims, true, pathname)}</>
 }

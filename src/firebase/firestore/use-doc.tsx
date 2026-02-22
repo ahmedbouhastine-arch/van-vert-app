@@ -38,7 +38,7 @@ export interface UseDocResult<T> {
  * The Firestore DocumentReference, memoized with useMemoFirebase. Waits if null/undefined.
  * @returns {UseDocResult<T>} Object with data, isLoading, error.
  */
-export function useDoc<T = any>(
+export function useDoc<T = unknown>(
   memoizedDocRef: DocumentReference<DocumentData> | null | undefined,
 ): UseDocResult<T> {
   type StateDataType = WithId<T> | null;
@@ -56,7 +56,7 @@ export function useDoc<T = any>(
     }
     
     // This is a check to enforce memoization of the doc ref, which is critical for performance.
-    if (!(memoizedDocRef as any).__memo) {
+    if (!((memoizedDocRef as { __memo?: boolean } | null)?.__memo)) {
         throw new Error('The DocumentReference passed to useDoc must be memoized with useMemoFirebase.');
     }
 

@@ -1,8 +1,9 @@
 
 "use client";
+
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -28,48 +29,42 @@ export default function LoginPage() {
     const app = useFirebaseApp();
     const auth = getAuth(app);
     const firestore = useFirestore();
-    const { user, loading } = useUser();
+    const { user, loading, claims } = useUser();
     const [showPassword, setShowPassword] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
 
-    const handleLogin = async (event: React.FormEvent<HTMLFormElement>) => {
+    useEffect(() => {
+        if (!loading && user && claims) {
+            const isAdmin = ['reviewer', 'admin', 'head-admin'].includes(claims.role);
+            const homePath = isAdmin ? '/admin' : '/dashboard';
+            router.push(homePath);
+        }
+    }, [user, loading, claims, router]);
+
+    const handleLogin = (event: React.FormEvent<HTMLFormElement>) => {
         event.preventDefault();
         setIsSubmitting(true);
         const formData = new FormData(event.currentTarget);
         const email = formData.get("email") as string;
         const password = formData.get("password") as string;
         
-        try {
-            const userCredential = await signInWithEmailAndPassword(auth, email, password);
-            const idToken = await userCredential.user.getIdToken();
-
-            await fetch('/api/auth/session', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${idToken}`,
-                },
+        signInWithEmailAndPassword(auth, email, password)
+          .catch((error: unknown) => {
+            const err = (error as { code?: unknown; message?: unknown }) || {};
+            let description = typeof err.message === 'string' ? err.message : 'Login failed.';
+            if (typeof err.code === 'string' && (err.code === 'auth/user-not-found' || err.code === 'auth/wrong-password' || err.code === 'auth/invalid-credential')) {
+              description = "Invalid email or password. Please try again.";
+            }
+            toast({
+              variant: 'destructive',
+              title: 'Login Failed',
+              description: description,
             });
-            
-            // On success, redirect. The middleware will have the session cookie and allow access.
-            router.push('/dashboard');
-        } catch (error: unknown) {
-          let description = "An unexpected error occurred. Please try again.";
-          const err = (error as { code?: unknown }) || {};
-          // Consolidate common auth errors into one user-friendly message.
-          if (typeof err.code === 'string' && ['auth/invalid-credential', 'auth/user-not-found', 'auth/wrong-password'].includes(err.code)) {
-            description = "Invalid email or password. Please try again.";
-          }
-          toast({
-            variant: 'destructive',
-            title: 'Login Failed',
-            description: description,
+            setIsSubmitting(false);
           });
-          setIsSubmitting(false); // Re-enable the form ONLY on failure.
-        }
     }
 
-    const handleGoogleLogin = async () => {
+    const handleGoogleLogin = () => {
         if (!firestore) {
             toast({
                 variant: 'destructive',
@@ -78,21 +73,10 @@ export default function LoginPage() {
             });
             return;
         }
-      const result = await signInWithGoogle(auth, firestore);
-      if (result.success) {
-        router.push('/dashboard');
-        return;
-      }
-
-      // If not successful and we have an error, surface it.
-      if (result.error) {
-        toast({ variant: 'destructive', title: 'Login Failed', description: result.error });
-      }
+        signInWithGoogle(auth, firestore);
     }
 
-    // Show a loading screen while the initial user state is being determined.
-    // If a user is found, the middleware will handle redirection.
-    if (loading) {
+    if (loading || (user && !claims)) {
       return <LoadingScreen text="Authenticating..." />;
     }
 
