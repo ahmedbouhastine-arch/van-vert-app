@@ -5,7 +5,7 @@ import { GoogleAuthProvider, signInWithPopup, Auth } from "firebase/auth";
 import { doc, setDoc, serverTimestamp, Firestore, getDoc, updateDoc } from "firebase/firestore";
 import { useToast } from "@/hooks/use-toast";
 
-export const signInWithGoogle = async (auth: Auth, firestore: Firestore) => {
+export const signInWithGoogle = async (auth: Auth, firestore: Firestore): Promise<boolean> => {
     const provider = new GoogleAuthProvider();
     const { toast } = useToast();
 
@@ -34,16 +34,17 @@ export const signInWithGoogle = async (auth: Auth, firestore: Firestore) => {
                 createdAt: serverTimestamp(),
             });
         }
-        // The useUser hook and useEffects in the layout/pages will handle redirection.
+        return true;
     } catch (error: any) {
         // The user closing the popup is a normal flow, not an error to show.
         if (error.code === 'auth/popup-closed-by-user') {
-            return;
+            return false;
         }
         toast({
             variant: 'destructive',
             title: 'Login Failed',
             description: error.message,
         });
+        return false;
     }
 };

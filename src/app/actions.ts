@@ -3,7 +3,6 @@
 
 import 'server-only';
 import { adminFirestore, adminStorage } from '@/lib/firebase-admin-prewarmed';
-import { firebaseConfig } from '@/firebase/config';
 import { extractExpiryDate } from '@/ai/flows/extract-expiry-date';
 import { extractFlightLogs } from '@/ai/flows/extract-flight-logs';
 import type { FlightLog, Application, LogbookFormat } from '@/types';
@@ -87,9 +86,7 @@ export async function uploadFlightLogAction(formData: FormData): Promise<{ publi
         const applicationId = formData.get('applicationId') as string;
         if (!file || !applicationId) throw new Error("Missing file or application ID.");
 
-        const bucketName = firebaseConfig.storageBucket;
-        if (!bucketName) throw new Error("Firebase Storage bucket name is not configured.");
-        const bucket = adminStorage.bucket(bucketName);
+        const bucket = adminStorage.bucket();
 
         const storagePath = `applications/${applicationId}/flight-log-${uuidv4()}.pdf`;
         const publicUrl = await uploadStreamToStorage(bucket, storagePath, file.stream(), file.type);
@@ -165,10 +162,8 @@ export async function uploadDocumentAction(formData: FormData): Promise<{ public
         const docId = formData.get('docId') as string;
         const requiresExpiry = formData.get('requiresExpiry') === 'true';
         if (!file || !applicationId || !docId) throw new Error("Missing required form data.");
-
-        const bucketName = firebaseConfig.storageBucket;
-        if (!bucketName) throw new Error("Firebase Storage bucket name is not configured.");
-        const bucket = adminStorage.bucket(bucketName);
+        
+        const bucket = adminStorage.bucket();
         
         const storagePath = `applications/${applicationId}/${docId}/${file.name}`;
         const publicUrl = await uploadStreamToStorage(bucket, storagePath, file.stream(), file.type);
@@ -192,9 +187,7 @@ export async function uploadProfilePictureAction(formData: FormData): Promise<{ 
         const file = formData.get('file') as File;
         if (!file) throw new Error("No file provided for profile picture.");
         
-        const bucketName = firebaseConfig.storageBucket;
-        if (!bucketName) throw new Error("Firebase Storage bucket name is not configured.");
-        const bucket = adminStorage.bucket(bucketName);
+        const bucket = adminStorage.bucket();
         
         const storagePath = `profile-pictures/${user.uid}/${file.name}`;
         const photoURL = await uploadStreamToStorage(bucket, storagePath, file.stream(), file.type);

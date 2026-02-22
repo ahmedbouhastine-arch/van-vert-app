@@ -1,3 +1,4 @@
+
 "use client";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -32,37 +33,39 @@ export default function LoginPage() {
     const [isSubmitting, setIsSubmitting] = useState(false);
 
     useEffect(() => {
-        // Wait until loading is complete and we have user and claims data.
+        // If the user is already logged in (e.g., from a previous session),
+        // this effect will redirect them to the correct dashboard once claims are loaded.
         if (!loading && user && claims) {
-            // Check user's role and redirect to the appropriate dashboard.
             const isAdmin = ['reviewer', 'admin', 'head-admin'].includes(claims.role);
             const homePath = isAdmin ? '/admin' : '/dashboard';
             router.push(homePath);
         }
     }, [user, loading, claims, router]);
 
-    const handleLogin = (event: React.FormEvent<HTMLFormElement>) => {
+    const handleLogin = async (event: React.FormEvent<HTMLFormElement>) => {
         event.preventDefault();
         setIsSubmitting(true);
         const formData = new FormData(event.currentTarget);
         const email = formData.get("email") as string;
         const password = formData.get("password") as string;
         
-        // Use non-blocking sign-in. The useEffect hook will handle success.
-        signInWithEmailAndPassword(auth, email, password)
-            .catch((error: any) => {
-                let description = "An unexpected error occurred. Please try again.";
-                // Consolidate common auth errors into one user-friendly message.
-                if (['auth/invalid-credential', 'auth/user-not-found', 'auth/wrong-password'].includes(error.code)) {
-                    description = "Invalid email or password. Please try again.";
-                }
-                toast({
-                    variant: 'destructive',
-                    title: 'Login Failed',
-                    description: description,
-                });
-                setIsSubmitting(false); // Re-enable the form ONLY on failure.
+        try {
+            await signInWithEmailAndPassword(auth, email, password);
+            // On success, redirect immediately. The destination layout will handle loading claims.
+            router.push('/dashboard');
+        } catch (error: any) {
+            let description = "An unexpected error occurred. Please try again.";
+            // Consolidate common auth errors into one user-friendly message.
+            if (['auth/invalid-credential', 'auth/user-not-found', 'auth/wrong-password'].includes(error.code)) {
+                description = "Invalid email or password. Please try again.";
+            }
+            toast({
+                variant: 'destructive',
+                title: 'Login Failed',
+                description: description,
             });
+            setIsSubmitting(false); // Re-enable the form ONLY on failure.
+        }
     }
 
     const handleGoogleLogin = async () => {
@@ -74,7 +77,10 @@ export default function LoginPage() {
             });
             return;
         }
-        await signInWithGoogle(auth, firestore);
+        const success = await signInWithGoogle(auth, firestore);
+        if (success) {
+            router.push('/dashboard');
+        }
     }
 
     // Show loading screen while auth state is loading OR if the user is logged in but claims are not yet loaded.
