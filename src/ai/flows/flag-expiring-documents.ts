@@ -8,7 +8,7 @@
  * - FlagExpiringDocumentsOutput - The return type for the flagExpiringDocuments function.
  */
 
-import {ai} from '@/ai/genkit';
+import {ai} from '../init';
 import {z} from 'genkit';
 
 const FlagExpiringDocumentsInputSchema = z.object({

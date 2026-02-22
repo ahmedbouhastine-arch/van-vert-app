@@ -2,7 +2,7 @@
 // This file is the entry point for all AI-related modules.
 // It initializes the AI and then loads the flows.
 
-import './genkit'; // Initialize the AI first
+import './init'; // Initialize the AI first
 
 import './flows/check-recency';
 import './flows/extract-expiry-date';
