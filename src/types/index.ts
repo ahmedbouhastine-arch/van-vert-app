@@ -1,12 +1,9 @@
 
 import type { User as FirebaseUser } from 'firebase/auth';
+import type { Timestamp } from 'firebase/firestore';
 
 // A more specific type for Firestore Timestamps to avoid 'any'.
-export type FirebaseTimestamp = {
-  seconds: number;
-  nanoseconds: number;
-  toDate: () => Date;
-};
+export type FirebaseTimestamp = Timestamp;
 
 export type UserProfile = {
   email: string;
