@@ -11,11 +11,13 @@ export function initializeAdminApp() {
         };
     }
 
-    // Initialize the admin app. It will automatically use Application Default Credentials
-    // when running in a Google Cloud environment like App Hosting.
-    // Explicitly setting the storageBucket makes the connection more robust.
+    // When running locally, the Admin SDK needs the project ID explicitly.
+    // In a deployed Google Cloud environment (like App Hosting), it uses Application
+    // Default Credentials and can discover the project ID automatically.
+    // Providing the config here makes the initialization robust for both environments.
     admin.initializeApp({
         credential: admin.credential.applicationDefault(),
+        projectId: firebaseConfig.projectId,
         storageBucket: firebaseConfig.storageBucket,
     });
     
