@@ -36,7 +36,7 @@ function NewApplicationButton({ licenseType }: { licenseType: LicenseType }) {
 
     setIsCreating(true);
     try {
-      const { applicationId } = await serverActions.createApplicationAction(user.uid, licenseType.id);
+      const { applicationId } = await serverActions.createApplicationAction(licenseType.id);
       
       toast({
         title: "Application Created",

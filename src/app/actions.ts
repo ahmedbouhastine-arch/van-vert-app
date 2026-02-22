@@ -1,6 +1,5 @@
 
 'use server';
-console.log('🚀 ACTIONS MODULE LOADED');
 
 import 'server-only';
 import { adminFirestore, adminStorage } from '@/lib/firebase-admin-prewarmed';
@@ -82,18 +81,34 @@ async function uploadStreamToStorage(bucket: any, path: string, stream: Readable
 }
 
 export async function uploadFlightLogAction(formData: FormData): Promise<{ publicUrl: string; extractedLogs: FlightLog[]; logbookFormat: LogbookFormat; }> {
-  console.log('🚀 SERVER ACTION CALLED: uploadFlightLogAction');
-  
-  const file = formData.get('file');
-  console.log('📄 FILE in uploadFlightLogAction:', !!file, (file as File)?.size);
-  
-  // To avoid breaking the client, return a valid-looking object.
-  // The client will show 0 logs and no URL, but it won't crash.
-  return { 
-    publicUrl: 'debug-url-log', 
-    extractedLogs: [],
-    logbookFormat: 'simple'
-  };
+    try {
+        await getAuthenticatedUser();
+        const file = formData.get('file') as File;
+        const applicationId = formData.get('applicationId') as string;
+        if (!file || !applicationId) throw new Error("Missing file or application ID.");
+
+        const bucketName = firebaseConfig.storageBucket;
+        if (!bucketName) throw new Error("Firebase Storage bucket name is not configured.");
+        const bucket = adminStorage.bucket(bucketName);
+
+        const storagePath = `applications/${applicationId}/flight-log-${uuidv4()}.pdf`;
+        const publicUrl = await uploadStreamToStorage(bucket, storagePath, file.stream(), file.type);
+        
+        const { flights, logbookFormat } = await withTimeout(extractFlightLogs({ storagePath: publicUrl }));
+
+        const extractedLogs: FlightLog[] = flights.map(log => ({
+            ...log,
+            id: uuidv4(),
+            remarks: '', // Simplified based on latest schema
+            isPIC: false,  // Simplified
+            isSolo: false, // Simplified
+        }));
+
+        return { publicUrl, extractedLogs, logbookFormat };
+    } catch(e: any) {
+        handleServerAuthError(e, 'uploadFlightLogAction');
+        throw e;
+    }
 }
 
 export async function createApplicationAction(
@@ -143,27 +158,47 @@ export async function createApplicationAction(
 }
 
 export async function uploadDocumentAction(formData: FormData): Promise<{ publicUrl: string, expiryDate: string | null, mimeType: string }> {
-    console.log('🚀 SERVER ACTION CALLED: uploadDocumentAction');
-    const file = formData.get('file') as File;
-    console.log('📄 FILE in uploadDocumentAction:', !!file, file?.size);
-
-    // SIMPLIFIED RETURN FOR DEBUGGING
-    return {
-        publicUrl: 'debug-url-doc',
-        expiryDate: null,
-        mimeType: file?.type || 'debug/type'
-    };
-}
-
-export async function uploadProfilePictureAction(formData: FormData) {
     try {
-        const user = await getAuthenticatedUser();
+        await getAuthenticatedUser();
         const file = formData.get('file') as File;
+        const applicationId = formData.get('applicationId') as string;
+        const docId = formData.get('docId') as string;
+        const requiresExpiry = formData.get('requiresExpiry') === 'true';
+        if (!file || !applicationId || !docId) throw new Error("Missing required form data.");
+
         const bucketName = firebaseConfig.storageBucket;
         if (!bucketName) throw new Error("Firebase Storage bucket name is not configured.");
         const bucket = adminStorage.bucket(bucketName);
+        
+        const storagePath = `applications/${applicationId}/${docId}/${file.name}`;
+        const publicUrl = await uploadStreamToStorage(bucket, storagePath, file.stream(), file.type);
+        
+        let detectedExpiryDate: string | null = null;
+        if (requiresExpiry && (file.type.startsWith('image/') || file.type === 'application/pdf')) {
+            const { expiryDate } = await withTimeout(extractExpiryDate({ documentDataUri: publicUrl }));
+            detectedExpiryDate = expiryDate || null;
+        }
+
+        return { publicUrl, expiryDate: detectedExpiryDate, mimeType: file.type };
+    } catch (e: any) {
+        handleServerAuthError(e, 'uploadDocumentAction');
+        throw e;
+    }
+}
+
+export async function uploadProfilePictureAction(formData: FormData): Promise<{ photoURL: string }> {
+    try {
+        const user = await getAuthenticatedUser();
+        const file = formData.get('file') as File;
+        if (!file) throw new Error("No file provided for profile picture.");
+        
+        const bucketName = firebaseConfig.storageBucket;
+        if (!bucketName) throw new Error("Firebase Storage bucket name is not configured.");
+        const bucket = adminStorage.bucket(bucketName);
+        
         const storagePath = `profile-pictures/${user.uid}/${file.name}`;
         const photoURL = await uploadStreamToStorage(bucket, storagePath, file.stream(), file.type);
+        
         return { photoURL };
     } catch(e: any) {
         handleServerAuthError(e, 'uploadProfilePictureAction');
@@ -183,6 +218,9 @@ export async function getExpiryDateForSingleDocumentAction(
         const application = appSnapshot.data() as Application;
         const docToProcess = application.documents.find(d => d.id === docId);
         if (!docToProcess || !docToProcess.fileUrl) throw new Error("Invalid document for AI check.");
+        
+        // Ensure the file URL is a valid data URI or accessible URL for the AI model.
+        // For Storage URLs, you might need to fetch the content and convert to a data URI if the AI requires it.
         const { expiryDate } = await withTimeout(extractExpiryDate({ documentDataUri: docToProcess.fileUrl }));
         return { expiryDate: expiryDate || null };
     } catch(e: any) {
