@@ -41,7 +41,6 @@ const nextConfig = {
     ],
   },
   experimental: {
-    serverComponentsExternalPackages: ['genkit', '@genkit-ai/googleai'],
     serverActions: {
       bodySizeLimit: '100mb',
       allowedOrigins: [
