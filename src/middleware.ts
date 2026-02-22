@@ -32,6 +32,6 @@ export const config = {
    * - favicon.ico (favicon file)
    */
   matcher: [
-    '/((?!api|_next/static|_next/image|favicon.ico).*) intratar',
+    '/((?!api|_next/static|_next/image|favicon.ico).*)',
   ],
 };
