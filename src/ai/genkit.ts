@@ -2,7 +2,7 @@ import { config } from 'dotenv';
 config(); // Load .env file at the earliest point
 
 import {genkit} from 'genkit';
-import {googleAI} from '@genkit-ai/google-genai';
+import {googleAI} from '@genkit-ai/googleai';
 
 // genkit's plugin types vary between versions; keep plugin list untyped to
 // avoid a hard dependency on a specific exported type.
