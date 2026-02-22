@@ -175,18 +175,11 @@ export function ApplicationClient({
   const [isRecencyChecking, setIsRecencyChecking] = useState(false);
   const [isUploadingLog, setIsUploadingLog] = useState(false);
   const [totalFlightHours, setTotalFlightHours] = useState(0);
-  const [totalPicHours, setTotalPicHours] = useState(0);
-  const [totalSoloHours, setTotalSoloHours] = useState(0);
 
   useEffect(() => {
     const logs = appState.flightLogs || [];
     const total = logs.reduce((sum, log) => sum + (Number(log.duration) || 0), 0);
-    const pic = logs.reduce((sum, log) => log.isPIC ? sum + (Number(log.duration) || 0) : sum, 0);
-    const solo = logs.reduce((sum, log) => log.isSolo ? sum + (Number(log.duration) || 0) : sum, 0);
-    
     setTotalFlightHours(total);
-    setTotalPicHours(pic);
-    setTotalSoloHours(solo);
   }, [appState.flightLogs]);
   
   const handlePersistChanges = (updates: Partial<Application>, successToast: {title: string, description?: string} | null) => {
@@ -446,16 +439,11 @@ export function ApplicationClient({
   const handleRecalculateHours = () => {
     const logs = appState.flightLogs || [];
     const total = logs.reduce((sum, log) => sum + (Number(log.duration) || 0), 0);
-    const pic = logs.reduce((sum, log) => log.isPIC ? sum + (Number(log.duration) || 0) : sum, 0);
-    const solo = logs.reduce((sum, log) => log.isSolo ? sum + (Number(log.duration) || 0) : sum, 0);
-    
     setTotalFlightHours(total);
-    setTotalPicHours(pic);
-    setTotalSoloHours(solo);
     
     toast({
         title: "Hours Recalculated",
-        description: `Totals: ${total.toFixed(2)} hrs, ${pic.toFixed(2)} PIC, ${solo.toFixed(2)} Solo.`
+        description: `Total hours: ${total.toFixed(2)}.`,
     });
   };
   
@@ -543,19 +531,9 @@ export function ApplicationClient({
                 </div>
                 <div className="flex flex-col items-end gap-2">
                     {totalFlightHours > 0 && (
-                        <div className="flex gap-6 text-right">
-                            <div>
-                                <p className="text-3xl font-bold">{totalFlightHours.toFixed(2)}</p>
-                                <p className="text-sm text-muted-foreground">Total Hours</p>
-                            </div>
-                            <div>
-                                <p className="text-3xl font-bold">{totalPicHours.toFixed(2)}</p>
-                                <p className="text-sm text-muted-foreground">PIC Hours</p>
-                            </div>
-                            <div>
-                                <p className="text-3xl font-bold">{totalSoloHours.toFixed(2)}</p>
-                                <p className="text-sm text-muted-foreground">Solo Hours</p>
-                            </div>
+                        <div className="text-right">
+                            <p className="text-3xl font-bold">{totalFlightHours.toFixed(2)}</p>
+                            <p className="text-sm text-muted-foreground">Total Hours</p>
                         </div>
                     )}
                     {appState.flightLogs && appState.flightLogs.length > 0 && (
@@ -592,7 +570,6 @@ export function ApplicationClient({
                     <TableRow>
                         <TableHead>Date</TableHead>
                         <TableHead>Aircraft</TableHead>
-                        <TableHead>Remarks</TableHead>
                         <TableHead className="text-right">Duration (hrs)</TableHead>
                     </TableRow>
                 </TableHeader>
@@ -603,18 +580,13 @@ export function ApplicationClient({
                                 <TableCell>{safeFormatDate(log.date, 'PPP')}</TableCell>
                                 <TableCell>
                                     <div className="font-medium">{log.aircraft}</div>
-                                    <div className="flex gap-2 text-xs text-muted-foreground">
-                                        {log.isPIC && <span className="font-bold">PIC</span>}
-                                        {log.isSolo && <span className="font-bold">SOLO</span>}
-                                    </div>
                                 </TableCell>
-                                <TableCell className="max-w-[200px] truncate" title={log.remarks}>{log.remarks || 'N/A'}</TableCell>
                                 <TableCell className="text-right">{log.duration.toFixed(2)}</TableCell>
                             </TableRow>
                         ))
                     ) : (
                         <TableRow>
-                            <TableCell colSpan={4} className="h-24 text-center">No flight logs have been extracted yet.</TableCell>
+                            <TableCell colSpan={3} className="h-24 text-center">No flight logs have been extracted yet.</TableCell>
                         </TableRow>
                     )}
                 </TableBody>

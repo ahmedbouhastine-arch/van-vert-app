@@ -110,9 +110,6 @@ export async function uploadFlightLogAction(formData: FormData, idToken?: string
         const extractedLogs: FlightLog[] = flights.map(log => ({
             ...log,
             id: uuidv4(),
-            remarks: '', // Simplified based on latest schema
-            isPIC: false,  // Simplified
-            isSolo: false, // Simplified
         }));
 
         return { publicUrl, extractedLogs, logbookFormat };

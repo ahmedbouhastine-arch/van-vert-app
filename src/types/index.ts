@@ -41,9 +41,6 @@ export type FlightLog = {
   date: string; // YYYY-MM-DD
   duration: number; // in hours
   aircraft: string;
-  remarks?: string;
-  isPIC?: boolean;
-  isSolo?: boolean;
 };
 
 export type Application = {
