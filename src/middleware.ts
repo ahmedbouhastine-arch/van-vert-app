@@ -12,8 +12,9 @@ export function middleware(request: NextRequest) {
 
     const isProtectedRoute = protectedRoutes.some(route => requestedUrl.startsWith(route));
 
-    // If the user is trying to access a protected route and there is no session cookie, redirect to the login page.
-    if (isProtectedRoute && !sessionCookie) {
+    // Only apply auth redirection for page loads (GET requests) to avoid
+    // interfering with server action POST requests, which handle their own auth.
+    if (request.method === 'GET' && isProtectedRoute && !sessionCookie) {
         const absoluteLoginUrl = new URL('/login', request.url);
         return NextResponse.redirect(absoluteLoginUrl);
     }
