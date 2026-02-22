@@ -4,18 +4,18 @@
 import { notFound, useParams, redirect } from "next/navigation";
 import { AdminApplicationClient } from "./_components/AdminApplicationClient";
 import { useFirestore, useDoc, useUser, useMemoFirebase } from "@/firebase";
-import { doc } from "firebase/firestore";
+import { doc, DocumentReference, DocumentData } from "firebase/firestore";
 import { LoadingScreen } from "@/components/LoadingScreen";
 import type { Application, UserProfile } from "@/types";
 import React from "react";
 
 
-function AuthorizedApplicationDetail({ id, claims, isAuthorized }: { id: string, claims: any, isAuthorized: boolean }) {
+function AuthorizedApplicationDetail({ id, claims, isAuthorized }: { id: string, claims?: { role?: string | null }, isAuthorized: boolean }) {
   const firestore = useFirestore();
 
   const appRef = useMemoFirebase(() => {
       if (firestore && id && isAuthorized) {
-          return doc(firestore, 'applications', id) as any;
+          return doc(firestore, 'applications', id) as DocumentReference<DocumentData>;
       }
       return null;
   }, [firestore, id, isAuthorized]);
@@ -23,7 +23,7 @@ function AuthorizedApplicationDetail({ id, claims, isAuthorized }: { id: string,
   const { data: application, isLoading: appLoading } = useDoc<Application>(appRef);
 
   const userRef = useMemoFirebase(() => 
-      firestore && application && isAuthorized ? doc(firestore, 'users', application.userId) as any : null,
+      firestore && application && isAuthorized ? doc(firestore, 'users', application.userId) as DocumentReference<DocumentData> : null,
       [firestore, application, isAuthorized]
   );
   const { data: user, isLoading: userLoading } = useDoc<UserProfile>(userRef);
@@ -49,10 +49,10 @@ function AuthorizedApplicationDetail({ id, claims, isAuthorized }: { id: string,
                   Review Application
               </h1>
               <p className="text-muted-foreground">
-                  Reviewing {user?.displayName}'s application for {application.licenseType}.
+                  Reviewing {user?.displayName}&apos;s application for {application.licenseType}.
               </p>
           </div>
-          <AdminApplicationClient application={application} user={user} claims={claims} />
+          <AdminApplicationClient application={application} user={user ?? undefined} claims={claims} />
       </div>
   )
 }

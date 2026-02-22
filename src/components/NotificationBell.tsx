@@ -4,7 +4,7 @@ import { Bell, BellDot, Check, Mailbox } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
 import { useUser, useFirestore, useCollection, useMemoFirebase } from "@/firebase";
-import { collection, doc, orderBy, query, writeBatch, where } from "firebase/firestore";
+import { collection, doc, orderBy, query, writeBatch, where, updateDoc } from "firebase/firestore";
 import type { Notification } from "@/types";
 import { formatDistanceToNow, isToday, isYesterday } from "date-fns";
 import Link from "next/link";
@@ -128,9 +128,9 @@ export function NotificationBell() {
                 </div>
               ))
             ) : (
-              <div className="p-8 text-center text-sm text-muted-foreground flex flex-col items-center gap-4">
+                <div className="p-8 text-center text-sm text-muted-foreground flex flex-col items-center gap-4">
                 <Mailbox className="h-12 w-12 text-gray-400" />
-                <p className="font-semibold">You're all caught up!</p>
+                <p className="font-semibold">You&apos;re all caught up!</p>
                 <p>You have no new notifications.</p>
               </div>
             )}

@@ -52,18 +52,19 @@ export default function LoginPage() {
             // On success, redirect immediately. The `useEffect` will also catch this state
             // on subsequent renders, but this makes the redirect feel faster.
             router.push('/dashboard');
-        } catch (error: any) {
-            let description = "An unexpected error occurred. Please try again.";
-            // Consolidate common auth errors into one user-friendly message.
-            if (['auth/invalid-credential', 'auth/user-not-found', 'auth/wrong-password'].includes(error.code)) {
-                description = "Invalid email or password. Please try again.";
-            }
-            toast({
-                variant: 'destructive',
-                title: 'Login Failed',
-                description: description,
-            });
-            setIsSubmitting(false); // Re-enable the form ONLY on failure.
+        } catch (error: unknown) {
+          let description = "An unexpected error occurred. Please try again.";
+          const err = (error as { code?: unknown }) || {};
+          // Consolidate common auth errors into one user-friendly message.
+          if (typeof err.code === 'string' && ['auth/invalid-credential', 'auth/user-not-found', 'auth/wrong-password'].includes(err.code)) {
+            description = "Invalid email or password. Please try again.";
+          }
+          toast({
+            variant: 'destructive',
+            title: 'Login Failed',
+            description: description,
+          });
+          setIsSubmitting(false); // Re-enable the form ONLY on failure.
         }
     }
 
@@ -76,11 +77,16 @@ export default function LoginPage() {
             });
             return;
         }
-        const success = await signInWithGoogle(auth, firestore);
-        if (success) {
-            // On success, redirect.
-            router.push('/dashboard');
-        }
+      const result = await signInWithGoogle(auth, firestore);
+      if (result.success) {
+        router.push('/dashboard');
+        return;
+      }
+
+      // If not successful and we have an error, surface it.
+      if (result.error) {
+        toast({ variant: 'destructive', title: 'Login Failed', description: result.error });
+      }
     }
 
     // Show loading screen while auth state is loading or if a user is detected.

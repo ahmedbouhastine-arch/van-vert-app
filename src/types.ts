@@ -25,7 +25,8 @@ export type UserProfile = {
   email: string;
   displayName?: string;
   photoURL?: string;
-  claims?: Record<string, any>;
+  claims?: Record<string, unknown>;
+  role?: 'user' | 'admin' | 'head-admin' | 'reviewer';
 };
 
 export type ApplicationStatus = 
@@ -55,7 +56,7 @@ export type ApplicationDocument = {
   fileUrl: string;
   fileName: string;
   fileType: string;
-  uploadedAt: string | FirebaseTimestamp;
+  uploadedAt: string | FirebaseTimestamp | unknown;
   expiryDate?: string | null;
   isExpiringSoon?: boolean;
 };
@@ -67,13 +68,14 @@ export type Application = {
   userId: string;
   licenseType: string;
   status: ApplicationStatus;
-  createdAt: FirebaseTimestamp;
-  updatedAt: FirebaseTimestamp;
+  createdAt: FirebaseTimestamp | unknown;
+  updatedAt: FirebaseTimestamp | unknown;
   feedback: string;
   documents: ApplicationDocument[];
   flightLogs: FlightLog[];
   flightLogPdfUrl: string;
   logbookFormat?: LogbookFormat;
+  submittedAt?: FirebaseTimestamp | unknown;
 };
 
 export type FlightLog = {
@@ -82,7 +84,34 @@ export type FlightLog = {
   aircraft: string;
   duration: number;
   // No longer extracting these
-  // isPIC: boolean;
-  // isSolo: boolean;
-  // remarks: string;
+  isPIC?: boolean;
+  isSolo?: boolean;
+  remarks?: string;
+  instructorName?: string;
+};
+
+export type Notification = {
+  id: string;
+  userId: string;
+  title: string;
+  body: string;
+  href?: string;
+  createdAt: FirebaseTimestamp;
+  isRead: boolean;
+};
+
+export type AnalyticsDataPoint = {
+  date: string;
+  submitted: number;
+  approved: number;
+  rejected: number;
+};
+
+export type AuditLogEntry = {
+  id: string;
+  adminName: string;
+  adminEmail: string;
+  action: string;
+  details?: string;
+  timestamp: FirebaseTimestamp | string | Date;
 };

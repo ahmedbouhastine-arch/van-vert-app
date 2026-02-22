@@ -34,15 +34,16 @@ export const signInWithGoogle = (auth: Auth, firestore: Firestore) => {
                 });
             }
         })
-        .catch((error: any) => {
+        .catch((error: unknown) => {
+            const err = (error as { code?: unknown; message?: unknown }) || {};
             // The user closing the popup is a normal flow, not an error to show.
-            if (error.code === 'auth/popup-closed-by-user') {
+            if (typeof err.code === 'string' && err.code === 'auth/popup-closed-by-user') {
                 return;
             }
             toast({
                 variant: 'destructive',
                 title: 'Login Failed',
-                description: error.message,
+                description: typeof err.message === 'string' ? err.message : 'Google sign-in failed.',
             });
         });
 };

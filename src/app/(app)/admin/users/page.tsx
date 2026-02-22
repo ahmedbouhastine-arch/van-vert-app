@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 import React, { useState } from "react";
 import { LoadingScreen } from "@/components/LoadingScreen";
 import type { UserProfile } from "@/types";
-import { collection, doc, updateDoc } from "firebase/firestore";
+import { collection, doc, updateDoc, type CollectionReference } from "firebase/firestore";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -16,7 +16,8 @@ import { type User } from "firebase/auth";
 import { Loader2 } from "lucide-react";
 
 
-type UserWithProfile = UserProfile & { id: string; photoURL?: string; };
+type Role = 'user' | 'admin' | 'head-admin' | 'reviewer';
+type UserWithProfile = UserProfile & { id: string; photoURL?: string; role?: Role };
 
 function UserRow({
     user,
@@ -27,14 +28,14 @@ function UserRow({
 }: {
     user: UserWithProfile,
     currentUser: User,
-    currentUserClaims: any,
+    currentUserClaims: { role?: Role } | null | undefined,
     onRoleChange: (userId: string, newRole: 'user' | 'admin' | 'head-admin' | 'reviewer') => void,
     isUpdating: boolean
 }) {
-    const [selectedRole, setSelectedRole] = useState(user.role);
+    const [selectedRole, setSelectedRole] = useState<Role>(user.role ?? 'user');
 
     const handleUpdate = () => {
-        onRoleChange(user.id, selectedRole);
+        onRoleChange(user.id, selectedRole as Role);
     };
 
     const isCurrentUser = user.id === currentUser.uid || user.email === currentUser.email;
@@ -67,7 +68,7 @@ function UserRow({
             </TableCell>
             <TableCell>
                 {canPerformActions ? (
-                    <Select value={selectedRole} onValueChange={(value) => setSelectedRole(value as any)}>
+                    <Select value={selectedRole} onValueChange={(value) => setSelectedRole(value as Role)}>
                         <SelectTrigger className="w-[180px]">
                             <SelectValue placeholder="Select a role" />
                         </SelectTrigger>
@@ -79,9 +80,9 @@ function UserRow({
                         </SelectContent>
                     </Select>
                 ) : (
-                     <div className="capitalize w-[180px] px-3 py-2 text-sm">
-                        {user.role.replace(/-/g, ' ')}
-                     </div>
+                            <div className="capitalize w-[180px] px-3 py-2 text-sm">
+                                {(user.role || 'user').replace(/-/g, ' ')}
+                            </div>
                 )}
             </TableCell>
             <TableCell className="text-right">
@@ -111,7 +112,7 @@ function AuthorizedUserList({ isAuthorized }: { isAuthorized: boolean }) {
 
     const usersQuery = useMemoFirebase(() => {
         if (firestore && isAuthorized) {
-            return collection(firestore, 'users') as any;
+            return collection(firestore, 'users') as CollectionReference<UserWithProfile>;
         }
         return null;
     }, [firestore, isAuthorized]);
@@ -130,7 +131,7 @@ function AuthorizedUserList({ isAuthorized }: { isAuthorized: boolean }) {
                     description: `User role has been successfully changed to ${newRole}.`,
                 });
             })
-            .catch((error: any) => {
+            .catch(() => {
                 const permissionError = new FirestorePermissionError({
                     path: userRef.path,
                     operation: 'update',

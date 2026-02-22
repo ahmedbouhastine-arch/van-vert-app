@@ -2,7 +2,7 @@
 "use client";
 
 import { useState, useTransition, useRef, useEffect } from "react";
-import type { Application, ApplicationDocument, FirebaseTimestamp, FlightLog } from "@/types";
+import type { Application, ApplicationDocument, FirebaseTimestamp } from "@/types";
 import {
   Card,
   CardContent,
@@ -32,7 +32,7 @@ import { format } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
 import { checkRecency, type CheckRecencyOutput } from "@/ai/flows/check-recency";
 import * as serverActions from '@/app/actions';
-import { useFirestore, errorEmitter, FirestorePermissionError } from "@/firebase";
+import { useFirestore, errorEmitter, FirestorePermissionError, useAuth } from "@/firebase";
 import { doc, serverTimestamp, updateDoc, collection, addDoc } from "firebase/firestore";
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
 
@@ -49,6 +49,14 @@ const safeFormatDate = (date: FirebaseTimestamp | Date | string | undefined | nu
     return "Invalid Date";
   }
 };
+
+function getErrorMessage(err: unknown): string {
+  if (!err) return 'Unknown error';
+  if (typeof err === 'string') return err;
+  const e = err as { message?: unknown };
+  if (typeof e.message === 'string') return e.message;
+  return 'An unexpected error occurred';
+}
 
 function DocumentCard({
   doc,
@@ -159,6 +167,7 @@ export function ApplicationClient({
   const [checkingExpiryDocId, setCheckingExpiryDocId] = useState<string | null>(null);
   const { toast } = useToast();
   const firestore = useFirestore();
+  const auth = useAuth();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const logPdfInputRef = useRef<HTMLInputElement>(null);
 
@@ -195,7 +204,7 @@ export function ApplicationClient({
             toast(successToast);
         }
     })
-    .catch((error) => {
+    .catch(() => {
         const permissionError = new FirestorePermissionError({
             path: appRef.path,
             operation: 'update',
@@ -228,13 +237,14 @@ export function ApplicationClient({
     toast({ title: 'Upload Started', description: 'Your document is being uploaded and processed.' });
 
     try {
+        const idToken = await auth.currentUser?.getIdToken();
         const formData = new FormData();
         formData.append('applicationId', appState.id);
         formData.append('docId', activeUploadDocId);
         formData.append('file', file);
         formData.append('requiresExpiry', docDefinition.requiresExpiry ? 'true' : 'false');
 
-        const { publicUrl, expiryDate: detectedExpiryDate, mimeType } = await serverActions.uploadDocumentAction(formData);
+    const { publicUrl, expiryDate: detectedExpiryDate, mimeType } = await serverActions.uploadDocumentAction(formData, idToken);
 
         if (detectedExpiryDate) {
             toast({ title: 'AI Success!', description: `Detected expiry date: ${format(new Date(detectedExpiryDate), 'PPP')}` });
@@ -261,13 +271,13 @@ export function ApplicationClient({
         
         handlePersistChanges({ documents: newDocuments }, { title: "Upload Successful", description: `${file.name} has been uploaded and saved.` });
 
-    } catch (error: any) {
-        console.error("Upload failed:", error);
-        toast({
-            variant: "destructive",
-            title: "Upload Failed",
-            description: error.message || "There was an error uploading your file.",
-        });
+    } catch (error: unknown) {
+      console.error("Upload failed:", error);
+      toast({
+        variant: "destructive",
+        title: "Upload Failed",
+        description: getErrorMessage(error) || "There was an error uploading your file.",
+      });
     } finally {
         setUploadingDocId(null);
         setActiveUploadDocId(null);
@@ -310,7 +320,8 @@ export function ApplicationClient({
         toast({ title: 'AI Check In Progress...', description: 'Analyzing document to find expiry date.' });
         
         try {
-            const { expiryDate } = await serverActions.getExpiryDateForSingleDocumentAction(appState.id, docId);
+          const idToken = await auth.currentUser?.getIdToken();
+          const { expiryDate } = await serverActions.getExpiryDateForSingleDocumentAction(appState.id, docId, idToken);
 
             if (expiryDate) {
                 const newDocuments = appState.documents.map(doc => 
@@ -328,8 +339,8 @@ export function ApplicationClient({
             } else {
                  toast({ title: 'AI Check Complete', description: 'No expiry date was found in the document.' });
             }
-        } catch (error: any) {
-             toast({ variant: 'destructive', title: 'AI Check Failed', description: error.message });
+        } catch (error: unknown) {
+          toast({ variant: 'destructive', title: 'AI Check Failed', description: getErrorMessage(error) });
         } finally {
             setCheckingExpiryDocId(null);
         }
@@ -376,7 +387,7 @@ export function ApplicationClient({
                 description: "Your application has been submitted for review.",
             });
         })
-        .catch(e => {
+        .catch(() => {
             const permissionError = new FirestorePermissionError({
                 path: appRef.path,
                 operation: 'update',
@@ -397,11 +408,13 @@ export function ApplicationClient({
     toast({ title: 'AI Processing Started', description: 'Your flight log is being analyzed. This may take a moment.' });
 
     try {
-        const formData = new FormData();
-        formData.append('applicationId', appState.id);
-        formData.append('file', file);
+      const idToken = await auth.currentUser?.getIdToken();
 
-        const { publicUrl, extractedLogs } = await serverActions.uploadFlightLogAction(formData);
+      const formData = new FormData();
+      formData.append('applicationId', appState.id);
+      formData.append('file', file);
+
+      const { publicUrl, extractedLogs } = await serverActions.uploadFlightLogAction(formData, idToken);
 
         setAppState(prev => ({ ...prev, flightLogs: extractedLogs, flightLogPdfUrl: publicUrl }));
         
@@ -410,13 +423,13 @@ export function ApplicationClient({
             description: `${extractedLogs.length} recent flight logs have been extracted and saved.`,
         });
 
-    } catch (error: any) {
-        console.error("Flight log processing failed:", error);
-        toast({
-            variant: "destructive",
-            title: "Processing Failed",
-            description: error.message || "Could not process the flight log PDF. Please try again.",
-        });
+    } catch (error: unknown) {
+      console.error("Flight log processing failed:", error);
+      toast({
+        variant: "destructive",
+        title: "Processing Failed",
+        description: getErrorMessage(error) || "Could not process the flight log PDF. Please try again.",
+      });
     } finally {
         setIsUploadingLog(false);
         if (logPdfInputRef.current) {

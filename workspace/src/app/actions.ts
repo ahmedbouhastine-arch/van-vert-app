@@ -89,6 +89,8 @@ export async function createApplicationAction(
             requiresExpiry: req.requiresExpiry,
             fileUrl: publicUrl,
             fileName: placeholderFileName,
+            fileType: '',
+            uploadedAt: '',
         };
         return doc;
     });
@@ -183,7 +185,7 @@ export async function uploadDocumentAction(
 
     if (requiresExpiry && mimeType.startsWith('image/')) {
         try {
-            const { expiryDate } = await extractExpiryDate({ documentImage: fileDataUri });
+            const { expiryDate } = await extractExpiryDate({ documentDataUri: fileDataUri });
             detectedExpiryDate = expiryDate;
         } catch (e: any) {
             console.error("AI expiry date detection failed:", e);
@@ -226,17 +228,17 @@ export async function uploadFlightLogAction(
     }
 
     let extractedLogs: FlightLog[] = [];
-    try {
-        const aiResult = await extractFlightLogs({ flightLogPdf: pdfDataUri });
-        if (aiResult) {
-            extractedLogs = aiResult.map(log => ({ 
-                ...log, 
-                id: uuidv4(), 
-                remarks: log.remarks || '',
-                instructorName: log.instructorName || '' 
-            }));
-        }
-    } catch (e: any) {
+        try {
+            const aiResult = await extractFlightLogs({ flightLogPdf: pdfDataUri });
+            if (aiResult && Array.isArray(aiResult.flights)) {
+                extractedLogs = aiResult.flights.map((log) => ({ 
+                    ...log, 
+                    id: uuidv4(), 
+                    remarks: (log as any).remarks || '',
+                    instructorName: (log as any).instructorName || '' 
+                }));
+            }
+        } catch (e: any) {
         console.error("AI flight log extraction failed:", e);
         throw e;
     }

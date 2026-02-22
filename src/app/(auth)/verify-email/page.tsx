@@ -43,11 +43,15 @@ export default function VerifyEmailPage() {
                 title: "Verification Email Sent",
                 description: `A new verification link has been sent to ${user.email}.`,
             });
-        } catch (error: any) {
+        } catch (error: unknown) {
+            const err = (error as { message?: unknown }) || {};
+            const description = typeof err.message === 'string'
+                ? err.message
+                : "There was an error sending the verification email. Please try again shortly.";
             toast({
                 variant: 'destructive',
                 title: 'Failed to Send',
-                description: "There was an error sending the verification email. Please try again shortly.",
+                description: description,
             });
         } finally {
             setIsSending(false);

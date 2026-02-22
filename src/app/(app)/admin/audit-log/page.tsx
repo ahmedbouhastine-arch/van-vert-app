@@ -54,7 +54,7 @@ export default function AuditLogPage() {
             <Card>
                 <CardHeader>
                     <CardTitle>Activity Log</CardTitle>
-                    <CardDescription>Actions are logged with the administrator's details and timestamp.</CardDescription>
+                    <CardDescription>Actions are logged with the administrator&apos;s details and timestamp.</CardDescription>
                 </CardHeader>
                 <CardContent>
                     <Table>

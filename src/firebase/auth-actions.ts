@@ -3,11 +3,11 @@
 
 import { GoogleAuthProvider, signInWithPopup, Auth } from "firebase/auth";
 import { doc, setDoc, serverTimestamp, Firestore, getDoc, updateDoc } from "firebase/firestore";
-import { useToast } from "@/hooks/use-toast";
 
-export const signInWithGoogle = async (auth: Auth, firestore: Firestore): Promise<boolean> => {
+export type SignInWithGoogleResult = { success: boolean; error?: string };
+
+export const signInWithGoogle = async (auth: Auth, firestore: Firestore): Promise<SignInWithGoogleResult> => {
     const provider = new GoogleAuthProvider();
-    const { toast } = useToast();
 
     try {
         const result = await signInWithPopup(auth, provider);
@@ -17,15 +17,12 @@ export const signInWithGoogle = async (auth: Auth, firestore: Firestore): Promis
         const docSnap = await getDoc(userRef);
 
         if (docSnap.exists()) {
-            // Existing user: Update profile info that might change from Google,
-            // but leave role and createdAt untouched to preserve admin changes.
             await updateDoc(userRef, {
                 displayName: user.displayName,
                 email: user.email,
                 photoURL: user.photoURL,
             });
         } else {
-            // New user: Create the document with an initial role and timestamp.
             await setDoc(userRef, {
                 displayName: user.displayName,
                 email: user.email,
@@ -34,17 +31,13 @@ export const signInWithGoogle = async (auth: Auth, firestore: Firestore): Promis
                 createdAt: serverTimestamp(),
             });
         }
-        return true;
-    } catch (error: any) {
+        return { success: true };
+    } catch (error: unknown) {
+        const err = (error as { code?: unknown; message?: unknown }) || {};
         // The user closing the popup is a normal flow, not an error to show.
-        if (error.code === 'auth/popup-closed-by-user') {
-            return false;
+        if (typeof err.code === 'string' && err.code === 'auth/popup-closed-by-user') {
+            return { success: false };
         }
-        toast({
-            variant: 'destructive',
-            title: 'Login Failed',
-            description: error.message,
-        });
-        return false;
+        return { success: false, error: typeof err.message === 'string' ? err.message : 'Login failed' };
     }
 };

@@ -101,20 +101,20 @@ export default function RegisterPage() {
                     throw innerError; // Rethrow to be caught by the outer .catch
                 }
             })
-            .catch((error: any) => {
-                let description = error.message;
-                if (error.code === 'auth/email-already-in-use') {
-                    description = "An account with this email already exists. Please log in.";
+            .catch((error: unknown) => {
+                const err = (error as { code?: unknown; message?: unknown }) || {};
+                let description = 'An unexpected error occurred during sign-up. Please try again.';
+                if (typeof err.code === 'string' && err.code === 'auth/email-already-in-use') {
+                    description = 'An account with this email already exists. Please log in.';
                 } else {
-                    console.error("Registration Error: ", error); 
-                    description = "An unexpected error occurred. Please try again.";
+                    console.error('Registration Error: ', error);
                 }
                 toast({
                     variant: 'destructive',
                     title: 'Registration Failed',
                     description: description,
                 });
-                setIsSubmitting(false);
+                setIsSubmitting(false); // Only re-enable form on failure
             });
     }
 

@@ -46,7 +46,7 @@ export default function GlobalError({
               Application Error
             </h1>
             <p className="max-w-md text-muted-foreground">
-              We're sorry, but something went wrong. The application has encountered an unrecoverable error. For your security, you have been logged out.
+              We&apos;re sorry, but something went wrong. The application has encountered an unrecoverable error. For your security, you have been logged out.
             </p>
             <Button onClick={handleReturnToLogin}>
               Return to Login Page

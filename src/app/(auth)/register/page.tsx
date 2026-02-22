@@ -100,12 +100,14 @@ export default function RegisterPage() {
                 
                 try {
                     if (avatarFile) {
-                        const uploadFormData = new FormData();
-                        uploadFormData.append('userId', user.uid);
-                        uploadFormData.append('file', avatarFile);
+                      const uploadFormData = new FormData();
+                      uploadFormData.append('userId', user.uid);
+                      uploadFormData.append('file', avatarFile);
+                      const idToken = await user.getIdToken();
+                      uploadFormData.append('idToken', idToken);
 
-                        const uploadResult = await serverActions.uploadProfilePictureAction(uploadFormData);
-                        photoURL = uploadResult.photoURL;
+                      const uploadResult = await serverActions.uploadProfilePictureAction(uploadFormData);
+                      photoURL = uploadResult.photoURL;
                     }
 
                     await Promise.all([
@@ -133,32 +135,37 @@ export default function RegisterPage() {
                     throw dbError;
                 }
             })
-            .catch((error: any) => {
-                let description = "An unexpected error occurred during sign-up. Please try again.";
-                if (error.code === 'auth/email-already-in-use') {
-                    description = "An account with this email already exists. Please log in.";
-                } else {
-                    console.error("Registration Error: ", error); 
-                }
-                toast({
-                    variant: 'destructive',
-                    title: 'Registration Failed',
-                    description: description,
-                });
-                setIsSubmitting(false); // Only re-enable form on failure
+            .catch((error: unknown) => {
+              const err = (error as { code?: unknown; message?: unknown }) || {};
+              let description = 'An unexpected error occurred during sign-up. Please try again.';
+              if (typeof err.code === 'string' && err.code === 'auth/email-already-in-use') {
+                description = 'An account with this email already exists. Please log in.';
+              } else {
+                console.error('Registration Error: ', error);
+              }
+              toast({
+                variant: 'destructive',
+                title: 'Registration Failed',
+                description: description,
+              });
+              setIsSubmitting(false); // Only re-enable form on failure
             });
     }
 
     const handleGoogleLogin = async () => {
-        if (!firestore) {
-            toast({
-                variant: 'destructive',
-                title: 'Error',
-                description: 'Cannot connect to the database. Please try again later.',
-            });
-            return;
-        }
-        await signInWithGoogle(auth, firestore);
+      if (!firestore) {
+        toast({
+          variant: 'destructive',
+          title: 'Error',
+          description: 'Cannot connect to the database. Please try again later.',
+        });
+        return;
+      }
+      const result = await signInWithGoogle(auth, firestore);
+      if (result.success) return;
+      if (result.error) {
+        toast({ variant: 'destructive', title: 'Login Failed', description: result.error });
+      }
     }
 
     // Show loading screen while auth state is loading OR if the user is logged in but claims are not yet loaded.

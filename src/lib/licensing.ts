@@ -1,5 +1,6 @@
 
 import type { LicenseType, DocumentRequirement } from '@/types';
+export type { LicenseType } from '@/types';
 
 // This file contains the definitions for document requirements and license types.
 

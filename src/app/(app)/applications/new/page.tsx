@@ -16,6 +16,7 @@ import { useToast } from '@/hooks/use-toast';
 import { LoadingScreen } from "@/components/LoadingScreen";
 import { useRouter } from "next/navigation";
 import * as serverActions from "@/app/actions";
+import { useAuth } from '@/firebase';
 
 
 function NewApplicationButton({ licenseType }: { licenseType: LicenseType }) {
@@ -23,6 +24,7 @@ function NewApplicationButton({ licenseType }: { licenseType: LicenseType }) {
   const { user } = useUser();
   const router = useRouter();
   const { toast } = useToast();
+  const auth = useAuth();
 
   const handleCreateApplication = async () => {
     if (!user) {
@@ -36,7 +38,8 @@ function NewApplicationButton({ licenseType }: { licenseType: LicenseType }) {
 
     setIsCreating(true);
     try {
-      const { applicationId } = await serverActions.createApplicationAction(licenseType.id);
+      const idToken = await auth.currentUser?.getIdToken();
+      const { applicationId } = await serverActions.createApplicationAction(licenseType.id, idToken);
       
       toast({
         title: "Application Created",
@@ -45,12 +48,13 @@ function NewApplicationButton({ licenseType }: { licenseType: LicenseType }) {
 
       router.push(`/applications/${applicationId}`);
 
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const err = (error as { message?: unknown }) || {};
       console.error("Error creating application:", error);
       toast({
         variant: "destructive",
         title: "Failed to Create Application",
-        description: error.message,
+        description: typeof err.message === 'string' ? err.message : 'Failed to create application.',
       });
       setIsCreating(false);
     }

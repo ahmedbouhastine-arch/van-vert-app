@@ -213,13 +213,16 @@ export function ApplicationClient({
             reader.onerror = (error) => reject(error);
         });
 
-        const { publicUrl, expiryDate: detectedExpiryDate } = await uploadDocumentAction(
-            appState.id,
-            activeUploadDocId,
-            dataUrl,
-            file.name,
-            docDefinition.requiresExpiry,
-        );
+        // Convert data URL to a Blob/File so the server action receives a proper File object
+        const blob = await (await fetch(dataUrl)).blob();
+        const fileObj = new File([blob], file.name, { type: blob.type });
+        const fd = new FormData();
+        fd.set('applicationId', appState.id);
+        fd.set('docId', activeUploadDocId);
+        fd.set('file', fileObj as any);
+        fd.set('requiresExpiry', docDefinition.requiresExpiry ? 'true' : 'false');
+
+        const { publicUrl, expiryDate: detectedExpiryDate } = await uploadDocumentAction(fd as any);
 
         if (detectedExpiryDate) {
             toast({ title: 'AI Success!', description: `Detected expiry date: ${format(new Date(detectedExpiryDate), 'PPP')}` });
@@ -245,14 +248,15 @@ export function ApplicationClient({
         
         handlePersistChanges({ documents: newDocuments }, { title: "Upload Successful", description: `${file.name} has been uploaded and saved.` });
 
-    } catch (error: any) {
-        console.error("Upload failed:", error);
-        toast({
-            variant: "destructive",
-            title: "Upload Failed",
-            description: error.message || "There was an error uploading your file.",
-        });
-        setAppState(initialApplication);
+    } catch (error: unknown) {
+      const err = (error as { message?: unknown }) || {};
+      console.error("Upload failed:", error);
+      toast({
+        variant: "destructive",
+        title: "Upload Failed",
+        description: typeof err.message === 'string' ? err.message : "There was an error uploading your file.",
+      });
+      setAppState(initialApplication);
     } finally {
         setUploadingDocId(null);
         setActiveUploadDocId(null);
@@ -372,11 +376,14 @@ export function ApplicationClient({
             reader.onerror = (error) => reject(error);
         });
         
-        const { publicUrl, extractedLogs } = await uploadFlightLogAction(
-            appState.id,
-            pdfDataUri,
-            file.name,
-        );
+        // Convert data URI to Blob/File and send as FormData to server action
+        const pdfBlob = await (await fetch(pdfDataUri)).blob();
+        const pdfFile = new File([pdfBlob], file.name, { type: pdfBlob.type });
+        const fd = new FormData();
+        fd.set('applicationId', appState.id);
+        fd.set('file', pdfFile as any);
+
+        const { publicUrl, extractedLogs } = await uploadFlightLogAction(fd as any);
 
         setAppState(prev => ({ ...prev, flightLogs: extractedLogs, flightLogPdfUrl: publicUrl }));
         
@@ -385,13 +392,14 @@ export function ApplicationClient({
             description: `${extractedLogs.length} recent flight logs have been extracted and saved.`,
         });
 
-    } catch (error: any) {
-        console.error("Flight log processing failed:", error);
-        toast({
-            variant: "destructive",
-            title: "Processing Failed",
-            description: error.message || "Could not process the flight log PDF. Please try again.",
-        });
+    } catch (error: unknown) {
+      const err = (error as { message?: unknown }) || {};
+      console.error("Flight log processing failed:", error);
+      toast({
+        variant: "destructive",
+        title: "Processing Failed",
+        description: typeof err.message === 'string' ? err.message : "Could not process the flight log PDF. Please try again.",
+      });
     } finally {
         setIsUploadingLog(false);
         if (logPdfInputRef.current) {

@@ -16,11 +16,11 @@ import { getAuthenticatedUser } from '@/lib/auth';
  * @param error The error object caught.
  * @param context A string identifying where the error occurred (e.g., the function name).
  */
-function handleServerAuthError(error: any, context: string) {
-    const errorMessage = error.message?.toLowerCase() || '';
-    const errorCode = error.code;
+function handleServerAuthError(error: unknown, context: string) {
+    const err = (error as { message?: unknown; code?: unknown }) || {};
+    const errorMessage = typeof err.message === 'string' ? err.message.toLowerCase() : '';
+    const errorCode = err.code;
 
-    // Check for common signs of authentication/permission issues on the server
     const isAuthError =
         errorCode === 7 || // gRPC code for PERMISSION_DENIED
         errorCode === 'PERMISSION_DENIED' ||
@@ -32,7 +32,6 @@ function handleServerAuthError(error: any, context: string) {
 
     if (isAuthError) {
         console.error(`Authentication/Permission Error in ${context}:`, error);
-        // Throw a new, more descriptive error to guide the user.
         throw new Error(
             `Authentication failed on the server. This is likely an IAM permission issue with the App Hosting service account. Please ensure the service account has the 'Storage Object Admin' and 'Vertex AI User' roles in your Google Cloud project.`
         );
@@ -53,10 +52,24 @@ async function withTimeout<T>(promise: Promise<T>, timeoutMs: number = 120000): 
     ]);
 }
 
-async function uploadStreamToStorage(bucket: any, path: string, stream: ReadableStream, mimeType: string) {
+type StorageFile = {
+    createWriteStream: (opts?: Record<string, unknown>) => {
+        write: (chunk: unknown) => void;
+        end: () => void;
+        on: (ev: string, cb: (...args: unknown[]) => void) => void;
+        destroy?: () => void;
+    };
+};
+
+type StorageBucket = {
+    file: (path: string) => StorageFile;
+    name?: string;
+};
+
+async function uploadStreamToStorage(bucket: StorageBucket, path: string, stream: ReadableStream, mimeType: string) {
     const file = bucket.file(path);
     const writeStream = file.createWriteStream({
-        metadata: { contentType: mimeType },
+        metadata: { contentType: mimeType } as Record<string, unknown>,
         public: true,
     });
 
@@ -65,23 +78,24 @@ async function uploadStreamToStorage(bucket: any, path: string, stream: Readable
         while (true) {
             const { done, value } = await reader.read();
             if (done) break;
-            writeStream.write(value);
+            // value is a Uint8Array chunk for readable streams
+            writeStream.write(value as unknown);
         }
         writeStream.end();
 
         return new Promise<string>((resolve, reject) => {
             writeStream.on('finish', () => resolve(`https://storage.googleapis.com/${bucket.name}/${path}`));
-            writeStream.on('error', reject);
+            writeStream.on('error', (...args: unknown[]) => reject(args[0]));
         });
     } catch (error) {
-        writeStream.destroy();
+        if (typeof writeStream.destroy === 'function') writeStream.destroy();
         throw error;
     }
 }
 
-export async function uploadFlightLogAction(formData: FormData): Promise<{ publicUrl: string; extractedLogs: FlightLog[]; logbookFormat: LogbookFormat; }> {
+export async function uploadFlightLogAction(formData: FormData, idToken?: string): Promise<{ publicUrl: string; extractedLogs: FlightLog[]; logbookFormat: LogbookFormat; }> {
     try {
-        await getAuthenticatedUser();
+        await getAuthenticatedUser(idToken);
         const file = formData.get('file') as File;
         const applicationId = formData.get('applicationId') as string;
         if (!file || !applicationId) throw new Error("Missing file or application ID.");
@@ -102,17 +116,17 @@ export async function uploadFlightLogAction(formData: FormData): Promise<{ publi
         }));
 
         return { publicUrl, extractedLogs, logbookFormat };
-    } catch(e: any) {
+    } catch (e: unknown) {
         handleServerAuthError(e, 'uploadFlightLogAction');
-        throw e;
     }
 }
 
 export async function createApplicationAction(
     licenseId: string,
+    idToken?: string,
 ): Promise<{ applicationId: string }> {
     try {
-        const user = await getAuthenticatedUser();
+        const user = await getAuthenticatedUser(idToken);
         const licenseType = licenseTypes.find(lt => lt.id === licenseId);
         if (!licenseType) throw new Error(`License type with ID "${licenseId}" not found.`);
 
@@ -148,15 +162,15 @@ export async function createApplicationAction(
         
         await adminFirestore.collection('applications').doc(newAppId).set(appData);
         return { applicationId: newAppId };
-    } catch(e: any) {
+    } catch (e: unknown) {
         handleServerAuthError(e, 'createApplicationAction');
-        throw e;
     }
 }
 
-export async function uploadDocumentAction(formData: FormData): Promise<{ publicUrl: string, expiryDate: string | null, mimeType: string }> {
+export async function uploadDocumentAction(formData: FormData, idToken?: string): Promise<{ publicUrl: string, expiryDate: string | null, mimeType: string }> {
     try {
-        await getAuthenticatedUser();
+        const token = idToken ?? (formData.get('idToken') as string | undefined);
+        await getAuthenticatedUser(token);
         const file = formData.get('file') as File;
         const applicationId = formData.get('applicationId') as string;
         const docId = formData.get('docId') as string;
@@ -175,15 +189,15 @@ export async function uploadDocumentAction(formData: FormData): Promise<{ public
         }
 
         return { publicUrl, expiryDate: detectedExpiryDate, mimeType: file.type };
-    } catch (e: any) {
+    } catch (e: unknown) {
         handleServerAuthError(e, 'uploadDocumentAction');
-        throw e;
     }
 }
 
-export async function uploadProfilePictureAction(formData: FormData): Promise<{ photoURL: string }> {
+export async function uploadProfilePictureAction(formData: FormData, idToken?: string): Promise<{ photoURL: string }> {
     try {
-        const user = await getAuthenticatedUser();
+        const token = idToken ?? (formData.get('idToken') as string | undefined);
+        const user = await getAuthenticatedUser(token);
         const file = formData.get('file') as File;
         if (!file) throw new Error("No file provided for profile picture.");
         
@@ -193,18 +207,18 @@ export async function uploadProfilePictureAction(formData: FormData): Promise<{ 
         const photoURL = await uploadStreamToStorage(bucket, storagePath, file.stream(), file.type);
         
         return { photoURL };
-    } catch(e: any) {
+    } catch (e: unknown) {
         handleServerAuthError(e, 'uploadProfilePictureAction');
-        throw e;
     }
 }
 
 export async function getExpiryDateForSingleDocumentAction(
     applicationId: string,
     docId: string
+    , idToken?: string
 ): Promise<{ expiryDate: string | null }> {
     try {
-        await getAuthenticatedUser();
+        await getAuthenticatedUser(idToken);
         const appRef = adminFirestore.collection('applications').doc(applicationId);
         const appSnapshot = await appRef.get();
         if (!appSnapshot.exists) throw new Error("Application not found.");
@@ -216,8 +230,7 @@ export async function getExpiryDateForSingleDocumentAction(
         // For Storage URLs, you might need to fetch the content and convert to a data URI if the AI requires it.
         const { expiryDate } = await withTimeout(extractExpiryDate({ documentDataUri: docToProcess.fileUrl }));
         return { expiryDate: expiryDate || null };
-    } catch(e: any) {
+    } catch (e: unknown) {
         handleServerAuthError(e, 'getExpiryDateForSingleDocumentAction');
-        throw e;
     }
 }
