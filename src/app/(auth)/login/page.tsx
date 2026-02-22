@@ -33,12 +33,12 @@ export default function LoginPage() {
     const [isSubmitting, setIsSubmitting] = useState(false);
 
     useEffect(() => {
-        // If the user is already logged in, redirect them away from the login page.
-        if (!loading && user) {
-            // The destination dashboard/layout will handle role-based redirects and loading claims.
+        // If a user session exists, redirect immediately.
+        // The destination page will handle claims/role loading.
+        if (user) {
             router.push('/dashboard');
         }
-    }, [user, loading, router]);
+    }, [user, router]);
 
     const handleLogin = async (event: React.FormEvent<HTMLFormElement>) => {
         event.preventDefault();
@@ -83,7 +83,8 @@ export default function LoginPage() {
         }
     }
 
-    // Show loading screen while auth state is loading or if a user is detected.
+    // Show loading screen while the initial auth state is being determined,
+    // or if a user has been found and we're redirecting them.
     if (loading || user) {
       return <LoadingScreen text="Authenticating..." />;
     }
