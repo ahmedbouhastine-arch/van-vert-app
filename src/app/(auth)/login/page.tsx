@@ -2,7 +2,7 @@
 "use client";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -32,14 +32,6 @@ export default function LoginPage() {
     const [showPassword, setShowPassword] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
 
-    useEffect(() => {
-        // If a user session exists, redirect immediately.
-        // The destination page will handle claims/role loading.
-        if (user) {
-            router.push('/dashboard');
-        }
-    }, [user, router]);
-
     const handleLogin = async (event: React.FormEvent<HTMLFormElement>) => {
         event.preventDefault();
         setIsSubmitting(true);
@@ -59,8 +51,7 @@ export default function LoginPage() {
                 },
             });
             
-            // On success, redirect immediately. The `useEffect` will also catch this state
-            // on subsequent renders, but this makes the redirect feel faster.
+            // On success, redirect. The middleware will have the session cookie and allow access.
             router.push('/dashboard');
         } catch (error: any) {
             let description = "An unexpected error occurred. Please try again.";
@@ -93,9 +84,9 @@ export default function LoginPage() {
         }
     }
 
-    // Show loading screen while the initial auth state is being determined,
-    // or if a user has been found and we're redirecting them.
-    if (loading || user) {
+    // Show a loading screen while the initial user state is being determined.
+    // If a user is found, the middleware will handle redirection.
+    if (loading) {
       return <LoadingScreen text="Authenticating..." />;
     }
 

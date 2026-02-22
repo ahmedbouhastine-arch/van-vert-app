@@ -3,23 +3,27 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
 const protectedRoutes = ['/dashboard', '/admin', '/applications', '/profile', '/settings'];
+const publicRoutes = ['/login', '/register', '/forgot-password', '/verify-email'];
 
-// This function can be marked `async` if using `await` inside
 export function middleware(request: NextRequest) {
-    // We will get the session cookie from the browser
     const sessionCookie = request.cookies.get('session');
     const requestedUrl = request.nextUrl.pathname;
 
     const isProtectedRoute = protectedRoutes.some(route => requestedUrl.startsWith(route));
+    const isPublicRoute = publicRoutes.includes(requestedUrl);
 
-    // Only apply auth redirection for page loads (GET requests) to avoid
-    // interfering with server action POST requests, which handle their own auth.
-    if (request.method === 'GET' && isProtectedRoute && !sessionCookie) {
-        const absoluteLoginUrl = new URL('/login', request.url);
-        return NextResponse.redirect(absoluteLoginUrl);
+    // If user has a session cookie and tries to access a public auth page, redirect them to the dashboard.
+    if (sessionCookie && isPublicRoute) {
+        return NextResponse.redirect(new URL('/dashboard', request.url));
     }
 
-    // If the user has a session or is accessing a public route, allow the request to proceed.
+    // If user does not have a session cookie and tries to access a protected route, redirect them to login.
+    // This check is only for GET requests to avoid interfering with API-like server action POSTs.
+    if (!sessionCookie && isProtectedRoute && request.method === 'GET') {
+        return NextResponse.redirect(new URL('/login', request.url));
+    }
+
+    // Allow the request to proceed.
     return NextResponse.next();
 }
 

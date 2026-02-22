@@ -1,8 +1,9 @@
+
 "use client";
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState, useEffect, useRef } from "react";
+import { useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -16,7 +17,7 @@ import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { CheckCircle2, XCircle, Eye, EyeOff, Loader2, User as UserIcon, Camera } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { getAuth, createUserWithEmailAndPassword, updateProfile, deleteUser, type UserCredential } from "firebase/auth";
+import { getAuth, createUserWithEmailAndPassword, updateProfile, deleteUser } from "firebase/auth";
 import { useFirebaseApp, useFirestore, useUser } from "@/firebase";
 import { doc, setDoc, serverTimestamp } from "firebase/firestore";
 import { GoogleIcon } from "@/components/GoogleIcon";
@@ -46,17 +47,7 @@ export default function RegisterPage() {
     const app = useFirebaseApp();
     const auth = getAuth(app);
     const firestore = useFirestore();
-    const { user, loading, claims } = useUser();
-
-    useEffect(() => {
-        // Wait until loading is complete and we have user and claims data.
-        if (!loading && user && claims) {
-            // Check user's role and redirect to the appropriate dashboard.
-            const isAdmin = ['reviewer', 'admin', 'head-admin'].includes(claims.role);
-            const homePath = isAdmin ? '/admin' : '/dashboard';
-            router.push(homePath);
-        }
-    }, [user, loading, claims, router]);
+    const { loading } = useUser();
 
     const validatedRequirements = passwordRequirements.map(req => ({
         ...req,
@@ -108,6 +99,15 @@ export default function RegisterPage() {
                         photoURL = uploadResult.photoURL;
                     }
 
+                    // Create session cookie before doing anything else
+                    const idToken = await user.getIdToken();
+                    await fetch('/api/auth/session', {
+                        method: 'POST',
+                        headers: {
+                            'Authorization': `Bearer ${idToken}`
+                        }
+                    });
+
                     await Promise.all([
                         updateProfile(user, { displayName: fullName, photoURL }),
                         firestore ? setDoc(doc(firestore, "users", user.uid), {
@@ -123,7 +123,10 @@ export default function RegisterPage() {
                         title: "Registration successful!",
                         description: "You are now logged in and will be redirected.",
                     });
-                    // The useEffect will handle the redirect, keep submitting true
+
+                    // Redirect after everything is successful
+                    router.push('/dashboard');
+
                 } catch (dbError) {
                     // If DB write fails after auth user creation, delete the auth user for consistency
                     await deleteUser(user).catch(deleteError => {
@@ -158,11 +161,13 @@ export default function RegisterPage() {
             });
             return;
         }
-        await signInWithGoogle(auth, firestore);
+        const success = await signInWithGoogle(auth, firestore);
+        if (success) {
+            router.push('/dashboard');
+        }
     }
 
-    // Show loading screen while auth state is loading OR if the user is logged in but claims are not yet loaded.
-    if (loading || (user && !claims)) {
+    if (loading) {
         return <LoadingScreen text="Finalizing account setup..."/>;
     }
 

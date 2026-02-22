@@ -4,7 +4,7 @@
 import React, { DependencyList, createContext, useContext, ReactNode, useMemo, useState, useEffect } from 'react';
 import { FirebaseApp } from 'firebase/app';
 import { Firestore, doc, onSnapshot, DocumentData } from 'firebase/firestore';
-import { Auth, User, onAuthStateChanged } from 'firebase/auth';
+import { Auth, User, onAuthStateChanged, signOut } from 'firebase/auth';
 import { Storage } from 'firebase/storage';
 import { FirebaseErrorListener } from '@/components/FirebaseErrorListener'
 
@@ -91,40 +91,44 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
       auth,
       (authUser) => {
         if (authUser) {
-
-            // Asynchronously set the session cookie for server-side rendering
+            // User is authenticated on the client.
+            // Create the server-side session cookie, then load claims.
             authUser.getIdToken().then(idToken => {
                 fetch('/api/auth/session', {
                     method: 'POST',
-                    headers: {
-                        'Authorization': `Bearer ${idToken}`
+                    headers: { 'Authorization': `Bearer ${idToken}` }
+                })
+                .then(() => {
+                    // Session cookie created. Now load user claims.
+                    if (!firestore) {
+                        setUserAuthState({ user: authUser, claims: null, isUserLoading: false, userError: new Error("Firestore not available") });
+                        return () => {};
                     }
-                }).catch(err => {
-                    // This might happen if the API route isn't available yet,
-                    // but it shouldn't block the user experience.
-                    console.error("Failed to set session cookie during auth state change:", err);
+                    const userDocRef = doc(firestore, `users/${authUser.uid}`);
+                    const unsubscribeClaims = onSnapshot(userDocRef, 
+                        (snapshot) => {
+                            const userClaims = snapshot.data() || null;
+                            setUserAuthState({ user: authUser, claims: userClaims, isUserLoading: false, userError: null });
+                        },
+                        (error) => {
+                            console.error("FirebaseProvider: onSnapshot error:", error);
+                            setUserAuthState({ user: authUser, claims: null, isUserLoading: false, userError: error });
+                        }
+                    );
+                    return unsubscribeClaims;
+                })
+                .catch(err => {
+                    // This is a critical failure. The server session could not be created.
+                    console.error("Fatal: Failed to set session cookie. Logging out.", err);
+                    signOut(auth); // Force logout for safety.
+                    setUserAuthState({ user: null, claims: null, isUserLoading: false, userError: err });
                 });
             });
-
-            if (!firestore) {
-                setUserAuthState({ user: authUser, claims: null, isUserLoading: false, userError: new Error("Firestore not available") });
-                return;
-            }
-            const userDocRef = doc(firestore, `users/${authUser.uid}`);
-            const unsubscribeClaims = onSnapshot(userDocRef, 
-                (snapshot) => {
-                const userClaims = snapshot.data() || null;
-                setUserAuthState({ user: authUser, claims: userClaims, isUserLoading: false, userError: null });
-                },
-                (error) => {
-                console.error("FirebaseProvider: onSnapshot error:", error);
-                setUserAuthState({ user: authUser, claims: null, isUserLoading: false, userError: error });
-                }
-            );
-            // Return the inner unsubscribe function to clean up the snapshot listener
-            return () => unsubscribeClaims();
         } else {
-          setUserAuthState({ user: null, claims: null, isUserLoading: false, userError: null });
+          // User is signed out. Clear the server session cookie.
+          fetch('/api/auth/session/logout', { method: 'POST' }).finally(() => {
+             setUserAuthState({ user: null, claims: null, isUserLoading: false, userError: null });
+          });
         }
       },
       (error) => {
@@ -133,7 +137,6 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
       }
     );
   
-    // Return the outer unsubscribe function to clean up the auth state listener
     return () => unsubscribeAuth();
   }, [auth, firestore]);
 
