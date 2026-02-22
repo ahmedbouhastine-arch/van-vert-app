@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { DependencyList, createContext, useContext, ReactNode, useMemo, useState, useEffect } from 'react';
@@ -90,23 +91,38 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
       auth,
       (authUser) => {
         if (authUser) {
-          if (!firestore) {
-            setUserAuthState({ user: authUser, claims: null, isUserLoading: false, userError: new Error("Firestore not available") });
-            return;
-          }
-          const userDocRef = doc(firestore, `users/${authUser.uid}`);
-          const unsubscribeClaims = onSnapshot(userDocRef, 
-            (snapshot) => {
-              const userClaims = snapshot.data() || null;
-              setUserAuthState({ user: authUser, claims: userClaims, isUserLoading: false, userError: null });
-            },
-            (error) => {
-              console.error("FirebaseProvider: onSnapshot error:", error);
-              setUserAuthState({ user: authUser, claims: null, isUserLoading: false, userError: error });
+
+            // Asynchronously set the session cookie for server-side rendering
+            authUser.getIdToken().then(idToken => {
+                fetch('/api/auth/session', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${idToken}`
+                    }
+                }).catch(err => {
+                    // This might happen if the API route isn't available yet,
+                    // but it shouldn't block the user experience.
+                    console.error("Failed to set session cookie during auth state change:", err);
+                });
+            });
+
+            if (!firestore) {
+                setUserAuthState({ user: authUser, claims: null, isUserLoading: false, userError: new Error("Firestore not available") });
+                return;
             }
-          );
-          // Return the inner unsubscribe function to clean up the snapshot listener
-          return () => unsubscribeClaims();
+            const userDocRef = doc(firestore, `users/${authUser.uid}`);
+            const unsubscribeClaims = onSnapshot(userDocRef, 
+                (snapshot) => {
+                const userClaims = snapshot.data() || null;
+                setUserAuthState({ user: authUser, claims: userClaims, isUserLoading: false, userError: null });
+                },
+                (error) => {
+                console.error("FirebaseProvider: onSnapshot error:", error);
+                setUserAuthState({ user: authUser, claims: null, isUserLoading: false, userError: error });
+                }
+            );
+            // Return the inner unsubscribe function to clean up the snapshot listener
+            return () => unsubscribeClaims();
         } else {
           setUserAuthState({ user: null, claims: null, isUserLoading: false, userError: null });
         }

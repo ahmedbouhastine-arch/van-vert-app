@@ -2,12 +2,12 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
-const protectedRoutes = ['/dashboard', '/admin', '/applications'];
+const protectedRoutes = ['/dashboard', '/admin', '/applications', '/profile', '/settings'];
 
 // This function can be marked `async` if using `await` inside
 export function middleware(request: NextRequest) {
     // We will get the session cookie from the browser
-    const sessionCookie = request.cookies.get('__session');
+    const sessionCookie = request.cookies.get('session');
     const requestedUrl = request.nextUrl.pathname;
 
     const isProtectedRoute = protectedRoutes.some(route => requestedUrl.startsWith(route));

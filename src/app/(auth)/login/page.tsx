@@ -48,7 +48,17 @@ export default function LoginPage() {
         const password = formData.get("password") as string;
         
         try {
-            await signInWithEmailAndPassword(auth, email, password);
+            const userCredential = await signInWithEmailAndPassword(auth, email, password);
+            const idToken = await userCredential.user.getIdToken();
+
+            await fetch('/api/auth/session', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${idToken}`,
+                },
+            });
+            
             // On success, redirect immediately. The `useEffect` will also catch this state
             // on subsequent renders, but this makes the redirect feel faster.
             router.push('/dashboard');
