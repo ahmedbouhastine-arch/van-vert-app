@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useTransition, useRef, useEffect } from "react";
@@ -30,7 +31,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { format } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
 import { checkRecency, type CheckRecencyOutput } from "@/ai/flows/check-recency";
-import { getExpiryDateForSingleDocumentAction, uploadDocumentAction, uploadFlightLogAction } from '@/app/actions';
+import * as serverActions from '@/app/actions';
 import { useFirestore, errorEmitter, FirestorePermissionError } from "@/firebase";
 import { doc, serverTimestamp, updateDoc, collection, addDoc } from "firebase/firestore";
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
@@ -233,7 +234,7 @@ export function ApplicationClient({
         formData.append('file', file);
         formData.append('requiresExpiry', docDefinition.requiresExpiry ? 'true' : 'false');
 
-        const { publicUrl, expiryDate: detectedExpiryDate, mimeType } = await uploadDocumentAction(formData);
+        const { publicUrl, expiryDate: detectedExpiryDate, mimeType } = await serverActions.uploadDocumentAction(formData);
 
         if (detectedExpiryDate) {
             toast({ title: 'AI Success!', description: `Detected expiry date: ${format(new Date(detectedExpiryDate), 'PPP')}` });
@@ -309,7 +310,7 @@ export function ApplicationClient({
         toast({ title: 'AI Check In Progress...', description: 'Analyzing document to find expiry date.' });
         
         try {
-            const { expiryDate } = await getExpiryDateForSingleDocumentAction(appState.id, docId);
+            const { expiryDate } = await serverActions.getExpiryDateForSingleDocumentAction(appState.id, docId);
 
             if (expiryDate) {
                 const newDocuments = appState.documents.map(doc => 
@@ -400,7 +401,7 @@ export function ApplicationClient({
         formData.append('applicationId', appState.id);
         formData.append('file', file);
 
-        const { publicUrl, extractedLogs } = await uploadFlightLogAction(formData);
+        const { publicUrl, extractedLogs } = await serverActions.uploadFlightLogAction(formData);
 
         setAppState(prev => ({ ...prev, flightLogs: extractedLogs, flightLogPdfUrl: publicUrl }));
         
