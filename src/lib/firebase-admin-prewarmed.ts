@@ -1,7 +1,5 @@
+import admin from 'firebase-admin';
 import { getApps, initializeApp, getApp } from 'firebase-admin/app';
-import { getAuth } from 'firebase-admin/auth';
-import { getFirestore } from 'firebase-admin/firestore';
-import { getStorage } from 'firebase-admin/storage';
 
 // Pre-warming Firebase Admin by initializing it at the module level.
 // This helps prevent cold start delays and ensures the SDK is ready.
@@ -16,8 +14,9 @@ function initializeAdmin() {
   return initializeApp();
 }
 
-const adminApp = initializeAdmin();
+initializeAdmin();
 
-export const adminAuth = getAuth(adminApp);
-export const adminFirestore = getFirestore(adminApp);
-export const adminStorage = getStorage(adminApp);
+// Use the namespaced API which can be more robust against bundler issues.
+export const adminAuth = admin.auth();
+export const adminFirestore = admin.firestore();
+export const adminStorage = admin.storage();
