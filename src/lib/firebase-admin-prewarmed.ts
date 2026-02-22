@@ -1,20 +1,22 @@
+
 import admin from 'firebase-admin';
-import { getApps, initializeApp, getApp } from 'firebase-admin/app';
+import { getApps, initializeApp } from 'firebase-admin/app';
+import { firebaseConfig } from '@/firebase/config';
 
 // Pre-warming Firebase Admin by initializing it at the module level.
 // This helps prevent cold start delays and ensures the SDK is ready.
-
-function initializeAdmin() {
-  if (getApps().length > 0) {
-    return getApp();
-  }
-
-  // When running on App Hosting, initializeApp() with no arguments
-  // automatically discovers the project configuration and credentials.
-  return initializeApp();
+if (getApps().length === 0) {
+  // When running on App Hosting, initializeApp() with no arguments and Application
+  // Default Credentials (ADC) is sufficient. However, for local development,
+  // the Admin SDK needs the project ID explicitly. Providing the config
+  // from a client-side file ensures it works in both scenarios without needing
+  // a separate server-side config file.
+  initializeApp({
+    credential: admin.credential.applicationDefault(),
+    projectId: firebaseConfig.projectId,
+    storageBucket: firebaseConfig.storageBucket,
+  });
 }
-
-initializeAdmin();
 
 // Use the namespaced API which can be more robust against bundler issues.
 export const adminAuth = admin.auth();
