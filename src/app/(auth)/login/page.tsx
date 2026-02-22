@@ -28,19 +28,17 @@ export default function LoginPage() {
     const app = useFirebaseApp();
     const auth = getAuth(app);
     const firestore = useFirestore();
-    const { user, loading, claims } = useUser();
+    const { user, loading } = useUser();
     const [showPassword, setShowPassword] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
 
     useEffect(() => {
-        // If the user is already logged in (e.g., from a previous session),
-        // this effect will redirect them to the correct dashboard once claims are loaded.
-        if (!loading && user && claims) {
-            const isAdmin = ['reviewer', 'admin', 'head-admin'].includes(claims.role);
-            const homePath = isAdmin ? '/admin' : '/dashboard';
-            router.push(homePath);
+        // If the user is already logged in, redirect them away from the login page.
+        if (!loading && user) {
+            // The destination dashboard/layout will handle role-based redirects and loading claims.
+            router.push('/dashboard');
         }
-    }, [user, loading, claims, router]);
+    }, [user, loading, router]);
 
     const handleLogin = async (event: React.FormEvent<HTMLFormElement>) => {
         event.preventDefault();
@@ -51,7 +49,8 @@ export default function LoginPage() {
         
         try {
             await signInWithEmailAndPassword(auth, email, password);
-            // On success, redirect immediately. The destination layout will handle loading claims.
+            // On success, redirect immediately. The `useEffect` will also catch this state
+            // on subsequent renders, but this makes the redirect feel faster.
             router.push('/dashboard');
         } catch (error: any) {
             let description = "An unexpected error occurred. Please try again.";
@@ -79,12 +78,13 @@ export default function LoginPage() {
         }
         const success = await signInWithGoogle(auth, firestore);
         if (success) {
+            // On success, redirect.
             router.push('/dashboard');
         }
     }
 
-    // Show loading screen while auth state is loading OR if the user is logged in but claims are not yet loaded.
-    if (loading || (user && !claims)) {
+    // Show loading screen while auth state is loading or if a user is detected.
+    if (loading || user) {
       return <LoadingScreen text="Authenticating..." />;
     }
 
