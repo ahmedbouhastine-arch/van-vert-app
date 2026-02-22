@@ -1,11 +1,10 @@
 
 import { NextResponse } from "next/server";
-import { auth } from "firebase-admin";
 import { getAuth } from "firebase-admin/auth";
-import { initFirebaseAdmin } from "@/firebase/admin-init";
+import { initializeAdminApp } from "@/firebase/admin-init";
 
 // Initialize Firebase Admin SDK
-initFirebaseAdmin();
+initializeAdminApp();
 
 export async function POST(request: Request) {
   try {
@@ -26,9 +25,10 @@ export async function POST(request: Request) {
     const response = NextResponse.json({ message: "Session created" });
     response.cookies.set("session", sessionCookie, {
       httpOnly: true,
-      secure: true,
+      secure: process.env.NODE_ENV === 'production',
       maxAge: expiresIn,
       path: "/",
+      sameSite: 'lax',
     });
 
     return response;
