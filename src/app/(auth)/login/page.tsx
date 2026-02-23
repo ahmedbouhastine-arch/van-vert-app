@@ -2,7 +2,7 @@
 "use client";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -14,9 +14,9 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
-import { getAuth, signInWithEmailAndPassword } from "firebase/auth";
+import { signInWithEmailAndPassword } from "firebase/auth";
 import { useToast } from "@/hooks/use-toast";
-import { useFirebaseApp, useUser, useFirestore } from "@/firebase";
+import { useAuth, useUser, useFirestore } from "@/firebase";
 import { GoogleIcon } from "@/components/GoogleIcon";
 import { LoadingScreen } from "@/components/LoadingScreen";
 import { Eye, EyeOff, Loader2 } from "lucide-react";
@@ -25,12 +25,20 @@ import { signInWithGoogle } from "@/firebase/auth-actions";
 export default function LoginPage() {
     const router = useRouter();
     const { toast } = useToast();
-    const app = useFirebaseApp();
-    const auth = getAuth(app);
+    const auth = useAuth();
     const firestore = useFirestore();
-    const { user, loading } = useUser();
+    const { user, loading, claims } = useUser();
     const [showPassword, setShowPassword] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
+
+    useEffect(() => {
+        // If auth state is loaded and we have a user with claims, redirect them.
+        if (!loading && user && claims) {
+            const isAdmin = ['reviewer', 'admin', 'head-admin'].includes(claims.role);
+            const homePath = isAdmin ? '/admin' : '/dashboard';
+            router.push(homePath);
+        }
+    }, [user, loading, claims, router]);
 
     const handleLogin = async (event: React.FormEvent<HTMLFormElement>) => {
         event.preventDefault();
@@ -42,8 +50,7 @@ export default function LoginPage() {
         try {
             await signInWithEmailAndPassword(auth, email, password);
             // On success, the onAuthStateChanged listener in FirebaseProvider
-            // will handle session creation, and the middleware will handle the redirect.
-            // A success toast provides immediate feedback.
+            // will fire, and the useEffect above will handle the redirect.
             toast({
               title: "Login Successful",
               description: "Redirecting to your dashboard...",
@@ -91,9 +98,10 @@ export default function LoginPage() {
         }
     }
 
-    // If a user is already logged in, the middleware should redirect them.
-    // This loading screen handles the initial auth check.
-    if (loading) {
+    // If a user is already logged in (or we are in the process of logging them in),
+    // the middleware or the useEffect will redirect them.
+    // This loading screen handles the initial auth check and post-login state.
+    if (loading || user) {
       return <LoadingScreen text="Authenticating..." />;
     }
 
