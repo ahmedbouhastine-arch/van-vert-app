@@ -3,7 +3,8 @@
  * @fileOverview Extracts flight log data from a PDF, now with format detection.
  */
 
-import { flow, generate, z } from '@genkit-ai/core';
+import { flow, generate } from '@genkit-ai/core/lib';
+import { z } from 'zod';
 
 // 1. INPUT SCHEMA (remains the same)
 const ExtractFlightLogsInputSchema = z.object({

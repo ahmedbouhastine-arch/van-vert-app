@@ -8,7 +8,8 @@
  * - FlagExpiringDocumentsOutput - The return type for the flagExpiringDocuments function.
  */
 
-import { flow, z } from '@genkit-ai/core';
+import { flow } from '@genkit-ai/core/lib';
+import { z } from 'zod';
 
 const FlagExpiringDocumentsInputSchema = z.object({
   documents: z.array(

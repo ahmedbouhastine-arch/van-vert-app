@@ -8,7 +8,8 @@
  * - CheckRecencyOutput - The return type for the checkRecency function.
  */
 
-import { flow, z } from '@genkit-ai/core';
+import { flow } from '@genkit-ai/core/lib';
+import { z } from 'zod';
 import { subMonths, isAfter } from 'date-fns';
 
 const FlightLogSchema = z.object({
