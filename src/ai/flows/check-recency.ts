@@ -8,8 +8,7 @@
  * - CheckRecencyOutput - The return type for the checkRecency function.
  */
 
-import {ai} from '../init';
-import {z} from 'genkit';
+import { flow, z } from '@genkit-ai/core';
 import { subMonths, isAfter } from 'date-fns';
 
 const FlightLogSchema = z.object({
@@ -32,7 +31,7 @@ export async function checkRecency(input: CheckRecencyInput): Promise<CheckRecen
   return checkRecencyFlow(input);
 }
 
-const checkRecencyFlow = ai.defineFlow(
+const checkRecencyFlow = flow(
   {
     name: 'checkRecencyFlow',
     inputSchema: CheckRecencyInputSchema,

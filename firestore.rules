@@ -51,10 +51,10 @@ service cloud.firestore {
       // Update (Full): Owners can update their own drafts. Admins can update any application.
       allow update: if request.auth != null && ((isOwner() && resource.data.status == 'draft') || isAdmin());
       
-      // Update (Partial): Reviewers can only update the 'documents' field and the 'updatedAt' timestamp.
+      // Update (Partial): Admins can update the 'documents' field and the 'updatedAt' timestamp.
       // This is a separate rule that grants them specific, limited write access.
       allow update: if request.auth != null && 
-                    isPrivileged() && 
+                    isAdmin() && 
                     request.resource.data.keys().hasOnly(['documents', 'updatedAt']);
       
       // Delete: Only the owner can delete their application.

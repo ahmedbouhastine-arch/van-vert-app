@@ -7,8 +7,7 @@
  * - ExtractExpiryDateOutput - The return type for the extractExpiryDate function.
  */
 
-import {ai} from '../init';
-import {z} from 'genkit';
+import { definePrompt, flow, z } from '@genkit-ai/core';
 
 const ExtractExpiryDateInputSchema = z.object({
   documentDataUri: z
@@ -28,7 +27,7 @@ export async function extractExpiryDate(input: ExtractExpiryDateInput): Promise<
   return extractExpiryDateFlow(input);
 }
 
-const prompt = ai.definePrompt({
+const prompt = definePrompt({
   name: 'extractExpiryDatePrompt',
   input: {schema: ExtractExpiryDateInputSchema},
   output: {schema: ExtractExpiryDateOutputSchema},
@@ -45,7 +44,7 @@ const prompt = ai.definePrompt({
   Document for processing: {{media url=documentDataUri}}`,
 });
 
-const extractExpiryDateFlow = ai.defineFlow(
+const extractExpiryDateFlow = flow(
   {
     name: 'extractExpiryDateFlow',
     inputSchema: ExtractExpiryDateInputSchema,

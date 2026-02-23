@@ -95,10 +95,20 @@ async function uploadStreamToStorage(bucket: StorageBucket, path: string, stream
 
 export async function uploadFlightLogAction(formData: FormData, idToken?: string): Promise<{ publicUrl: string; extractedLogs: FlightLog[]; logbookFormat: LogbookFormat; }> {
     try {
-        await getAuthenticatedUser(idToken);
+        const user = await getAuthenticatedUser(idToken);
         const file = formData.get('file') as File;
         const applicationId = formData.get('applicationId') as string;
         if (!file || !applicationId) throw new Error("Missing file or application ID.");
+
+        const appRef = adminFirestore.collection('applications').doc(applicationId);
+        const appSnapshot = await appRef.get();
+        if (!appSnapshot.exists) {
+            throw new Error("Application not found.");
+        }
+        const applicationData = appSnapshot.data() as Application;
+        if (applicationData.userId !== user.uid) {
+            throw new Error("User does not have permission to access this application.");
+        }
 
         const bucket = adminStorage.bucket();
 
@@ -167,12 +177,22 @@ export async function createApplicationAction(
 export async function uploadDocumentAction(formData: FormData, idToken?: string): Promise<{ publicUrl: string, expiryDate: string | null, mimeType: string }> {
     try {
         const token = idToken ?? (formData.get('idToken') as string | undefined);
-        await getAuthenticatedUser(token);
+        const user = await getAuthenticatedUser(token);
         const file = formData.get('file') as File;
         const applicationId = formData.get('applicationId') as string;
         const docId = formData.get('docId') as string;
         const requiresExpiry = formData.get('requiresExpiry') === 'true';
         if (!file || !applicationId || !docId) throw new Error("Missing required form data.");
+
+        const appRef = adminFirestore.collection('applications').doc(applicationId);
+        const appSnapshot = await appRef.get();
+        if (!appSnapshot.exists) {
+            throw new Error("Application not found.");
+        }
+        const applicationData = appSnapshot.data() as Application;
+        if (applicationData.userId !== user.uid) {
+            throw new Error("User does not have permission to access this application.");
+        }
         
         const bucket = adminStorage.bucket();
         
@@ -215,11 +235,14 @@ export async function getExpiryDateForSingleDocumentAction(
     , idToken?: string
 ): Promise<{ expiryDate: string | null }> {
     try {
-        await getAuthenticatedUser(idToken);
+        const user = await getAuthenticatedUser(idToken);
         const appRef = adminFirestore.collection('applications').doc(applicationId);
         const appSnapshot = await appRef.get();
         if (!appSnapshot.exists) throw new Error("Application not found.");
         const application = appSnapshot.data() as Application;
+        if (application.userId !== user.uid) {
+            throw new Error("User does not have permission to access this application.");
+        }
         const docToProcess = application.documents.find(d => d.id === docId);
         if (!docToProcess || !docToProcess.fileUrl) throw new Error("Invalid document for AI check.");
         

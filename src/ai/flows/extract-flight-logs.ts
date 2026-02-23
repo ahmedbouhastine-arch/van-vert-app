@@ -3,8 +3,7 @@
  * @fileOverview Extracts flight log data from a PDF, now with format detection.
  */
 
-import {ai} from '../init';
-import {z} from 'zod';
+import { flow, generate, z } from '@genkit-ai/core';
 
 // 1. INPUT SCHEMA (remains the same)
 const ExtractFlightLogsInputSchema = z.object({
@@ -34,12 +33,7 @@ export async function extractFlightLogs(input: ExtractFlightLogsInput): Promise<
 }
 
 // 3. AI FLOW (Updated with new prompt and logic)
-// Avoid using the unsafe `Function` type by casting to a specific callable
-// signature that accepts the expected parameters.
-const extractFlightLogsFlow = (ai as unknown as { defineFlow: (
-  config: unknown,
-  runner: (input: ExtractFlightLogsInput) => Promise<ExtractFlightLogsOutput | unknown>
-) => unknown }).defineFlow(
+const extractFlightLogsFlow = flow(
   {
     name: 'extractFlightLogsFlow',
     inputSchema: ExtractFlightLogsInputSchema,
@@ -49,7 +43,7 @@ const extractFlightLogsFlow = (ai as unknown as { defineFlow: (
     const mediaUrl = input.flightLogPdf || input.storagePath;
     if (!mediaUrl) throw new Error("No PDF source provided.");
 
-    const res: unknown = await ai.generate({
+    const res = await generate({
         model: 'googleai/gemini-2.0-flash',
         prompt: `You are an expert aviation administrator. Your task is to analyze the provided PDF logbook and perform two steps:
 
@@ -77,7 +71,7 @@ const extractFlightLogsFlow = (ai as unknown as { defineFlow: (
             }
         ]
     });
-    const output = (res as { output?: unknown } | null | undefined)?.output;
+    const output = res.output();
     if (!output) {
       return { flights: [], logbookFormat: 'simple' };
     }

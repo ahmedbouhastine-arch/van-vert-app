@@ -2,7 +2,7 @@
 'use client';
 
 import { GoogleAuthProvider, signInWithPopup, Auth } from "firebase/auth";
-import { doc, setDoc, serverTimestamp, Firestore, getDoc, updateDoc } from "firebase/firestore";
+import { doc, setDoc, serverTimestamp, Firestore, getDoc, updateDoc, runTransaction } from "firebase/firestore";
 
 export type SignInWithGoogleResult = { success: boolean; error?: string };
 
@@ -14,23 +14,27 @@ export const signInWithGoogle = async (auth: Auth, firestore: Firestore): Promis
         const user = result.user;
 
         const userRef = doc(firestore, "users", user.uid);
-        const docSnap = await getDoc(userRef);
 
-        if (docSnap.exists()) {
-            await updateDoc(userRef, {
-                displayName: user.displayName,
-                email: user.email,
-                photoURL: user.photoURL,
-            });
-        } else {
-            await setDoc(userRef, {
-                displayName: user.displayName,
-                email: user.email,
-                photoURL: user.photoURL,
-                role: user.email === 'head-admin@test.va' ? 'head-admin' : 'user',
-                createdAt: serverTimestamp(),
-            });
-        }
+        await runTransaction(firestore, async (transaction) => {
+            const docSnap = await transaction.get(userRef);
+
+            if (docSnap.exists()) {
+                transaction.update(userRef, {
+                    displayName: user.displayName,
+                    email: user.email,
+                    photoURL: user.photoURL,
+                });
+            } else {
+                transaction.set(userRef, {
+                    displayName: user.displayName,
+                    email: user.email,
+                    photoURL: user.photoURL,
+                    role: 'user', // Default role
+                    createdAt: serverTimestamp(),
+                });
+            }
+        });
+
         return { success: true };
     } catch (error: unknown) {
         const err = (error as { code?: unknown; message?: unknown }) || {};
