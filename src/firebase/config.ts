@@ -1,14 +1,9 @@
-
-// This file is intentionally left blank. 
-// The Firebase configuration will be injected automatically.
 export const firebaseConfig = {
-    "apiKey":"AIzaSyAYHlWqc5lF5dvxlNYs6k3Q3c_ukk4EyAQ",
-    "appId":"REDACTED_FIREBASE_APP_ID",
-    "authDomain":"REDACTED_FIREBASE_AUTH_DOMAIN",
-    "measurementId":"G-1WJ4K132Z7",
-    "messagingSenderId":"REDACTED_FIREBASE_SENDER_ID",
-    "projectId":"REDACTED_FIREBASE_PROJECT_ID",
-    "storageBucket": "REDACTED_FIREBASE_STORAGE_BUCKET"
+    apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
+    authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
+    projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
+    storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
+    messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
+    appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
+    measurementId: process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID,
 };
-
-

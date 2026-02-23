@@ -3,6 +3,25 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ArrowRight, Clock, FileText, MessageSquare, Plane } from "lucide-react";
 import Link from "next/link";
+import { FeatureCard } from "@/components/feature-card";
+
+const features = [
+  {
+    icon: FileText,
+    title: "Centralized Documents",
+    description: "Easily upload and manage all required documents, from your ID to medical certificates, in a secure digital hub.",
+  },
+  {
+    icon: Clock,
+    title: "Real-Time Tracking",
+    description: "Stay informed with live updates on your application status, from draft to approval, without any guesswork.",
+  },
+  {
+    icon: MessageSquare,
+    title: "Direct Communication",
+    description: "Receive direct feedback from administrators on your application and documents, ensuring clarity and quick resolutions.",
+  },
+];
 
 export default function HomePage() {
   return (
@@ -58,33 +77,9 @@ export default function HomePage() {
                     <p className="mt-2 text-muted-foreground">Everything you need for a smooth transition.</p>
                 </div>
                 <div className="grid gap-8 md:grid-cols-3">
-                    <Card>
-                        <CardHeader className="items-center">
-                            <FileText className="h-10 w-10 text-primary mb-2" />
-                            <CardTitle>Centralized Documents</CardTitle>
-                        </CardHeader>
-                        <CardContent className="text-center text-muted-foreground">
-                            Easily upload and manage all required documents, from your ID to medical certificates, in a secure digital hub.
-                        </CardContent>
-                    </Card>
-                     <Card>
-                        <CardHeader className="items-center">
-                            <Clock className="h-10 w-10 text-primary mb-2" />
-                            <CardTitle>Real-Time Tracking</CardTitle>
-                        </CardHeader>
-                        <CardContent className="text-center text-muted-foreground">
-                            Stay informed with live updates on your application status, from draft to approval, without any guesswork.
-                        </CardContent>
-                    </Card>
-                     <Card>
-                        <CardHeader className="items-center">
-                            <MessageSquare className="h-10 w-10 text-primary mb-2" />
-                            <CardTitle>Direct Communication</CardTitle>
-                        </CardHeader>
-                        <CardContent className="text-center text-muted-foreground">
-                            Receive direct feedback from administrators on your application and documents, ensuring clarity and quick resolutions.
-                        </CardContent>
-                    </Card>
+                  {features.map((feature) => (
+                    <FeatureCard key={feature.title} {...feature} />
+                  ))}
                 </div>
             </div>
         </section>
@@ -94,8 +89,8 @@ export default function HomePage() {
         <div className="container mx-auto flex h-16 items-center justify-between px-4 text-sm text-muted-foreground md:px-6">
           <p>&copy; {new Date().getFullYear()} Van-Vert. All rights reserved.</p>
            <nav className="flex items-center gap-4">
-            <Link href="#" className="hover:text-foreground">Privacy Policy</Link>
-            <Link href="#" className="hover:text-foreground">Terms of Service</Link>
+            <Link href="/privacy" className="hover:text-foreground">Privacy Policy</Link>
+            <Link href="/terms" className="hover:text-foreground">Terms of Service</Link>
           </nav>
         </div>
       </footer>
