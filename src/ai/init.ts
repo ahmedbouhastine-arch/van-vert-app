@@ -1,6 +1,6 @@
 'use server';
 import { gemini } from '@genkit-ai/googleai';
-import { configureGenkit } from '@genkit-ai/core/lib';
+import { configureGenkit } from '@genkit-ai/core';
 import { firebase } from '@genkit-ai/firebase';
 import { googleAI } from '@genkit-ai/googleai';
 

@@ -7,7 +7,7 @@
  * - ExtractExpiryDateOutput - The return type for the extractExpiryDate function.
  */
 
-import { definePrompt, flow } from '@genkit-ai/core/lib';
+import { definePrompt, flow } from '@genkit-ai/core';
 import { z } from 'zod';
 
 const ExtractExpiryDateInputSchema = z.object({

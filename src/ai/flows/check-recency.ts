@@ -8,7 +8,7 @@
  * - CheckRecencyOutput - The return type for the checkRecency function.
  */
 
-import { flow } from '@genkit-ai/core/lib';
+import { flow } from '@genkit-ai/core';
 import { z } from 'zod';
 import { subMonths, isAfter } from 'date-fns';
 
