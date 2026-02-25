@@ -1,5 +1,5 @@
-
 'use client';
+export const dynamic = 'force-dynamic';
 
 import { notFound, useParams, redirect } from "next/navigation";
 import { AdminApplicationClient } from "./_components/AdminApplicationClient";
