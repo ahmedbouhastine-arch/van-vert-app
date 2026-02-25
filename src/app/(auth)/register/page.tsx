@@ -1,5 +1,5 @@
-
-"use client";
+'use client';
+export const dynamic = 'force-dynamic';
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -259,7 +259,7 @@ export default function RegisterPage() {
                         {req.isValid ? (
                             <CheckCircle2 className="h-3.5 w-3.5 text-green-500" />
                         ) : (
-                            <XCircle className="h-3.5 w-3.5 text-red-500" />
+                            <XCircle className="h-3.5 w-3.s5 text-red-500" />
                         )}
                         <span>{req.text}</span>
                     </div>

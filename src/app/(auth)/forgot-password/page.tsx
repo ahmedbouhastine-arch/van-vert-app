@@ -1,4 +1,5 @@
-"use client";
+'use client';
+export const dynamic = 'force-dynamic';
 import Link from "next/link";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -54,7 +55,7 @@ export default function ForgotPasswordPage() {
         return (
             <Card>
                 <CardHeader className="items-center text-center">
-                    <Mail className="h-12 w-12 text-primary mb-4" />
+                    <Mail className="h-12 w-12 text-.primary mb-4" />
                     <CardTitle className="text-2xl font-headline">Check Your Inbox</CardTitle>
                     <CardDescription>
                         A password reset link has been sent to <span className="font-semibold text-foreground">{email}</span>. Please use the link to reset your password.
