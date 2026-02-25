@@ -1,5 +1,5 @@
-export const dynamic = 'force-dynamic';
 'use client';
+export const dynamic = 'force-dynamic';
 
 import { useUser } from "@/firebase";
 import { redirect } from "next/navigation";
