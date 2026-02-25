@@ -1,8 +1,7 @@
 'use client';
-export const dynamic = 'force-dynamic';
 import Link from "next/link";
-import React from "react";
-import { redirect } from "next/navigation";
+import React, { useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { PlusCircle, MoreHorizontal } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -39,18 +38,17 @@ import {
 import { StatusBadge } from "@/components/StatusBadge";
 import { format } from "date-fns";
 import { useUser, useFirestore, useCollection, useMemoFirebase } from "@/firebase";
-import { collection, query, where, orderBy, onSnapshot } from "firebase/firestore";
+import { collection, query, where, orderBy } from "firebase/firestore";
 import type { Application, FirebaseTimestamp } from "@/types";
 import { LoadingScreen } from "@/components/LoadingScreen";
 
-// Helper function to safely format dates, whether they are Timestamps or strings
+// Helper function to safely format dates
 const safeFormatDate = (date: FirebaseTimestamp | Date | string | undefined | null, formatString: string) => {
   if (!date) return 'N/A';
   try {
-    if (typeof date === 'object' && date && 'toDate' in date && typeof date.toDate === 'function') {
-      return format(date.toDate(), formatString);
-    }
-    return format(new Date(date as string), formatString);
+    const dateObj = (typeof date === 'object' && date && 'toDate' in date) ? date.toDate() : new Date(date as string);
+    if (isNaN(dateObj.getTime())) return "Invalid Date";
+    return format(dateObj, formatString);
   } catch (error) {
     console.error("Date formatting failed:", error);
     return "Invalid Date";
@@ -61,24 +59,27 @@ export default function DashboardPage() {
   const { user, claims, loading: userLoading } = useUser();
   const [selectedFeedback, setSelectedFeedback] = React.useState<string | null>(null);
   const firestore = useFirestore();
+  const router = useRouter();
+
+  // Redirect admins/reviewers away from the user dashboard
+  useEffect(() => {
+    if (!userLoading && claims && ['reviewer', 'admin', 'head-admin'].includes(claims.role)) {
+      router.push('/admin');
+    }
+  }, [userLoading, claims, router]);
 
   const userApplicationsQuery = useMemoFirebase(() => {
     if (!firestore || !user) return null;
-    // Query for applications where the userId matches the current user's ID, ordered by update time
     return query(collection(firestore, "applications"), where("userId", "==", user.uid), orderBy("updatedAt", "desc"));
   }, [firestore, user]);
-  
+
   const { data: userApplications, isLoading: appsLoading } = useCollection<Application>(userApplicationsQuery);
   
   const isLoading = userLoading || appsLoading;
 
-  if (userLoading) {
+  // To prevent flicker, show a loading screen while user data is loading or while redirecting.
+  if (userLoading || (claims && ['reviewer', 'admin', 'head-admin'].includes(claims.role))) {
     return <LoadingScreen text="Loading dashboard..." />;
-  }
-
-  // Redirect admins away from the user dashboard
-  if (claims && ['reviewer', 'admin', 'head-admin'].includes(claims.role)) {
-    redirect('/admin');
   }
 
   return (
@@ -112,50 +113,27 @@ export default function DashboardPage() {
               <TableRow>
                 <TableHead>License Type</TableHead>
                 <TableHead>Status</TableHead>
-                <TableHead className="hidden md:table-cell">
-                  Last Updated
-                </TableHead>
-                <TableHead>
-                  <span className="sr-only">Actions</span>
-                </TableHead>
+                <TableHead className="hidden md:table-cell">Last Updated</TableHead>
+                <TableHead><span className="sr-only">Actions</span></TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {isLoading ? (
-                <TableRow>
-                  <TableCell colSpan={4} className="h-24 text-center">Loading your applications...</TableCell>
-                </TableRow>
+                <TableRow><TableCell colSpan={4} className="h-24 text-center">Loading your applications...</TableCell></TableRow>
               ) : userApplications && userApplications.length > 0 ? (
                 userApplications.map((app) => (
                   <TableRow key={app.id}>
                     <TableCell className="font-medium">
-                      <Link href={`/applications/${app.id}`} className="hover:underline">
-                        {app.licenseType}
-                      </Link>
+                      <Link href={`/applications/${app.id}`} className="hover:underline">{app.licenseType}</Link>
                     </TableCell>
-                    <TableCell>
-                      <StatusBadge status={app.status} />
-                    </TableCell>
-                    <TableCell className="hidden md:table-cell">
-                      {safeFormatDate(app.updatedAt, "MMMM d, yyyy")}
-                    </TableCell>
+                    <TableCell><StatusBadge status={app.status} /></TableCell>
+                    <TableCell className="hidden md:table-cell">{safeFormatDate(app.updatedAt, "MMMM d, yyyy")}</TableCell>
                     <TableCell>
                       <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button
-                            aria-haspopup="true"
-                            size="icon"
-                            variant="ghost"
-                          >
-                            <MoreHorizontal className="h-4 w-4" />
-                            <span className="sr-only">Toggle menu</span>
-                          </Button>
-                        </DropdownMenuTrigger>
+                        <DropdownMenuTrigger asChild><Button aria-haspopup="true" size="icon" variant="ghost"><MoreHorizontal className="h-4 w-4" /><span className="sr-only">Toggle menu</span></Button></DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
                           <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                          <DropdownMenuItem asChild>
-                              <Link href={`/applications/${app.id}`}>View Details</Link>
-                          </DropdownMenuItem>
+                          <DropdownMenuItem asChild><Link href={`/applications/${app.id}`}>View Details</Link></DropdownMenuItem>
                           {app.feedback && <DropdownMenuItem onSelect={() => setSelectedFeedback(app.feedback || null)}>View Feedback</DropdownMenuItem>}
                         </DropdownMenuContent>
                       </DropdownMenu>
@@ -167,9 +145,7 @@ export default function DashboardPage() {
                   <TableCell colSpan={4} className="h-24 text-center">
                     <h3 className="font-semibold">No applications found.</h3>
                     <p className="text-sm text-muted-foreground">Get started by creating a new application.</p>
-                    <Button asChild size="sm" className="mt-4">
-                        <Link href="/applications/new">New Application</Link>
-                    </Button>
+                    <Button asChild size="sm" className="mt-4"><Link href="/applications/new">New Application</Link></Button>
                   </TableCell>
                 </TableRow>
               )}
@@ -178,10 +154,9 @@ export default function DashboardPage() {
         </CardContent>
         {!isLoading && userApplications && (
             <CardFooter>
-            <div className="text-xs text-muted-foreground">
-                Showing <strong>{userApplications.length}</strong> of <strong>{userApplications.length}</strong>{" "}
-                applications
-            </div>
+                <div className="text-xs text-muted-foreground">
+                    Showing <strong>{userApplications.length}</strong> of <strong>{userApplications.length}</strong> applications
+                </div>
             </CardFooter>
         )}
       </Card>
@@ -189,9 +164,7 @@ export default function DashboardPage() {
         <DialogContent className="sm:max-w-md">
             <DialogHeader>
                 <DialogTitle>Feedback from Admin</DialogTitle>
-                <DialogDescription className="pt-4 text-base text-foreground">
-                    {selectedFeedback}
-                </DialogDescription>
+                <DialogDescription className="pt-4 text-base text-foreground">{selectedFeedback}</DialogDescription>
             </DialogHeader>
             <DialogFooter className="sm:justify-start">
                 <Button onClick={() => setSelectedFeedback(null)} variant="outline">Close</Button>

@@ -1,5 +1,6 @@
+
 'use client';
-export const dynamic = 'force-dynamic';
+
 import {
   Card,
   CardContent,
@@ -9,7 +10,7 @@ import {
 } from "@/components/ui/card";
 import { licenseTypes } from "@/lib/licensing";
 import { useState, useEffect } from 'react';
-import { useUser } from '@/firebase';
+import { useUser, useAuth } from '@/firebase';
 import { Button } from '@/components/ui/button';
 import { ArrowRight, Loader2 } from 'lucide-react';
 import type { LicenseType } from '@/lib/licensing';
@@ -17,31 +18,40 @@ import { useToast } from '@/hooks/use-toast';
 import { LoadingScreen } from "@/components/LoadingScreen";
 import { useRouter } from "next/navigation";
 import * as serverActions from "@/app/actions";
-import { useAuth } from '@/firebase';
 
-
-function NewApplicationButton({ licenseType }: { licenseType: LicenseType }) {
-  const [isCreating, setIsCreating] = useState(false);
-  const { user } = useUser();
+export default function NewApplicationPage() {
+  const { user, claims, loading: userLoading } = useUser();
+  const auth = useAuth();
   const router = useRouter();
   const { toast } = useToast();
-  const auth = useAuth();
+  const [isCreating, setIsCreating] = useState<string | null>(null);
 
-  const handleCreateApplication = async () => {
+  // Redirect admins/reviewers away from this page
+  useEffect(() => {
+    if (!userLoading && claims && ['reviewer', 'admin', 'head-admin'].includes(claims.role)) {
+      router.push('/admin');
+    }
+  }, [userLoading, claims, router]);
+
+  const handleCreateApplication = async (licenseType: LicenseType) => {
     if (!user) {
         toast({
             variant: "destructive",
-            title: "Error",
+            title: "Authentication Error",
             description: "You must be logged in to create an application.",
         });
         return;
     }
 
-    setIsCreating(true);
+    setIsCreating(licenseType.id);
     try {
       const idToken = await auth.currentUser?.getIdToken();
+      if (!idToken) {
+          throw new Error("Could not retrieve user authentication token.");
+      }
+
       const { applicationId } = await serverActions.createApplicationAction(licenseType.id, idToken);
-      
+
       toast({
         title: "Application Created",
         description: `Your draft for ${licenseType.name} is ready.`,
@@ -50,46 +60,18 @@ function NewApplicationButton({ licenseType }: { licenseType: LicenseType }) {
       router.push(`/applications/${applicationId}`);
 
     } catch (error: unknown) {
-      const err = (error as { message?: unknown }) || {};
-      console.error("Error creating application:", error);
+      const err = (error instanceof Error) ? error : new Error('An unknown error occurred.');
+      console.error("Error creating application:", err);
       toast({
         variant: "destructive",
         title: "Failed to Create Application",
-        description: typeof err.message === 'string' ? err.message : 'Failed to create application.',
+        description: err.message,
       });
-      setIsCreating(false);
+      setIsCreating(null);
     }
   };
 
-  return (
-    <Button onClick={handleCreateApplication} disabled={isCreating}>
-      {isCreating ? (
-        <>
-          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-          Creating...
-        </>
-      ) : (
-        <>
-          Start Application <ArrowRight className="ml-2 h-4 w-4" />
-        </>
-      )}
-    </Button>
-  );
-}
-
-
-export default function NewApplicationPage() {
-  const { claims, loading: userLoading } = useUser();
-  const router = useRouter();
-
-  useEffect(() => {
-    // In client components, redirects during render should be handled in useEffect.
-    if (!userLoading && claims && ['reviewer', 'admin', 'head-admin'].includes(claims.role)) {
-      router.push('/admin');
-    }
-  }, [userLoading, claims, router]);
-
-  // To prevent a flicker of the page content before redirect, we check the condition here as well.
+  // Show a loading screen while user data is being fetched or if they are being redirected.
   if (userLoading || (claims && ['reviewer', 'admin', 'head-admin'].includes(claims.role))) {
     return <LoadingScreen text="Verifying access..." />;
   }
@@ -112,7 +94,18 @@ export default function NewApplicationPage() {
               <CardDescription>{license.description}</CardDescription>
             </CardHeader>
             <CardContent>
-              <NewApplicationButton licenseType={license} />
+                <Button onClick={() => handleCreateApplication(license)} disabled={!!isCreating}>
+                  {isCreating === license.id ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Creating...
+                    </>
+                  ) : (
+                    <>
+                      Start Application <ArrowRight className="ml-2 h-4 w-4" />
+                    </>
+                  )}
+                </Button>
             </CardContent>
           </Card>
         ))}
