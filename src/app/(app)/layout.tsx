@@ -14,6 +14,7 @@ import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 import { LoadingScreen } from "@/components/LoadingScreen";
 import { NotificationBell } from "@/components/NotificationBell";
+import { FirebaseClientProvider } from "@/firebase/client-provider";
 
 export default function AppLayout({
   children,
@@ -39,60 +40,62 @@ export default function AppLayout({
     }
 
   return (
-    <div className="flex min-h-screen w-full flex-col bg-transparent">
-      <aside className="fixed inset-y-0 left-0 z-10 hidden w-14 flex-col border-r bg-background sm:flex">
-        <nav className="flex flex-col items-center gap-4 px-2 sm:py-5">
-          <Link
-                href={homePath}
-                className="group flex h-9 w-9 shrink-0 items-center justify-center gap-2 rounded-full bg-primary text-primary-foreground md:h-8 md:w-8"
-              >
-                <Plane className="h-5 w-5 transition-all group-hover:scale-110" />
-                <span className="sr-only">Van-Vert</span>
-            </Link>
-          <MainNavLinks claims={claims} />
-        </nav>
-        <nav className="mt-auto flex flex-col items-center gap-4 px-2 sm:py-5">
-          <SecondaryNavLinks claims={claims} />
-        </nav>
-      </aside>
-      <div className="flex flex-col sm:gap-4 sm:py-4 sm:pl-14">
-        <header className="sticky top-0 z-30 flex h-14 items-center gap-4 border-b bg-background px-4 sm:static sm:h-auto sm:border-0 sm:bg-transparent sm:px-6">
-          <Sheet>
-            <SheetTrigger asChild>
-              <Button size="icon" variant="outline" className="sm:hidden">
-                <PanelLeft className="h-5 w-5" />
-                <span className="sr-only">Toggle Menu</span>
-              </Button>
-            </SheetTrigger>
-            <SheetContent side="left" className="sm:max-w-xs">
-              <nav className="grid gap-6 text-lg font-medium">
-                <Link
+    <FirebaseClientProvider>
+      <div className="flex min-h-screen w-full flex-col bg-transparent">
+        <aside className="fixed inset-y-0 left-0 z-10 hidden w-14 flex-col border-r bg-background sm:flex">
+          <nav className="flex flex-col items-center gap-4 px-2 sm:py-5">
+            <Link
                   href={homePath}
-                  className="flex items-center gap-2 text-lg font-semibold"
+                  className="group flex h-9 w-9 shrink-0 items-center justify-center gap-2 rounded-full bg-primary text-primary-foreground md:h-8 md:w-8"
                 >
-                  <Plane className="h-6 w-6" />
-                  <span>Van-Vert</span>
-                </Link>
-                 <MobileNavLinks claims={claims} />
-              </nav>
-            </SheetContent>
-          </Sheet>
-          <Breadcrumbs />
-          <div className="relative ml-auto flex-1 md:grow-0">
-            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-            <Input
-              type="search"
-              placeholder="Search..."
-              className="w-full rounded-lg bg-background pl-8 md:w-[200px] lg:w-[336px]"
-            />
-          </div>
-          <NotificationBell />
-          <UserNav />
-        </header>
-        <main className="grid flex-1 items-start gap-4 p-4 sm:px-6 sm:py-0 md:gap-8">
-          {children}
-        </main>
+                  <Plane className="h-5 w-5 transition-all group-hover:scale-110" />
+                  <span className="sr-only">Van-Vert</span>
+              </Link>
+            <MainNavLinks claims={claims} />
+          </nav>
+          <nav className="mt-auto flex flex-col items-center gap-4 px-2 sm:py-5">
+            <SecondaryNavLinks claims={claims} />
+          </nav>
+        </aside>
+        <div className="flex flex-col sm:gap-4 sm:py-4 sm:pl-14">
+          <header className="sticky top-0 z-30 flex h-14 items-center gap-4 border-b bg-background px-4 sm:static sm:h-auto sm:border-0 sm:bg-transparent sm:px-6">
+            <Sheet>
+              <SheetTrigger asChild>
+                <Button size="icon" variant="outline" className="sm:hidden">
+                  <PanelLeft className="h-5 w-5" />
+                  <span className="sr-only">Toggle Menu</span>
+                </Button>
+              </SheetTrigger>
+              <SheetContent side="left" className="sm:max-w-xs">
+                <nav className="grid gap-6 text-lg font-medium">
+                  <Link
+                    href={homePath}
+                    className="flex items-center gap-2 text-lg font-semibold"
+                  >
+                    <Plane className="h-6 w-6" />
+                    <span>Van-Vert</span>
+                  </Link>
+                  <MobileNavLinks claims={claims} />
+                </nav>
+              </SheetContent>
+            </Sheet>
+            <Breadcrumbs />
+            <div className="relative ml-auto flex-1 md:grow-0">
+              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+              <Input
+                type="search"
+                placeholder="Search..."
+                className="w-full rounded-lg bg-background pl-8 md:w-[200px] lg:w-[336px]"
+              />
+            </div>
+            <NotificationBell />
+            <UserNav />
+          </header>
+          <main className="grid flex-1 items-start gap-4 p-4 sm:px-6 sm:py-0 md:gap-8">
+            {children}
+          </main>
+        </div>
       </div>
-    </div>
+    </FirebaseClientProvider>
   );
 }
