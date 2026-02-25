@@ -2,14 +2,27 @@
 'use server';
 
 import 'server-only';
-import { adminFirestore, adminStorage } from '@/lib/firebase-admin-prewarmed';
+import { adminAuth, adminFirestore, adminStorage } from '@/lib/firebase-admin-prewarmed';
 import { extractExpiryDate } from '@/ai/flows/extract-expiry-date';
 import { extractFlightLogs } from '@/ai/flows/extract-flight-logs';
 import type { FlightLog, Application, LogbookFormat } from '@/types';
 import { v4 as uuidv4 } from 'uuid';
 import { licenseTypes } from '@/lib/licensing';
 import admin from 'firebase-admin';
-import { getAuthenticatedUser } from '@/lib/auth';
+
+async function getAuthenticatedUser(idToken?: string) {
+    if (!idToken) {
+        throw new Error("Unauthorized: No token provided.");
+    }
+    try {
+        const decodedToken = await adminAuth.verifyIdToken(idToken);
+        return decodedToken;
+    } catch (error) {
+        console.error("Error verifying auth token:", error);
+        throw new Error("Unauthorized: Invalid token.");
+    }
+}
+
 
 /**
  * Handles server-side errors, providing specific guidance for common IAM permission issues.
