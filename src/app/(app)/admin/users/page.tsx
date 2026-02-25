@@ -1,8 +1,7 @@
+
 'use client';
-export const dynamic = 'force-dynamic';
 
 import { useUser, useFirestore, useCollection, useMemoFirebase, errorEmitter, FirestorePermissionError } from "@/firebase";
-import { redirect } from "next/navigation";
 import React, { useState } from "react";
 import { LoadingScreen } from "@/components/LoadingScreen";
 import type { UserProfile } from "@/types";
@@ -105,18 +104,18 @@ function UserRow({
     );
 }
 
-function AuthorizedUserList({ isAuthorized }: { isAuthorized: boolean }) {
+export default function UserManagementPage() {
     const { user, claims } = useUser();
     const firestore = useFirestore();
     const { toast } = useToast();
     const [isUpdating, setIsUpdating] = useState<string | null>(null);
 
     const usersQuery = useMemoFirebase(() => {
-        if (firestore && isAuthorized) {
+        if (firestore) {
             return collection(firestore, 'users') as CollectionReference<UserWithProfile>;
         }
         return null;
-    }, [firestore, isAuthorized]);
+    }, [firestore]);
 
     const { data: users, isLoading: usersIsLoading } = useCollection<UserWithProfile>(usersQuery);
 
@@ -175,7 +174,7 @@ function AuthorizedUserList({ isAuthorized }: { isAuthorized: boolean }) {
                             </TableRow>
                         </TableHeader>
                         <TableBody>
-                            {usersIsLoading && isAuthorized && <TableRow><TableCell colSpan={3} className="text-center h-24">Loading users...</TableCell></TableRow>}
+                            {usersIsLoading && <TableRow><TableCell colSpan={3} className="text-center h-24">Loading users...</TableCell></TableRow>}
                             {!usersIsLoading && (!users || users.length === 0) && <TableRow><TableCell colSpan={3} className="text-center h-24">No users found.</TableCell></TableRow>}
                             {users?.sort((a, b) => (a.displayName || '').localeCompare(b.displayName || '')).map(u => (
                                 <UserRow
@@ -193,20 +192,4 @@ function AuthorizedUserList({ isAuthorized }: { isAuthorized: boolean }) {
             </Card>
         </div>
     );
-}
-
-export default function UserManagementPage() {
-    const { loading: userLoading, claims } = useUser();
-
-    if (userLoading) {
-        return <LoadingScreen text="Verifying Access..." />;
-    }
-
-    const isAuthorized = !!(claims?.role === 'head-admin');
-
-    if (!isAuthorized) {
-        redirect('/admin');
-    }
-
-    return <AuthorizedUserList isAuthorized={isAuthorized} />;
 }

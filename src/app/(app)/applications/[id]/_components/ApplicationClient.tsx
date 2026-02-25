@@ -343,7 +343,7 @@ export function ApplicationClient({
   const handleSaveDraft = () => {
     startTransition(() => {
         handlePersistChanges(
-            { documents: appState.documents, flightLogs: appState.flightLogs },
+            { documents: appState.documents, flightLogs: appState.flightLogs, totalFlightHours },
             { title: "Draft Saved!", description: "Your changes have been saved." }
         );
     });
@@ -357,6 +357,7 @@ export function ApplicationClient({
             status: 'submitted' as const,
             submittedAt: serverTimestamp(),
             updatedAt: serverTimestamp(),
+            totalFlightHours,
         };
 
         const appRef = doc(firestore, 'applications', appState.id);

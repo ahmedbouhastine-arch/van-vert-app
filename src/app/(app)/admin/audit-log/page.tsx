@@ -1,10 +1,7 @@
-'use client';
-export const dynamic = 'force-dynamic';
 
-import { useUser } from "@/firebase";
-import { redirect } from "next/navigation";
+'use client';
+
 import React from "react";
-import { LoadingScreen } from "@/components/LoadingScreen";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { format } from "date-fns";
@@ -32,20 +29,10 @@ const safeFormatDate = (date: FirebaseTimestamp | Date | string | undefined | nu
 };
 
 export default function AuditLogPage() {
-    const { loading, claims } = useUser();
-
     // In a real app, this data would be fetched from a Firestore collection.
     // For now, it's an empty array as mock data has been removed.
     const auditLogs: AuditLogEntry[] = [];
 
-    if (loading) {
-        return <LoadingScreen text="Verifying Access..." />;
-    }
-
-    if (claims?.role !== 'head-admin') {
-        redirect('/admin');
-    }
-    
     return (
         <div className="flex flex-col gap-4">
             <div className="flex flex-col gap-1">

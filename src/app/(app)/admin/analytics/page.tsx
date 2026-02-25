@@ -1,16 +1,10 @@
+
 'use client';
-export const dynamic = 'force-dynamic';
 
 import { AnalyticsClient } from "./_components/AnalyticsClient";
-import { useUser } from "@/firebase";
-import { redirect } from "next/navigation";
-import React from "react";
-import { LoadingScreen } from "@/components/LoadingScreen";
 import type { AnalyticsDataPoint } from "@/types";
 
 export default function AnalyticsPage() {
-    const { loading, claims } = useUser();
-
     // In a real app, you'd fetch this data from a collection aggregated for analytics.
     // This is now placeholder data until live analytics are implemented.
     const kpiData = {
@@ -21,16 +15,6 @@ export default function AnalyticsPage() {
     };
     
     const chartData: AnalyticsDataPoint[] = [];
-
-    if (loading) {
-        return <LoadingScreen text="Verifying Access..." />;
-    }
-
-    const isAuthorized = claims?.role && ['admin', 'head-admin'].includes(claims.role);
-
-    if (!isAuthorized) {
-        redirect('/admin');
-    }
 
     return (
         <div className="flex flex-col gap-4">

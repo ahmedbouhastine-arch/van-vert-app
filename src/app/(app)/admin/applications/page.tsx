@@ -1,5 +1,6 @@
+
 'use client';
-export const dynamic = 'force-dynamic';
+
 import { collection, query, where } from 'firebase/firestore';
 import { useCollection } from 'react-firebase-hooks/firestore';
 import { useFirestore } from "@/firebase";
@@ -25,10 +26,10 @@ function AdminApplicationsPage() {
           <div className="space-y-4">
             {allApplications.docs.map((doc) => (
               <Link key={doc.id} href={`/admin/applications/${doc.id}`}>
-                <a className="block p-4 border rounded-lg hover:bg-gray-50">
+                <p className="block p-4 border rounded-lg hover:bg-gray-50">
                   <h2 className="text-lg font-semibold">{doc.data().name}</h2>
                   <p className="text-sm text-gray-500">{doc.data().email}</p>
-                </a>
+                </p>
               </Link>
             ))}
           </div>
@@ -43,10 +44,10 @@ function AdminApplicationsPage() {
           <div className="space-y-4">
             {draftApplications.docs.map((doc) => (
               <Link key={doc.id} href={`/admin/applications/${doc.id}`}>
-                <a className="block p-4 border rounded-lg hover:bg-gray-50">
+                <p className="block p-4 border rounded-lg hover:bg-gray-50">
                   <h2 className="text-lg font-semibold">{doc.data().name}</h2>
                   <p className="text-sm text-gray-500">{doc.data().email}</p>
-                </a>
+                </p>
               </Link>
             ))}
           </div>
