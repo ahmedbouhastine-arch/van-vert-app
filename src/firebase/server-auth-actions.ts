@@ -1,21 +1,21 @@
-
-import { headers } from 'next/headers';
+import { cookies } from 'next/headers';
 import { initializeAdminApp } from './admin-init';
 
 export const getAuthenticatedAppForUser = async () => {
     const { adminAuth, adminFirestore } = initializeAdminApp();
-    const idToken = headers().get('Authorization')?.split('Bearer ')[1];
+    const cookieStore = await cookies();
+    const sessionCookie = cookieStore.get('session')?.value;
 
-    if (!idToken) {
+    if (!sessionCookie) {
         return null;
     }
 
     try {
-        const decodedToken = await adminAuth.verifyIdToken(idToken);
+        const decodedToken = await adminAuth.verifySessionCookie(sessionCookie, true);
         const currentUser = await adminAuth.getUser(decodedToken.uid);
         return { currentUser, firestore: adminFirestore };
     } catch (error) {
-        console.error("Error getting authenticated user:", error);
+        console.error("Error verifying session cookie:", error);
         return null;
     }
 };

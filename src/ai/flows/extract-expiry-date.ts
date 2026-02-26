@@ -17,16 +17,20 @@ const ExtractExpiryDateOutputSchema = z.object({
 });
 export type ExtractExpiryDateOutput = z.infer<typeof ExtractExpiryDateOutputSchema>;
 
+const ai = genkit({ plugins: [googleAI()] });
+
 export async function extractExpiryDate(input: ExtractExpiryDateInput): Promise<ExtractExpiryDateOutput> {
-  const ai = genkit({ plugins: [googleAI()] });
 
   const result = await ai.generate({
-    model: 'googleai/gemini-1.5-flash',
+    model: 'googleai/gemini-2.0-flash',
     prompt: [
       { text: `You are an expert at processing official documents. Find and extract the expiry date from the provided document. Look for labels like "Expiry Date", "Expires", "Valid Until", or similar. Return ONLY in YYYY-MM-DD format, or null if not found.` },
       { media: { url: input.documentDataUri } }
     ],
     output: { schema: ExtractExpiryDateOutputSchema },
+    config: {
+      temperature: 0.1, // Lower temperature for more deterministic output
+    },
   });
 
   return result.output ?? { expiryDate: null };

@@ -2,7 +2,6 @@
 import { notFound, redirect } from "next/navigation";
 import { ApplicationClient } from "./_components/ApplicationClient";
 import { getAuthenticatedAppForUser } from "@/firebase/server-auth-actions";
-import { doc, getDoc } from "firebase/firestore";
 import type { Application } from "@/types";
 import { headers } from "next/headers";
 
@@ -29,22 +28,22 @@ function serializeTimestamps(obj: any): any {
   return newObj;
 }
 
-export default async function ApplicationDetailPage({ params }: { params: { id: string } }) {
-  const { id } = params;
+export default async function ApplicationDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
   const { currentUser, firestore } = await getAuthenticatedAppForUser() || {};
 
   if (!currentUser || !firestore) {
     // This should not happen if routes are protected by middleware
     // but as a fallback, redirect to login
-    const pathname = headers().get("next-url") || "/login";
+    const headersList = await headers();
+    const pathname = headersList.get("next-url") || "/login";
     return redirect(`/login?redirect=${encodeURIComponent(pathname)}`);
   }
 
   try {
-    const appRef = doc(firestore, 'applications', id);
-    const appSnapshot = await getDoc(appRef);
+    const appSnapshot = await firestore.collection('applications').doc(id).get();
 
-    if (!appSnapshot.exists()) {
+    if (!appSnapshot.exists) {
       notFound();
       return;
     }
@@ -80,4 +79,3 @@ export default async function ApplicationDetailPage({ params }: { params: { id: 
     notFound();
   }
 }
-
