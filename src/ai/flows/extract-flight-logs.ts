@@ -1,4 +1,4 @@
-''''use server';
+'use server';
 import 'server-only';
 
 import { genkit } from 'genkit';
@@ -71,4 +71,4 @@ export async function extractFlightLogs(input: ExtractFlightLogsInput): Promise<
     logbookFormat: parsed.logbookFormat,
   };
 }
-'''
+Fix that syntax error, or did you already do it?

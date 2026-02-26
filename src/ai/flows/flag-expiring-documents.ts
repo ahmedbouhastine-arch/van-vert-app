@@ -1,14 +1,6 @@
 'use server';
+import 'server-only';
 
-/**
- * @fileOverview Flags documents with upcoming expiry dates for applicant prioritization.
- *
- * - flagExpiringDocuments - A function that flags documents with expiring dates.
- * - FlagExpiringDocumentsInput - The input type for the flagExpiringDocuments function.
- * - FlagExpiringDocumentsOutput - The return type for the flagExpiringDocuments function.
- */
-
-import { flow } from '@genkit-ai/core';
 import { z } from 'zod';
 
 const FlagExpiringDocumentsInputSchema = z.object({
@@ -31,33 +23,22 @@ const FlagExpiringDocumentsOutputSchema = z.array(
 export type FlagExpiringDocumentsOutput = z.infer<typeof FlagExpiringDocumentsOutputSchema>;
 
 export async function flagExpiringDocuments(input: FlagExpiringDocumentsInput): Promise<FlagExpiringDocumentsOutput> {
-  return flagExpiringDocumentsFlow(input);
-}
-
-const flagExpiringDocumentsFlow = flow(
-  {
-    name: 'flagExpiringDocumentsFlow',
-    inputSchema: FlagExpiringDocumentsInputSchema,
-    outputSchema: FlagExpiringDocumentsOutputSchema,
-  },
-  async input => {
-    const now = new Date();
-    return input.documents.map(document => {
-      if (!document.expiryDate) {
-        return {
-          name: document.name,
-          isExpiringSoon: false,
-        };
-      }
-
-      const expiryDate = new Date(document.expiryDate);
-      const timeDiff = expiryDate.getTime() - now.getTime();
-      const daysDiff = Math.ceil(timeDiff / (1000 * 3600 * 24));
-
+  const now = new Date();
+  return input.documents.map(document => {
+    if (!document.expiryDate) {
       return {
         name: document.name,
-        isExpiringSoon: daysDiff <= input.daysUntilExpiry,
+        isExpiringSoon: false,
       };
-    });
-  }
-);
+    }
+
+    const expiryDate = new Date(document.expiryDate);
+    const timeDiff = expiryDate.getTime() - now.getTime();
+    const daysDiff = Math.ceil(timeDiff / (1000 * 3600 * 24));
+
+    return {
+      name: document.name,
+      isExpiringSoon: daysDiff <= input.daysUntilExpiry,
+    };
+  });
+}

@@ -1,4 +1,4 @@
-''''use server';
+'use server';
 import 'server-only';
 
 import { z } from 'zod';
@@ -50,4 +50,3 @@ export async function checkRecency(input: CheckRecencyInput): Promise<CheckRecen
     totalHours: parseFloat(totalHours.toFixed(2)),
   };
 }
-'''
