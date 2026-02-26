@@ -1,3 +1,4 @@
+
 import admin from 'firebase-admin';
 import { firebaseConfig } from '@/firebase/config';
 
@@ -27,3 +28,6 @@ export function initializeAdminApp() {
         adminStorage: admin.storage(),
     };
 }
+
+const { adminAuth, adminFirestore, adminStorage } = initializeAdminApp();
+export { adminAuth, adminFirestore, adminStorage };
