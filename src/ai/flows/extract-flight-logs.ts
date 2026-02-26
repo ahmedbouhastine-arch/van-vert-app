@@ -31,23 +31,7 @@ export async function extractFlightLogs(input: ExtractFlightLogsInput): Promise<
 
   const res = await ai.generate({
       model: 'googleai/gemini-1.5-flash',
-      prompt: `You are an expert aviation administrator. Your task is to analyze the provided PDF logbook and perform two steps:
-
-      **Step 1: Classify the Logbook Format**
-      Based on the layout and columns, determine the logbook's format:
-      - **'standard'**: The logbook has distinct, separate columns for flight times like "PIC" (Pilot In Command), "Solo", "Dual", and "Total Duration".
-      - **'combined'**: The logbook lacks separate columns for different flight times. PIC or Solo time is often the same as the total flight duration, potentially indicated by a checkmark or a single column for all flight time.
-      - **'simple'**: The logbook is very basic, primarily listing just the date, aircraft, and a single duration for each flight without further breakdown.
-
-      **Step 2: Extract Flight Entries**
-      Extract all individual flight entries. For each entry, provide ONLY the following:
-      - **date**: The flight date (format: YYYY-MM-DD).
-      - **aircraft**: The standardized aircraft model.
-      - **duration**: The total duration of the flight in hours (as a decimal).
-
-      Do NOT extract remarks, PIC status, or Solo status. Focus only on the three fields above.
-
-      Return a single JSON object containing the detected 'logbookFormat' and an array of all extracted 'flights'.`,
+      prompt: `You are an expert aviation administrator. Your task is to analyze the provided PDF logbook and perform two steps:\n\n      **Step 1: Classify the Logbook Format**\n      Based on the layout and columns, determine the logbook\'s format:\n      - **\'standard\'**: The logbook has distinct, separate columns for flight times like "PIC" (Pilot In Command), "Solo", "Dual", and "Total Duration".\n      - **\'combined\'**: The logbook lacks separate columns for different flight times. PIC or Solo time is often the same as the total flight duration, potentially indicated by a checkmark or a single column for all flight time.\n      - **\'simple\'**: The logbook is very basic, primarily listing just the date, aircraft, and a single duration for each flight without further breakdown.\n\n      **Step 2: Extract Flight Entries**\n      Extract all individual flight entries. For each entry, provide ONLY the following:\n      - **date**: The flight date (format: YYYY-MM-DD).\n      - **aircraft**: The standardized aircraft model.\n      - **duration**: The total duration of the flight in hours (as a decimal).\n\n      Do NOT extract remarks, PIC status, or Solo status. Focus only on the three fields above.\n\n      Return a single JSON object containing the detected \'logbookFormat\' and an array of all extracted \'flights\'.`,
       
       output: { schema: ExtractFlightLogsOutputSchema },
       config: {
@@ -71,4 +55,3 @@ export async function extractFlightLogs(input: ExtractFlightLogsInput): Promise<
     logbookFormat: parsed.logbookFormat,
   };
 }
-Fix that syntax error, or did you already do it?
