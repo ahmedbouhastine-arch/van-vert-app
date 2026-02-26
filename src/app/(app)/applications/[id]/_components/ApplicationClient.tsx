@@ -33,7 +33,7 @@ import { format } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
 import { checkRecency, type CheckRecencyOutput } from "@/ai/flows/check-recency";
 import * as serverActions from '@/app/actions';
-import { useFirestore, errorEmitter, FirestorePermissionError, useAuth, app } from "@/firebase";
+import { useFirestore, errorEmitter, FirestorePermissionError, useAuth, useFirebaseApp } from "@/firebase";
 import { doc, serverTimestamp, updateDoc, collection, addDoc } from "firebase/firestore";
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
 
@@ -169,6 +169,7 @@ export function ApplicationClient({
   const { toast } = useToast();
   const firestore = useFirestore();
   const auth = useAuth();
+  const app = useFirebaseApp();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const logPdfInputRef = useRef<HTMLInputElement>(null);
 
@@ -259,7 +260,7 @@ export function ApplicationClient({
           return {
             ...doc,
             status: "uploaded" as const,
-            fileName: file.name,
+            fileName: file..name,
             fileType: file.type || '',
             fileUrl: publicUrl,
             uploadedAt: new Date().toISOString(),
