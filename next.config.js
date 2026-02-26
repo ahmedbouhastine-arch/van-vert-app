@@ -45,6 +45,7 @@ const nextConfig = {
       fullUrl: true,
     },
   },
+  serverExternalPackages: ['@genkit-ai/core', '@genkit-ai/googleai', 'genkit'],
 };
 
 module.exports = nextConfig;

@@ -1,4 +1,6 @@
 'use server';
+import 'server-only';
+
 /**
  * @fileOverview Extracts the expiry date from a document image or PDF.
  *
@@ -32,17 +34,8 @@ const prompt = definePrompt({
   name: 'extractExpiryDatePrompt',
   input: {schema: ExtractExpiryDateInputSchema},
   output: {schema: ExtractExpiryDateOutputSchema},
-  prompt: `You are an expert at processing official documents. Your task is to find and extract the expiry date from the provided document image or PDF.
-
-  Look for labels like "Expiry Date", "Date of Expiry", "Expires", "Valid Until", or similar phrases.
-
-  The date can be in various formats (e.g., DD/MM/YYYY, MM-DD-YY, Month DD, YYYY).
-  
-  IMPORTANT:
-  - Return the date ONLY in YYYY-MM-DD format.
-  - If no expiry date is found, return null.
-
-  Document for processing: {{media url=documentDataUri}}`,
+  prompt: `You are an expert at processing official documents. Your task is to find and extract the expiry date from the provided document image or PDF.\n\nLook for labels like \"Expiry Date\", \"Date of Expiry\", \"Expires\", \"Valid Until\", or similar phrases.\n\nThe date can be in various formats (e.g., DD/MM/YYYY, MM-DD-YY, Month DD, YYYY).\n  
+  IMPORTANT:\n  - Return the date ONLY in YYYY-MM-DD format.\n  - If no expiry date is found, return null.\n\n  Document for processing: {{media url=documentDataUri}}`,
 });
 
 const extractExpiryDateFlow = flow(
