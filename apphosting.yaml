@@ -1,4 +1,14 @@
 env:
+  - variable: NEXTAUTH_URL
+    value: "https://REDACTED_FIREBASE_PROJECT_ID.web.app"
+    availability:
+      - BUILD
+      - RUNTIME
+  - variable: NEXTAUTH_SECRET
+    value: "a7e6b7c8d9e0f1a2b3c4d5e6f7a8b9c0"
+    availability:
+      - BUILD
+      - RUNTIME
   - variable: NEXT_PUBLIC_FIREBASE_API_KEY
     value: "AIzaSyAYHlWqc5lF5dvxlNYs6k3Q3c_ukk4EyAQ"
     availability:
