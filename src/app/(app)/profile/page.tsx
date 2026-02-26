@@ -1,3 +1,4 @@
+
 'use client';
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -13,6 +14,7 @@ import {
 import { useUser } from "@/firebase";
 import Link from "next/link";
 import { LoadingScreen } from "@/components/LoadingScreen";
+import { UploadProfilePicture } from "./UploadProfilePicture";
 
 export default function ProfilePage() {
   const { user, claims } = useUser();
@@ -54,6 +56,9 @@ export default function ProfilePage() {
           <div className="grid gap-2">
             <div className="text-sm text-muted-foreground">Role</div>
             <div className="font-medium capitalize">{claims?.role}</div>
+          </div>
+          <div className="mt-4">
+            <UploadProfilePicture />
           </div>
         </CardContent>
         <CardFooter className="border-t px-6 py-4">
