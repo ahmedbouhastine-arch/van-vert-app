@@ -187,41 +187,25 @@ export async function createApplicationAction(
     }
 }
 
-export async function uploadDocumentAction(formData: FormData, idToken?: string): Promise<{ publicUrl: string, expiryDate: string | null, mimeType: string }> {
-    try {
-        const token = idToken ?? (formData.get('idToken') as string | undefined);
-        const user = await getAuthenticatedUser(token);
-        const file = formData.get('file') as File;
-        const applicationId = formData.get('applicationId') as string;
-        const docId = formData.get('docId') as string;
-        const requiresExpiry = formData.get('requiresExpiry') === 'true';
-        if (!file || !applicationId || !docId) throw new Error("Missing required form data.");
-
-        const appRef = adminFirestore.collection('applications').doc(applicationId);
-        const appSnapshot = await appRef.get();
-        if (!appSnapshot.exists) {
-            throw new Error("Application not found.");
-        }
-        const applicationData = appSnapshot.data() as Application;
-        if (applicationData.userId !== user.uid) {
-            throw new Error("User does not have permission to access this application.");
-        }
-        
-        const bucket = adminStorage.bucket();
-        
-        const storagePath = `applications/${applicationId}/${docId}/${file.name}`;
-        const publicUrl = await uploadStreamToStorage(bucket, storagePath, file.stream(), file.type);
-        
-        let detectedExpiryDate: string | null = null;
-        if (requiresExpiry && (file.type.startsWith('image/') || file.type === 'application/pdf')) {
-            const { expiryDate } = await withTimeout(extractExpiryDate({ documentDataUri: publicUrl }));
-            detectedExpiryDate = expiryDate || null;
-        }
-
-        return { publicUrl, expiryDate: detectedExpiryDate, mimeType: file.type };
-    } catch (e: unknown) {
-        handleServerAuthError(e, 'uploadDocumentAction');
+export async function extractExpiryDateAction(args: {applicationId: string, documentUrl: string, idToken?: string}): Promise<{ expiryDate: string | null}> {
+  try {
+    const user = await getAuthenticatedUser(args.idToken);
+    const appRef = adminFirestore.collection('applications').doc(args.applicationId);
+    const appSnapshot = await appRef.get();
+    if (!appSnapshot.exists) {
+        throw new Error("Application not found.");
     }
+    const applicationData = appSnapshot.data() as Application;
+    if (applicationData.userId !== user.uid) {
+        throw new Error("User does not have permission to access this application.");
+    }
+    
+    const { expiryDate } = await withTimeout(extractExpiryDate({ documentDataUri: args.documentUrl }));
+    return { expiryDate: expiryDate || null };
+
+  } catch (e: unknown) {
+      handleServerAuthError(e, 'extractExpiryDateAction');
+  }
 }
 
 export async function uploadProfilePictureAction(formData: FormData, idToken?: string): Promise<{ photoURL: string }> {

@@ -2,6 +2,7 @@
 "use client";
 
 import { useState, useTransition, useRef, useEffect } from "react";
+import { getStorage, ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import type { Application, ApplicationDocument, FirebaseTimestamp } from "@/types";
 import {
   Card,
@@ -32,7 +33,7 @@ import { format } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
 import { checkRecency, type CheckRecencyOutput } from "@/ai/flows/check-recency";
 import * as serverActions from '@/app/actions';
-import { useFirestore, errorEmitter, FirestorePermissionError, useAuth } from "@/firebase";
+import { useFirestore, errorEmitter, FirestorePermissionError, useAuth, app } from "@/firebase";
 import { doc, serverTimestamp, updateDoc, collection, addDoc } from "firebase/firestore";
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
 
@@ -227,42 +228,50 @@ export function ApplicationClient({
     if (!docDefinition) return;
 
     setUploadingDocId(activeUploadDocId);
-    toast({ title: 'Upload Started', description: 'Your document is being uploaded and processed.' });
+    toast({ title: 'Upload Started', description: 'Your document is being uploaded.' });
 
     try {
+      const storage = getStorage(app);
+      const storageRef = ref(storage, `applications/${appState.id}/${activeUploadDocId}/${file.name}`);
+      const snapshot = await uploadBytes(storageRef, file);
+      const publicUrl = await getDownloadURL(snapshot.ref);
+
+      let detectedExpiryDate: string | null = null;
+      if (docDefinition.requiresExpiry && (file.type.startsWith('image/') || file.type === 'application/pdf')) {
+        toast({ title: 'AI Processing', description: 'Analyzing document for expiry date.' });
         const idToken = await auth.currentUser?.getIdToken();
-        const formData = new FormData();
-        formData.append('applicationId', appState.id);
-        formData.append('docId', activeUploadDocId);
-        formData.append('file', file);
-        formData.append('requiresExpiry', docDefinition.requiresExpiry ? 'true' : 'false');
-
-    const { publicUrl, expiryDate: detectedExpiryDate, mimeType } = await serverActions.uploadDocumentAction(formData, idToken);
-
-        if (detectedExpiryDate) {
-            toast({ title: 'AI Success!', description: `Detected expiry date: ${format(new Date(detectedExpiryDate), 'PPP')}` });
-        } else if (docDefinition.requiresExpiry) {
-             toast({ variant: "default", title: 'AI Notice', description: 'Could not automatically detect an expiry date. Please enter it manually.' });
-        }
-
-        const newDocuments = appState.documents.map((doc) => {
-            if (doc.id === activeUploadDocId) {
-                return {
-                    ...doc,
-                    status: "uploaded" as const,
-                    fileName: file.name,
-                    fileType: mimeType || '',
-                    fileUrl: publicUrl,
-                    uploadedAt: new Date().toISOString(),
-                    expiryDate: detectedExpiryDate || doc.expiryDate || '',
-                };
-            }
-            return doc;
+        const { expiryDate } = await serverActions.extractExpiryDateAction({ 
+          applicationId: appState.id,
+          documentUrl: publicUrl,
+          idToken 
         });
-        
-        setAppState((prev) => ({ ...prev, documents: newDocuments }));
-        
-        handlePersistChanges({ documents: newDocuments }, { title: "Upload Successful", description: `${file.name} has been uploaded and saved.` });
+        detectedExpiryDate = expiryDate || null;
+      }
+
+      if (detectedExpiryDate) {
+        toast({ title: 'AI Success!', description: `Detected expiry date: ${format(new Date(detectedExpiryDate), 'PPP')}` });
+      } else if (docDefinition.requiresExpiry) {
+        toast({ variant: "default", title: 'AI Notice', description: 'Could not automatically detect an expiry date. Please enter it manually.' });
+      }
+
+      const newDocuments = appState.documents.map((doc) => {
+        if (doc.id === activeUploadDocId) {
+          return {
+            ...doc,
+            status: "uploaded" as const,
+            fileName: file.name,
+            fileType: file.type || '',
+            fileUrl: publicUrl,
+            uploadedAt: new Date().toISOString(),
+            expiryDate: detectedExpiryDate || doc.expiryDate || '',
+          };
+        }
+        return doc;
+      });
+
+      setAppState((prev) => ({ ...prev, documents: newDocuments }));
+
+      handlePersistChanges({ documents: newDocuments }, { title: "Upload Successful", description: `${file.name} has been uploaded and saved.` });
 
     } catch (error: unknown) {
       console.error("Upload failed:", error);
@@ -272,11 +281,11 @@ export function ApplicationClient({
         description: getErrorMessage(error) || "There was an error uploading your file.",
       });
     } finally {
-        setUploadingDocId(null);
-        setActiveUploadDocId(null);
-        if (fileInputRef.current) {
-            fileInputRef.current.value = "";
-        }
+      setUploadingDocId(null);
+      setActiveUploadDocId(null);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
     }
   };
 
