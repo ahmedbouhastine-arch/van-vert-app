@@ -3,13 +3,14 @@
 
 import { useState } from 'react';
 import { getStorage, ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { app } from '@/firebase'; // Assuming you have a firebase app instance initialized
+import { useFirebaseApp } from '@/firebase';
 
 export function UploadProfilePicture() {
   const [file, setFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [photoURL, setPhotoURL] = useState<string | null>(null);
+  const app = useFirebaseApp();
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {

@@ -1,7 +1,7 @@
 
 import { notFound, redirect } from "next/navigation";
 import { ApplicationClient } from "./_components/ApplicationClient";
-import { getAuthenticatedAppForUser } from "@/firebase/auth-actions";
+import { getAuthenticatedAppForUser } from "@/firebase/server-auth-actions";
 import { doc, getDoc } from "firebase/firestore";
 import type { Application } from "@/types";
 import { headers } from "next/headers";

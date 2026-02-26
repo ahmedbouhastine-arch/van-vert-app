@@ -260,7 +260,7 @@ export function ApplicationClient({
           return {
             ...doc,
             status: "uploaded" as const,
-            fileName: file..name,
+            fileName: file.name,
             fileType: file.type || '',
             fileUrl: publicUrl,
             uploadedAt: new Date().toISOString(),
