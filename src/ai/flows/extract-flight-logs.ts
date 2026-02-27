@@ -40,7 +40,7 @@ export async function extractFlightLogs(input: ExtractFlightLogsInput): Promise<
       }
   });
 
-  const output = res.output();
+  const output = res.output;
   if (!output) {
     return { flights: [], logbookFormat: 'simple' };
   }
