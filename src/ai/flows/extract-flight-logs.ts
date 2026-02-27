@@ -48,7 +48,7 @@ export async function extractFlightLogs(input: ExtractFlightLogsInput): Promise<
   for (let attempt = 1; attempt <= 5; attempt++) {
     try {
       const res = await ai.generate({
-          model: 'vertexai/gemini-1.5-pro',
+          model: 'vertexai/gemini-2.0-flash',
           prompt: [
             {
               text: `You are an expert aviation data extraction system analyzing a scanned pilot logbook PDF.
