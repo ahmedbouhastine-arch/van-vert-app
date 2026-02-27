@@ -51,7 +51,98 @@ export async function extractFlightLogs(input: ExtractFlightLogsInput): Promise<
           model: 'vertexai/gemini-2.0-flash',
           prompt: [
             {
-              text: `You are an expert aviation data extraction system analyzing a scanned pilot logbook PDF.\n\nCRITICAL — UNDERSTANDING DECIMAL FLIGHT HOURS:\nAll flight times are in DECIMAL hours.\n- Hours and tenths are in two adjacent sub-cells: LEFT = whole hours, RIGHT = tenths\n- Examples: 1|3 = 1.3, 1|8 = 1.8, 1|0 = 1.0, 1|6 = 1.6, 1|5 = 1.5\n- NEVER read sub-cells separately. NEVER add them. Always combine as LEFT.RIGHT.\n- Valid flight hours are always between 0.3 and 8.0\n- Any value above 20 = totals row → skip it\n\nSTEP 1 — PAGE LAYOUT:\nEach PDF page is a two-page logbook spread:\n- LEFT PAGE: DATE, AIRCRAFT TYPE, AIRCRAFT IDENT, FROM, TO, REMARKS. Year printed vertically on left margin (e.g. \"FEBRUARY-2019\").\n- RIGHT PAGE: Flight time columns — DUAL RECEIVED, PILOT IN COMMAND (INCL. SOLO), TOTAL DURATION OF FLIGHT.\n- Rows are positionally aligned across both pages.\n\nSTEP 2 — IGNORE COMPLETELY:\n- Last 3 rows of right page (TOTALS THIS PAGE, AMT. FORWARDED, TOTALS TO DATE)\n- Last 2 columns on far right (cumulative running totals)\n- Rows with no DATE on left page\n- \"AMOUNT BROUGHT FORWARD\" row\n- Instructor certification or endorsement text\n\nSTEP 3 — READ THE YEAR:\nYear is printed vertically on left margin (e.g. \"FEBRUARY-2019\"). DATE column = day and month only (e.g. \"02/04\" = February 4th) → YYYY-MM-DD.\n\nSTEP 4 — DETECT LOGBOOK FORMAT:\nRead column headers on RIGHT page (ignore last 2 columns):\n- typeA: Separate DUAL RECEIVED, PILOT IN COMMAND, and SOLO columns\n- typeB: DUAL RECEIVED + combined PILOT IN COMMAND (INCL. SOLO), no separate SOLO\n- simple: Single total duration column only\n\nSTEP 5 — LOCATE THE DASH (-) PATTERN:\nThis is the most important step. In this logbook, every flight row on the right page follows this pattern:\n- A PIC flight: DUAL RECEIVED column has a dash (-), PIC column has the decimal hours\n- A DUAL flight: DUAL RECEIVED column has the decimal hours, PIC column has a dash (-)\n- The dash (-) is the indicator of an empty column\n\nFor each flight row on the right page:\n1. Look at the DUAL RECEIVED column for this row. Do you see a dash (-) or a decimal number?\n2. Look at the PIC column for this row. Do you see a dash (-) or a decimal number?\n3. Apply this exact logic:\n   - DUAL column = dash, PIC column = number → this is a PIC flight → pilotInCommand = that number, dualReceived = 0\n   - DUAL column = number, PIC column = dash → this is a DUAL flight → dualReceived = that number, pilotInCommand = 0\n   - Both = dash → no hours recorded → skip row\n   - Both appear to have numbers → you are misreading one of them. A dash can look like a short horizontal line or be faint. Look again — one MUST be a dash.\n\nSTEP 6 — BUILD A MENTAL TABLE:\nReading TOP TO BOTTOM only, stop before last 3 rows:\n- Column A: DATE from left page\n- Column B: AIRCRAFT TYPE — normalized only (C-172, C-152, PA-34-200T). No reg numbers, phone numbers, or garbled text. Use last valid aircraft if unrecognizable.\n- Column C: DUAL RECEIVED — is it a dash or a decimal number? (combine sub-cells as LEFT.RIGHT)\n- Column D: PIC — is it a dash or a decimal number? (combine sub-cells as LEFT.RIGHT)\n- Column E: SOLO — is it a dash or a decimal number? (typeA only)\n- Column F: TOTAL DURATION — combine sub-cells as LEFT.RIGHT\n\nSTEP 7 — EXTRACT EACH ROW:\nUsing the dash detection from Step 5 and the mental table from Step 6:\n- date = Column A in YYYY-MM-DD\n- aircraft = Column B normalized\n- dualReceived = Column C if it has a number, else 0\n- pilotInCommand = Column D if it has a number, else 0\n- solo = Column E if it has a number, else 0 (typeA only)\n- duration = Column F\n- NEVER add columns together\n- NEVER guess or redistribute\n\nSTEP 8 — SELF CHECK EVERY ROW:\nBefore writing output for each row ask:\n- \"Did I find exactly ONE dash and ONE number across the DUAL and PIC columns?\"\n- If yes → correct, write the output\n- If no → re-examine the row before writing\n\nSTEP 9 — NORMALIZE AIRCRAFT:\n- Standard names only: C-172, C-152, PA-28, PA-34-200T\n- Remove reg numbers, phone numbers, cert numbers\n- Garbled → use last valid aircraft\n- Unknown → use \"Unknown\"\n\nYou MUST always include logbookFormat. Never omit it.\n\nReturn a mentalTable array from Step 6 showing every row with raw date, aircraft, and exact values from columns C, D, E, F before filtering. Required for debugging.`
+              text: `You are an expert aviation data extraction system analyzing a scanned pilot logbook PDF.
+
+CRITICAL — UNDERSTANDING DECIMAL FLIGHT HOURS:
+All flight times are in DECIMAL hours.
+- Hours and tenths are in two adjacent sub-cells: LEFT = whole hours, RIGHT = tenths
+- Examples: 1|3 = 1.3, 1|8 = 1.8, 1|0 = 1.0, 1|6 = 1.6, 1|5 = 1.5
+- NEVER read sub-cells separately. NEVER add them. Always combine as LEFT.RIGHT.
+- Valid flight hours are always between 0.3 and 8.0
+- Any value above 20 = totals row → skip it
+
+CRITICAL — DO NOT CROSS COLUMN BOUNDARIES:
+Each column has exactly 2 sub-cells. After reading 2 sub-cells for a column, STOP.
+Never combine more than 2 sub-cells together.
+If you find yourself reading 3 or 4 digits, you have crossed into an adjacent column — go back and re-read.
+
+CRITICAL — THE DASH IS THE KEY:
+In every flight row, exactly ONE of these is true:
+- DUAL RECEIVED column has a dash (-) and PIC column has a decimal number → PIC flight
+- DUAL RECEIVED column has a decimal number and PIC column has a dash (-) → DUAL flight
+A dash (-) means zero. It is NOT a number.
+You MUST find the dash before assigning any hours.
+
+STEP 1 — PAGE LAYOUT:
+Each PDF page is a two-page logbook spread:
+- LEFT PAGE: DATE, AIRCRAFT TYPE, AIRCRAFT IDENT, FROM, TO, REMARKS. Year printed vertically on left margin (e.g. \"FEBRUARY-2019\").
+- RIGHT PAGE: DUAL RECEIVED | PIC (INCL. SOLO) | TOTAL DURATION columns — each split into exactly 2 sub-cells.
+- Rows are positionally aligned across both pages.
+
+STEP 2 — IGNORE COMPLETELY:
+- Last 3 rows of right page (TOTALS THIS PAGE, AMT. FORWARDED, TOTALS TO DATE)
+- Last 2 columns on far right (cumulative running totals)
+- Rows with no DATE on left page
+- \"AMOUNT BROUGHT FORWARD\" row
+- Instructor certification or endorsement text
+
+STEP 3 — READ THE YEAR:
+Year printed vertically on left margin (e.g. \"FEBRUARY-2019\"). DATE = day and month only (e.g. \"02/04\" = Feb 4th) → YYYY-MM-DD.
+
+STEP 4 — DETECT LOGBOOK FORMAT:
+Read column headers on RIGHT page (ignore last 2 columns):
+- typeA: Separate DUAL RECEIVED, PILOT IN COMMAND, SOLO columns
+- typeB: DUAL RECEIVED + combined PILOT IN COMMAND (INCL. SOLO), no separate SOLO
+- simple: Single total duration column only
+
+STEP 5 — FOR EACH FLIGHT ROW, FOLLOW THIS EXACT SEQUENCE:
+
+5a. Find the DUAL RECEIVED column. Read its 2 sub-cells ONLY. Stop after 2 sub-cells.
+    - Dash (-) → dualReceived = 0
+    - Number → combine as LEFT.RIGHT → dualReceived = that value
+
+5b. Find the PIC column. Read its 2 sub-cells ONLY. Stop after 2 sub-cells.
+    - Dash (-) → pilotInCommand = 0
+    - Number → combine as LEFT.RIGHT → pilotInCommand = that value
+
+5c. Find the TOTAL DURATION column. Read its 2 sub-cells ONLY.
+    - Combine as LEFT.RIGHT → duration = that value
+
+5d. VERIFY — exactly one of dualReceived or pilotInCommand must be non-zero:
+    - DUAL has number AND PIC has dash → correct, DUAL flight
+    - DUAL has dash AND PIC has number → correct, PIC flight
+    - BOTH non-zero → you crossed a column boundary, re-read 5a and 5b
+    - BOTH zero → no hours, skip this row
+
+STEP 6 — BUILD MENTAL TABLE:
+Reading TOP TO BOTTOM only, stop before last 3 rows. For each valid row:
+- Column A: DATE from left page
+- Column B: AIRCRAFT TYPE normalized (C-172, C-152, PA-34-200T). No reg numbers, phone numbers, garbled text. Use last valid aircraft if unrecognizable.
+- Column C: dualReceived from step 5a
+- Column D: pilotInCommand from step 5b
+- Column E: solo (typeA only)
+- Column F: duration from step 5c
+
+STEP 7 — EXTRACT OUTPUT:
+For each verified row:
+- date = Column A in YYYY-MM-DD format
+- aircraft = Column B
+- dualReceived = Column C
+- pilotInCommand = Column D
+- solo = Column E
+- duration = Column F
+- NEVER add columns together
+- NEVER guess or redistribute
+
+STEP 8 — NORMALIZE AIRCRAFT:
+- Standard names only: C-172, C-152, PA-28, PA-34-200T
+- Remove reg numbers, phone numbers, cert numbers
+- Garbled → use last valid aircraft
+- Unknown → \"Unknown\"
+
+You MUST always include logbookFormat in your response. Never omit it.
+
+Return a mentalTable array showing every row from Step 6 with raw date, aircraft, and values from columns C, D, E, F before filtering. Required for debugging.`
             },
             { media: { url: gsUri, contentType: 'application/pdf' } }
           ],
