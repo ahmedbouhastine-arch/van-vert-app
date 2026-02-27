@@ -22,7 +22,7 @@ const ai = genkit({ plugins: [vertexAI({ projectId: 'REDACTED_FIREBASE_PROJECT_I
 export async function extractExpiryDate(input: ExtractExpiryDateInput): Promise<ExtractExpiryDateOutput> {
 
   const result = await ai.generate({
-    model: 'vertexai/gemini-2.0-flash',
+    model: 'vertexai/gemini-1.5-pro',
     prompt: [
       { text: `You are an expert at processing official documents. Find and extract the expiry date from the provided document. Look for labels like "Expiry Date", "Expires", "Valid Until", or similar. Return ONLY in YYYY-MM-DD format, or null if not found.` },
       { media: { url: input.documentDataUri } }
