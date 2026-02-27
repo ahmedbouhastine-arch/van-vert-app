@@ -20,9 +20,19 @@ const FlightLogEntrySchema = z.object({
     solo: z.number().optional().default(0).describe('Solo flight time in hours (decimal format).'),
 });
 
+const MentalTableRowSchema = z.object({
+  date: z.string(),
+  aircraft: z.string(),
+  dualReceived: z.number().default(0),
+  pilotInCommand: z.number().default(0),
+  solo: z.number().default(0),
+  duration: z.number().default(0),
+});
+
 const ExtractFlightLogsOutputSchema = z.object({
   flights: z.array(FlightLogEntrySchema).describe('Extracted flight log entries.'),
   logbookFormat: z.enum(['typeA', 'typeB', 'simple']).describe('Inferred format of the logbook: "typeA" (separate columns for Dual, PIC, Solo), "typeB" (combined PIC includes solo, separate Dual), or "simple" (minimal details).'),
+  mentalTable: z.array(MentalTableRowSchema).optional(),
 });
 export type ExtractFlightLogsOutput = z.infer<typeof ExtractFlightLogsOutputSchema>;
 
@@ -41,7 +51,7 @@ export async function extractFlightLogs(input: ExtractFlightLogsInput): Promise<
           model: 'vertexai/gemini-2.0-flash',
           prompt: [
             {
-              text: `You are an expert aviation data extraction system analyzing a scanned pilot logbook spread — two physical pages photographed open side by side.\nThis is a multi-page PDF. Process ALL pages. For each page spread, follow the extraction steps.\n\nSTEP 1 — UNDERSTAND THE PAGE SPREAD LAYOUT:\nLEFT PAGE: Contains flight details — DATE, AIRCRAFT TYPE, AIRCRAFT IDENT, FROM, TO, REMARKS, and some basic columns. The year is printed vertically along the left margin (e.g., "FEBRUARY-2019").\nRIGHT PAGE: Contains the flight time breakdown columns — DUAL RECEIVED, PILOT IN COMMAND (INCL. SOLO), SOLO, and TOTAL DURATION OF FLIGHT. The rows on the right page correspond directly to the rows on the left page — they are the same flights, just continued across the page spread.\n\nYou must read BOTH pages together. Match each flight row from the left page with its corresponding hour data on the right page by row position.\nSTEP 2 — READ THE YEAR:\nThe year is printed vertically along the left margin of the left page (e.g., "FEBRUARY-2019"). Use this year for ALL flight entries on that spread. The DATE column contains only day and month (e.g., "02/04" = February 4th) — combine with the page year to form YYYY-MM-DD.\nSTEP 3 — DETECT LOGBOOK FORMAT by reading the column headers on the RIGHT page:\n\ntypeA: Separate columns for DUAL RECEIVED, PILOT IN COMMAND, and SOLO\ntypeB: DUAL RECEIVED column and a combined PILOT IN COMMAND column that includes solo (e.g., "PILOT IN COMMAND INCL. SOLO"). No separate SOLO column.\nsimple: Only a single total duration column, no breakdown by type\n\nSTEP 4 — NORMALIZE AIRCRAFT TYPE:\nWhen reading the AIRCRAFT TYPE column, clean and normalize the value:\n\nOnly extract the standard aircraft model name (e.g., "C-172", "PA-34-200T", "C-152")\nRemove any telephone numbers, registration numbers, instructor names, certification codes, or any other non-aircraft-model text\nIf the value looks garbled or unrecognizable as an aircraft model, default to the most recently seen valid aircraft model on that page\nIf no valid aircraft model can be determined at all, use "Unknown"\nNever include telephone numbers, FAA certificate numbers, or random digit strings in the aircraft field\n\nSTEP 5 — EXTRACT EACH FLIGHT ROW by combining data from both pages:\nFor each row that has a date, aircraft, and duration:\n\nGet the date and aircraft from the LEFT page\nGet the hour breakdown from the RIGHT page by matching row position\nIf the value is in the DUAL RECEIVED column → set dualReceived to that value, set pilotInCommand and solo to 0\nIf the value is in the PILOT IN COMMAND column → set pilotInCommand to that value, set dualReceived and solo to 0\nIf the value is in the SOLO column → set solo to that value, set dualReceived and pilotInCommand to 0\nA single flight row will NEVER have hours in more than one column. Never redistribute or guess hours.\nIf a cell is empty, a dash (-), or blank → that field is 0\nThe duration field is the TOTAL DURATION OF FLIGHT column value from the right page\n\nSTEP 6 — IGNORE all summary/total rows (TOTALS THIS PAGE, AMT. FORWARDED, TOTALS TO DATE, AMOUNT BROUGHT FORWARD). Extract only individual flight rows.\nYou MUST always include the logbookFormat field in your response. It is required. Choose one of: typeB if the logbook has a combined PIC (including solo) column, typeA if PIC and Solo are separate columns, or simple if the logbook has minimal column detail. Never omit this field.`
+              text: `You are an expert aviation data extraction system analyzing a scanned pilot logbook PDF.\nIMPORTANT: All flight hours in this logbook are in DECIMAL format. 1.3 means one point three hours (1 hour 18 minutes). 1.8 means one point eight hours. Never interpret these as whole numbers. Never add digits together. Read each number exactly as written.\nSTEP 1 — BUILD A MENTAL TABLE:\nBefore extracting anything, scan the entire page spread and build an internal table in your mind with these columns in order:\n\nColumn A: DATE — from the left page, reading down every row that has a flight entry\nColumn B: AIRCRAFT TYPE — from the left page, the aircraft model next to each date. Normalize to standard model names only (e.g. C-172, C-152, PA-34-200T). Never include registration numbers, phone numbers, or garbled text.\nColumn C: DUAL RECEIVED hours — from the right page, the value in the Dual Received column for that row\nColumn D: PILOT IN COMMAND hours — from the right page, the value in the PIC column for that row\nColumn E: SOLO hours — from the right page, the value in the Solo column for that row (if it exists)\n\nThe rows on the LEFT page and the RIGHT page are aligned by position — row 1 on the left matches row 1 on the right, row 2 matches row 2, and so on.\nSTEP 2 — DETECT LOGBOOK FORMAT:\nLook at the column headers on the right page:\n\ntypeA: Has separate DUAL RECEIVED, PILOT IN COMMAND, and SOLO columns\ntypeB: Has DUAL RECEIVED and a combined PILOT IN COMMAND (INCL. SOLO) column — no separate SOLO column\nsimple: Only has a single total duration column\n\nSTEP 3 — FOR EACH ROW IN YOUR MENTAL TABLE:\nLook at columns C, D, and E for that row:\n\nExactly ONE of these columns will have a non-zero decimal number\nThe other columns will be blank, a dash (-), or zero\nThe column that has the value tells you the flight type:\n\nColumn C has value → dualReceived = that value, pilotInCommand = 0, solo = 0, badge = Dual\nColumn D has value → pilotInCommand = that value, dualReceived = 0, solo = 0, badge = PIC\nColumn E has value → solo = that value, dualReceived = 0, pilotInCommand = 0, badge = Solo\n\n\nThe duration field = the total flight time from the TOTAL DURATION column on the right page\nNEVER add values from multiple columns together\nNEVER guess or redistribute hours\nRead each decimal number exactly as written — 1.3 is 1.3, not 3, not 13\n\nSTEP 4 — IGNORE:\n\nAll summary/total rows: TOTALS THIS PAGE, AMT. FORWARDED, TOTALS TO DATE, AMOUNT BROUGHT FORWARD\nAny row without a date and aircraft\nThe instructor certification section if present\n\nSTEP 5 — READ THE YEAR:\nThe year is printed vertically along the left margin (e.g. "FEBRUARY-2019"). Use this year for ALL entries on that page. Dates are day/month only — combine with the year to form YYYY-MM-DD.\nYou MUST always include logbookFormat in your response. Never omit it.\nAlso return a mentalTable array showing every row you built in Step 1 — the raw date, aircraft, and exact values you read from columns C, D, E, and total duration, before any filtering. This is required for debugging.`
             },
             { media: { url: gsUri, contentType: 'application/pdf' } }
           ],
@@ -58,6 +68,11 @@ export async function extractFlightLogs(input: ExtractFlightLogsInput): Promise<
       if (!output?.logbookFormat) {
         output.logbookFormat = 'simple';
       }
+      if (output.mentalTable) {
+        console.log('=== AI MENTAL TABLE ===');
+        console.table(output.mentalTable);
+        console.log('======================');
+      }
 
       const parsed = ExtractFlightLogsOutputSchema.parse(output as unknown);
 
@@ -73,6 +88,7 @@ export async function extractFlightLogs(input: ExtractFlightLogsInput): Promise<
       return {
         flights: filteredFlights,
         logbookFormat: parsed.logbookFormat,
+        mentalTable: parsed.mentalTable,
       };
 
     } catch (error: unknown) {
@@ -80,7 +96,7 @@ export async function extractFlightLogs(input: ExtractFlightLogsInput): Promise<
       const isRateLimit = error instanceof Error && error.message.includes('429');
       if (isRateLimit && attempt < 5) {
         const delay = attempt * 8000; 
-        console.log(`Rate limited for a page, retrying in ${delay}ms (attempt ${attempt}/5)`);
+        console.log(`Rate limited, retrying in ${delay}ms (attempt ${attempt}/5)`);
         await new Promise(resolve => setTimeout(resolve, delay));
         continue;
       }
