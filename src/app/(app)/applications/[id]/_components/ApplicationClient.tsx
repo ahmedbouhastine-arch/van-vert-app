@@ -3,7 +3,7 @@
 
 import { useState, useTransition, useRef, useEffect, useMemo } from "react";
 import { getStorage, ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import type { Application, ApplicationDocument, FirebaseTimestamp, FlightLog } from "@/types";
+import type { Application, ApplicationDocument, FirebaseTimestamp, FlightLog, LogbookFormat } from "@/types";
 import {
   Card,
   CardContent,
@@ -197,21 +197,29 @@ export function ApplicationClient({
 
   const flightLogs = appState.flightLogs || [];
 
-  const totalFlightHours = useMemo(() => {
-    return flightLogs.reduce((sum, log) => sum + (Number(log.duration) || 0), 0);
-  }, [flightLogs]);
+  // Calculate hours based on logbook format
+  const calculateHours = (logs: FlightLog[], type: 'total' | 'PIC' | 'Solo' | 'Dual') => {
+    return logs.reduce((sum, log) => {
+      if (appState.logbookFormat === 'typeA') {
+        if (type === 'PIC') return sum + (log.pilotInCommand || 0);
+        if (type === 'Solo') return sum + (log.solo || 0);
+        if (type === 'Dual') return sum + (log.dualReceived || 0);
+        return sum + (log.duration || 0);
+      } else if (appState.logbookFormat === 'typeB') {
+        if (type === 'PIC') return sum + (log.pilotInCommand || 0); // PIC includes solo for type B
+        if (type === 'Dual') return sum + (log.dualReceived || 0);
+        if (type === 'Solo') return sum + 0; // Solo is not separate in type B
+        return sum + (log.duration || 0);
+      } else { // simple or unknown
+        return sum + (log.duration || 0);
+      }
+    }, 0);
+  };
 
-  const picHours = useMemo(() => {
-    return flightLogs.filter(log => log.flightType === 'PIC').reduce((sum, log) => sum + (Number(log.duration) || 0), 0);
-  }, [flightLogs]);
-
-  const soloHours = useMemo(() => {
-    return flightLogs.filter(log => log.flightType === 'Solo').reduce((sum, log) => sum + (Number(log.duration) || 0), 0);
-  }, [flightLogs]);
-
-  const dualHours = useMemo(() => {
-    return flightLogs.filter(log => log.flightType === 'Dual').reduce((sum, log) => sum + (Number(log.duration) || 0), 0);
-  }, [flightLogs]);
+  const totalFlightHours = useMemo(() => calculateHours(flightLogs, 'total'), [flightLogs, appState.logbookFormat]);
+  const picHours = useMemo(() => calculateHours(flightLogs, 'PIC'), [flightLogs, appState.logbookFormat]);
+  const soloHours = useMemo(() => calculateHours(flightLogs, 'Solo'), [flightLogs, appState.logbookFormat]);
+  const dualHours = useMemo(() => calculateHours(flightLogs, 'Dual'), [flightLogs, appState.logbookFormat]);
 
   const filteredFlightLogs = useMemo(() => {
     if (selectedFlightTypeFilter === 'All') {
@@ -467,11 +475,11 @@ export function ApplicationClient({
       formData.append('applicationId', appState.id);
       formData.append('file', file);
 
-      const { publicUrl, extractedLogs } = await serverActions.uploadFlightLogAction(formData, idToken);
+      const { publicUrl, extractedLogs, logbookFormat } = await serverActions.uploadFlightLogAction(formData, idToken);
 
-        setAppState(prev => ({ ...prev, flightLogs: extractedLogs, flightLogPdfUrl: publicUrl }));
+        setAppState(prev => ({ ...prev, flightLogs: extractedLogs, flightLogPdfUrl: publicUrl, logbookFormat: logbookFormat }));
         
-        handlePersistChanges({ flightLogs: extractedLogs, flightLogPdfUrl: publicUrl }, {
+        handlePersistChanges({ flightLogs: extractedLogs, flightLogPdfUrl: publicUrl, logbookFormat: logbookFormat }, {
             title: "AI Analysis Complete",
             description: `${extractedLogs.length} recent flight logs have been extracted and saved.`,
         });
@@ -518,7 +526,11 @@ export function ApplicationClient({
         setIsRecencyChecking(true);
         try {
             const result = await checkRecency({
-                flights: logs.map(f => ({ date: f.date, duration: f.duration }))
+                flights: logs.map(f => ({
+                    date: f.date,
+                    duration: f.duration,
+                    // Only pass relevant fields for recency check, it doesn't need flightType or other hours
+                }))
             });
             setRecencyResult(result);
         } catch (error) {
@@ -682,8 +694,11 @@ export function ApplicationClient({
                             <TableRow className="hover:bg-transparent">
                                 <TableHead>Date</TableHead>
                                 <TableHead>Aircraft</TableHead>
+                                <TableHead>Duration (hrs)</TableHead>
+                                {appState.logbookFormat === 'typeA' && <TableHead>PIC</TableHead>}
+                                {appState.logbookFormat === 'typeA' && <TableHead>Solo</TableHead>}
+                                {(appState.logbookFormat === 'typeA' || appState.logbookFormat === 'typeB') && <TableHead>Dual</TableHead>}
                                 <TableHead>Type</TableHead>
-                                <TableHead className="text-right">Duration (hrs)</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
@@ -694,6 +709,10 @@ export function ApplicationClient({
                                         <TableCell>
                                             <div className="font-medium">{log.aircraft}</div>
                                         </TableCell>
+                                        <TableCell>{log.duration.toFixed(2)}</TableCell>
+                                        {appState.logbookFormat === 'typeA' && <TableCell>{(log.pilotInCommand || 0).toFixed(2)}</TableCell>}
+                                        {appState.logbookFormat === 'typeA' && <TableCell>{(log.solo || 0).toFixed(2)}</TableCell>}
+                                        {(appState.logbookFormat === 'typeA' || appState.logbookFormat === 'typeB') && <TableCell>{(log.dualReceived || 0).toFixed(2)}</TableCell>}
                                         <TableCell>
                                             <Badge
                                                 className={
@@ -707,12 +726,11 @@ export function ApplicationClient({
                                                 {log.flightType}
                                             </Badge>
                                         </TableCell>
-                                        <TableCell className="text-right">{log.duration.toFixed(2)}</TableCell>
                                     </TableRow>
                                 ))
                             ) : (
                                 <TableRow>
-                                    <TableCell colSpan={4} className="h-24 text-center">No flight logs have been extracted yet or match the current filter.</TableCell>
+                                    <TableCell colSpan={appState.logbookFormat === 'typeA' ? 7 : appState.logbookFormat === 'typeB' ? 6 : 4} className="h-24 text-center">No flight logs have been extracted yet or match the current filter.</TableCell>
                                 </TableRow>
                             )}
                         </TableBody>

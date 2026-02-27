@@ -42,7 +42,12 @@ export type FlightLog = {
   duration: number; // in hours
   aircraft: string;
   flightType: 'PIC' | 'Solo' | 'Dual' | 'Unknown';
+  dualReceived?: number; // in hours
+  pilotInCommand?: number; // in hours
+  solo?: number; // in hours
 };
+
+export type LogbookFormat = 'typeA' | 'typeB' | 'simple';
 
 export type Application = {
   id: string;
@@ -52,7 +57,7 @@ export type Application = {
   documents: ApplicationDocument[];
   flightLogs: FlightLog[];
   flightLogPdfUrl?: string;
-  logbookFormat?: 'standard' | 'combined' | 'simple'; // New field to infer AI interpretation
+  logbookFormat?: LogbookFormat; // Updated type
   submittedAt?: FirebaseTimestamp;
   updatedAt: FirebaseTimestamp;
   createdAt?: FirebaseTimestamp;
