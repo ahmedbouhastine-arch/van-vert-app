@@ -2,7 +2,7 @@
 import 'server-only';
 
 import { genkit } from 'genkit';
-import { googleAI } from '@genkit-ai/googleai';
+import { vertexAI } from '@genkit-ai/vertexai';
 import { z } from 'zod';
 
 const ExtractFlightLogsInputSchema = z.object({
@@ -24,17 +24,17 @@ const ExtractFlightLogsOutputSchema = z.object({
 });
 export type ExtractFlightLogsOutput = z.infer<typeof ExtractFlightLogsOutputSchema>;
 
-const ai = genkit({ plugins: [googleAI()] });
+const ai = genkit({ plugins: [vertexAI({ projectId: 'REDACTED_FIREBASE_PROJECT_ID', location: 'us-central1' })] });
 
 export async function extractFlightLogs(input: ExtractFlightLogsInput): Promise<ExtractFlightLogsOutput> {
   const mediaUrl = input.flightLogPdf || input.storagePath;
   if (!mediaUrl) throw new Error("No PDF source provided.");
 
   let lastError: unknown;
-  for (let attempt = 1; attempt <= 3; attempt++) {
+  for (let attempt = 1; attempt <= 5; attempt++) {
     try {
       const res = await ai.generate({
-          model: 'googleai/gemini-2.0-flash',
+          model: 'vertexai/gemini-2.0-flash',
           prompt: [
             {
               text: `You are an expert aviation data extraction system analyzing a scanned FAA pilot logbook.\n\nCRITICAL INSTRUCTIONS FOR READING THIS LOGBOOK FORMAT:\n1. Each page has TWO tables side by side — LEFT and RIGHT\n2. Extract flights ONLY from the LEFT table (it has columns: DATE, AIRCRAFT TYPE, AIRCRAFT IDENT, FROM, TO, REMARKS, NR T/O, NR LDG, DURATION OF FLIGHT, PILOT IN COMMAND, SOLO, DUAL RECEIVED)\n3. IGNORE the RIGHT table completely — it contains instructor certification records, not individual flights\n4. The YEAR is printed vertically along the left margin of the page (e.g., "FEBRUARY-2019", "JANUARY-2020") — use this year for ALL entries on that page\n5. The DATE column contains only day and month (e.g., "02/04" = February 4th) — combine with the page year to form YYYY-MM-DD\n6. The DURATION OF FLIGHT is in the last column of the LEFT table — read it as decimal hours (e.g., "1.3" = 1.3 hours)\n7. Extract EVERY row that has a date, aircraft, and duration — do not skip any\n\nFor each flight entry, also determine the flightType:\n- 'PIC': if the 'PILOT IN COMMAND' column has a value\n- 'Solo': if the 'SOLO' column has a value\n- 'Dual': if the 'DUAL RECEIVED' column has a value\n- 'Unknown': if none of the above are clearly indicated\n\nIMPORTANT:\n- Do NOT extract from totals rows (TOTALS THIS PAGE, AMT. FORWARDED, TOTALS TO DATE)\n- Do NOT extract from the right-side certification table\n- Construct full dates using page year + row day/month\n- Return logbookFormat as 'standard' for this logbook type\n\nReturn a JSON object with 'logbookFormat' and a 'flights' array with every individual flight entry.`
@@ -54,8 +54,12 @@ export async function extractFlightLogs(input: ExtractFlightLogsInput): Promise<
 
       const parsed = ExtractFlightLogsOutputSchema.parse(output as unknown);
 
+      const currentYear = new Date().getFullYear();
       const filteredFlights = parsed.flights.filter((log) => {
-        const dateValid = /^\d{4}-\d{2}-\d{2}$/.test(log.date) && !isNaN(new Date(log.date).getTime());
+        const dateValid = /^\d{4}-\d{2}-\d{2}$/.test(log.date) && 
+          !isNaN(new Date(log.date).getTime()) &&
+          new Date(log.date).getFullYear() >= 1990 &&
+          new Date(log.date).getFullYear() <= currentYear;
         return dateValid && !!log.aircraft && typeof log.duration === 'number' && log.duration > 0;
       });
 
@@ -67,14 +71,22 @@ export async function extractFlightLogs(input: ExtractFlightLogsInput): Promise<
     } catch (error: unknown) {
       lastError = error;
       const isRateLimit = error instanceof Error && error.message.includes('429');
-      if (isRateLimit && attempt < 3) {
-        const delay = attempt * 5000; // 5s, 10s
-        console.log(`Rate limited, retrying in ${delay}ms (attempt ${attempt}/3)`);
+      if (isRateLimit && attempt < 5) {
+        const delay = attempt * 8000; // 8s, 16s, 24s, 32s
+        console.log(`Rate limited, retrying in ${delay}ms (attempt ${attempt}/5)`);
         await new Promise(resolve => setTimeout(resolve, delay));
         continue;
       }
       throw error;
     }
   }
-  throw lastError;
+  throw new Error(`Failed to extract flight logs after multiple attempts due to: ${getErrorMessage(lastError)}`);
+}
+
+function getErrorMessage(err: unknown): string {
+  if (!err) return 'Unknown error';
+  if (typeof err === 'string') return err;
+  const e = err as { message?: unknown };
+  if (typeof e.message === 'string') return e.message;
+  return 'An unexpected error occurred';
 }

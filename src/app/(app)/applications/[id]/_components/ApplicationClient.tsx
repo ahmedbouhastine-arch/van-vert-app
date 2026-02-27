@@ -25,6 +25,7 @@ import {
   Download,
   X,
   RefreshCw,
+  ChevronLeft, ChevronRight
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -59,6 +60,17 @@ function getErrorMessage(err: unknown): string {
   const e = err as { message?: unknown };
   if (typeof e.message === 'string') return e.message;
   return 'An unexpected error occurred';
+}
+
+// Safe date formatter for flight logs
+function formatFlightDate(dateStr: string): string {
+  try {
+    const date = new Date(dateStr);
+    if (isNaN(date.getTime())) return dateStr; // return raw string if invalid
+    return format(date, 'PPP');
+  } catch {
+    return dateStr; // fallback to raw string
+  }
 }
 
 function DocumentCard({
@@ -158,6 +170,8 @@ function DocumentCard({
   );
 }
 
+const ITEMS_PER_PAGE = 20;
+
 export function ApplicationClient({
   application: initialApplication,
 }: {
@@ -179,6 +193,7 @@ export function ApplicationClient({
   const [isRecencyChecking, setIsRecencyChecking] = useState(false);
   const [isUploadingLog, setIsUploadingLog] = useState(false);
   const [selectedFlightTypeFilter, setSelectedFlightTypeFilter] = useState<'All' | 'PIC' | 'Solo' | 'Dual'>('All');
+  const [currentPage, setCurrentPage] = useState(1);
 
   const flightLogs = appState.flightLogs || [];
 
@@ -205,6 +220,18 @@ export function ApplicationClient({
     return flightLogs.filter(log => log.flightType === selectedFlightTypeFilter);
   }, [flightLogs, selectedFlightTypeFilter]);
 
+  const totalFilteredFlights = filteredFlightLogs.length;
+  const totalPages = Math.ceil(totalFilteredFlights / ITEMS_PER_PAGE);
+  const paginatedFlights = useMemo(() => {
+    const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+    const endIndex = startIndex + ITEMS_PER_PAGE;
+    return filteredFlightLogs.slice(startIndex, endIndex);
+  }, [filteredFlightLogs, currentPage]);
+
+  // Reset pagination when filter changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [selectedFlightTypeFilter]);
   
   const handlePersistChanges = (updates: Partial<Application>, successToast: {title: string, description?: string} | null) => {
     if (!firestore) return;
@@ -647,6 +674,9 @@ export function ApplicationClient({
                 </TabsList>
                 {/* The TabsContent will render the same table, filtered by selectedFlightTypeFilter */}
                 <TabsContent value={selectedFlightTypeFilter} className="mt-4">
+                    <div className="mb-4 text-sm text-muted-foreground">
+                        Showing {Math.min((currentPage - 1) * ITEMS_PER_PAGE + 1, totalFilteredFlights)}-{Math.min(currentPage * ITEMS_PER_PAGE, totalFilteredFlights)} of {totalFilteredFlights} flights
+                    </div>
                     <Table>
                         <TableHeader>
                             <TableRow className="hover:bg-transparent">
@@ -657,10 +687,10 @@ export function ApplicationClient({
                             </TableRow>
                         </TableHeader>
                         <TableBody>
-                            {filteredFlightLogs && filteredFlightLogs.length > 0 ? (
-                                filteredFlightLogs.map((log, index) => (
+                            {paginatedFlights && paginatedFlights.length > 0 ? (
+                                paginatedFlights.map((log, index) => (
                                     <TableRow key={log.id} className={index % 2 === 0 ? 'bg-muted/30 hover:bg-muted' : 'hover:bg-muted'}>
-                                        <TableCell>{safeFormatDate(log.date, 'PPP')}</TableCell>
+                                        <TableCell>{formatFlightDate(log.date)}</TableCell>
                                         <TableCell>
                                             <div className="font-medium">{log.aircraft}</div>
                                         </TableCell>
@@ -687,6 +717,37 @@ export function ApplicationClient({
                             )}
                         </TableBody>
                     </Table>
+                    <div className="flex items-center justify-end space-x-2 py-4">
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                            disabled={currentPage === 1}
+                        >
+                            <ChevronLeft className="h-4 w-4 mr-2" />Previous
+                        </Button>
+                        <div className="flex items-center space-x-1">
+                            {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
+                                <Button
+                                    key={page}
+                                    variant={currentPage === page ? "secondary" : "outline"}
+                                    size="sm"
+                                    onClick={() => setCurrentPage(page)}
+                                    className={currentPage === page ? "bg-primary text-primary-foreground" : ""}
+                                >
+                                    {page}
+                                </Button>
+                            ))}
+                        </div>
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                            disabled={currentPage === totalPages}
+                        >
+                            Next<ChevronRight className="h-4 w-4 ml-2" />
+                        </Button>
+                    </div>
                 </TabsContent>
             </Tabs>
         </CardContent>
