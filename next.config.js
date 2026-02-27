@@ -46,6 +46,11 @@ const nextConfig = {
     },
   },
   serverExternalPackages: ['@genkit-ai/core', '@genkit-ai/googleai', 'genkit'],
+  experimental: {
+    serverActions: {
+      bodySizeLimit: '30mb',
+    },
+  },
 };
 
 module.exports = nextConfig;
