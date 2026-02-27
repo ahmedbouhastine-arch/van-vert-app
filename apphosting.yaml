@@ -39,3 +39,8 @@ env:
     availability:
       - BUILD
       - RUNTIME
+  - variable: GOOGLE_API_KEY
+    value: "AIzaSyCk9sWiDEPuWHK2s24REmKGSgDbkwE2hNc"
+    availability:
+      - BUILD
+      - RUNTIME
