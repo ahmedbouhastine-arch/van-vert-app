@@ -1,9 +1,9 @@
 
 "use client";
 
-import { useState, useTransition, useRef, useEffect } from "react";
+import { useState, useTransition, useRef, useEffect, useMemo } from "react";
 import { getStorage, ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import type { Application, ApplicationDocument, FirebaseTimestamp } from "@/types";
+import type { Application, ApplicationDocument, FirebaseTimestamp, FlightLog } from "@/types";
 import {
   Card,
   CardContent,
@@ -36,6 +36,8 @@ import * as serverActions from '@/app/actions';
 import { useFirestore, errorEmitter, FirestorePermissionError, useAuth, useFirebaseApp } from "@/firebase";
 import { doc, serverTimestamp, updateDoc, collection, addDoc } from "firebase/firestore";
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { Badge } from "@/components/ui/badge";
 
 // Helper function to safely format dates, whether they are Timestamps or strings
 const safeFormatDate = (date: FirebaseTimestamp | Date | string | undefined | null, formatString: string) => {
@@ -176,13 +178,33 @@ export function ApplicationClient({
   const [recencyResult, setRecencyResult] = useState<CheckRecencyOutput | null>(null);
   const [isRecencyChecking, setIsRecencyChecking] = useState(false);
   const [isUploadingLog, setIsUploadingLog] = useState(false);
-  const [totalFlightHours, setTotalFlightHours] = useState(0);
+  const [selectedFlightTypeFilter, setSelectedFlightTypeFilter] = useState<'All' | 'PIC' | 'Solo' | 'Dual'>('All');
 
-  useEffect(() => {
-    const logs = appState.flightLogs || [];
-    const total = logs.reduce((sum, log) => sum + (Number(log.duration) || 0), 0);
-    setTotalFlightHours(total);
-  }, [appState.flightLogs]);
+  const flightLogs = appState.flightLogs || [];
+
+  const totalFlightHours = useMemo(() => {
+    return flightLogs.reduce((sum, log) => sum + (Number(log.duration) || 0), 0);
+  }, [flightLogs]);
+
+  const picHours = useMemo(() => {
+    return flightLogs.filter(log => log.flightType === 'PIC').reduce((sum, log) => sum + (Number(log.duration) || 0), 0);
+  }, [flightLogs]);
+
+  const soloHours = useMemo(() => {
+    return flightLogs.filter(log => log.flightType === 'Solo').reduce((sum, log) => sum + (Number(log.duration) || 0), 0);
+  }, [flightLogs]);
+
+  const dualHours = useMemo(() => {
+    return flightLogs.filter(log => log.flightType === 'Dual').reduce((sum, log) => sum + (Number(log.duration) || 0), 0);
+  }, [flightLogs]);
+
+  const filteredFlightLogs = useMemo(() => {
+    if (selectedFlightTypeFilter === 'All') {
+      return flightLogs;
+    }
+    return flightLogs.filter(log => log.flightType === selectedFlightTypeFilter);
+  }, [flightLogs, selectedFlightTypeFilter]);
+
   
   const handlePersistChanges = (updates: Partial<Application>, successToast: {title: string, description?: string} | null) => {
     if (!firestore) return;
@@ -450,7 +472,7 @@ export function ApplicationClient({
   const handleRecalculateHours = () => {
     const logs = appState.flightLogs || [];
     const total = logs.reduce((sum, log) => sum + (Number(log.duration) || 0), 0);
-    setTotalFlightHours(total);
+    // setTotalFlightHours(total); // No longer needed as totalFlightHours is a useMemo
     
     toast({
         title: "Hours Recalculated",
@@ -557,8 +579,48 @@ export function ApplicationClient({
             </div>
         </CardHeader>
         <CardContent>
+            {/* Summary Cards */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+                <Card className="bg-card text-card-foreground shadow-sm">
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                        <CardTitle className="text-sm font-medium">Total Hours</CardTitle>
+                        <Loader2 className="h-4 w-4 text-muted-foreground" />
+                    </CardHeader>
+                    <CardContent>
+                        <div className="text-2xl font-bold">{totalFlightHours.toFixed(2)}</div>
+                    </CardContent>
+                </Card>
+                <Card className="bg-card text-card-foreground shadow-sm">
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                        <CardTitle className="text-sm font-medium">PIC Hours</CardTitle>
+                        <Bot className="h-4 w-4 text-blue-500" />
+                    </CardHeader>
+                    <CardContent>
+                        <div className="text-2xl font-bold text-blue-600">{picHours.toFixed(2)}</div>
+                    </CardContent>
+                </Card>
+                <Card className="bg-card text-card-foreground shadow-sm">
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                        <CardTitle className="text-sm font-medium">Solo Hours</CardTitle>
+                        <Bot className="h-4 w-4 text-green-500" />
+                    </CardHeader>
+                    <CardContent>
+                        <div className="text-2xl font-bold text-green-600">{soloHours.toFixed(2)}</div>
+                    </CardContent>
+                </Card>
+                <Card className="bg-card text-card-foreground shadow-sm">
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                        <CardTitle className="text-sm font-medium">Dual Hours</CardTitle>
+                        <Bot className="h-4 w-4 text-orange-500" />
+                    </CardHeader>
+                    <CardContent>
+                        <div className="text-2xl font-bold text-orange-600">{dualHours.toFixed(2)}</div>
+                    </CardContent>
+                </Card>
+            </div>
+
             {isRecencyChecking ? (
-                <div className="flex items-center gap-2 text-muted-foreground">
+                <div className="flex items-center gap-2 text-muted-foreground mb-6">
                     <Loader2 className="h-5 w-5 animate-spin" />
                     <span>AI is analyzing flight logs...</span>
                 </div>
@@ -576,32 +638,57 @@ export function ApplicationClient({
                 </div>
             ) : null}
 
-            <Table>
-                <TableHeader>
-                    <TableRow>
-                        <TableHead>Date</TableHead>
-                        <TableHead>Aircraft</TableHead>
-                        <TableHead className="text-right">Duration (hrs)</TableHead>
-                    </TableRow>
-                </TableHeader>
-                <TableBody>
-                    {appState.flightLogs && appState.flightLogs.length > 0 ? (
-                        appState.flightLogs.map(log => (
-                            <TableRow key={log.id}>
-                                <TableCell>{safeFormatDate(log.date, 'PPP')}</TableCell>
-                                <TableCell>
-                                    <div className="font-medium">{log.aircraft}</div>
-                                </TableCell>
-                                <TableCell className="text-right">{log.duration.toFixed(2)}</TableCell>
+            <Tabs defaultValue="All" onValueChange={(value) => setSelectedFlightTypeFilter(value as 'All' | 'PIC' | 'Solo' | 'Dual')}>
+                <TabsList className="grid w-full grid-cols-4">
+                    <TabsTrigger value="All">All</TabsTrigger>
+                    <TabsTrigger value="PIC">PIC</TabsTrigger>
+                    <TabsTrigger value="Solo">Solo</TabsTrigger>
+                    <TabsTrigger value="Dual">Dual</TabsTrigger>
+                </TabsList>
+                {/* The TabsContent will render the same table, filtered by selectedFlightTypeFilter */}
+                <TabsContent value={selectedFlightTypeFilter} className="mt-4">
+                    <Table>
+                        <TableHeader>
+                            <TableRow className="hover:bg-transparent">
+                                <TableHead>Date</TableHead>
+                                <TableHead>Aircraft</TableHead>
+                                <TableHead>Type</TableHead>
+                                <TableHead className="text-right">Duration (hrs)</TableHead>
                             </TableRow>
-                        ))
-                    ) : (
-                        <TableRow>
-                            <TableCell colSpan={3} className="h-24 text-center">No flight logs have been extracted yet.</TableCell>
-                        </TableRow>
-                    )}
-                </TableBody>
-            </Table>
+                        </TableHeader>
+                        <TableBody>
+                            {filteredFlightLogs && filteredFlightLogs.length > 0 ? (
+                                filteredFlightLogs.map((log, index) => (
+                                    <TableRow key={log.id} className={index % 2 === 0 ? 'bg-muted/30 hover:bg-muted' : 'hover:bg-muted'}>
+                                        <TableCell>{safeFormatDate(log.date, 'PPP')}</TableCell>
+                                        <TableCell>
+                                            <div className="font-medium">{log.aircraft}</div>
+                                        </TableCell>
+                                        <TableCell>
+                                            <Badge
+                                                className={
+                                                    log.flightType === 'PIC' ? 'bg-blue-600 text-blue-50 hover:bg-blue-500' :
+                                                    log.flightType === 'Solo' ? 'bg-green-600 text-green-50 hover:bg-green-500' :
+                                                    log.flightType === 'Dual' ? 'bg-orange-600 text-orange-50 hover:bg-orange-500' :
+                                                    'bg-gray-600 text-gray-50 hover:bg-gray-500'
+                                                }
+                                                variant="outline"
+                                            >
+                                                {log.flightType}
+                                            </Badge>
+                                        </TableCell>
+                                        <TableCell className="text-right">{log.duration.toFixed(2)}</TableCell>
+                                    </TableRow>
+                                ))
+                            ) : (
+                                <TableRow>
+                                    <TableCell colSpan={4} className="h-24 text-center">No flight logs have been extracted yet or match the current filter.</TableCell>
+                                </TableRow>
+                            )}
+                        </TableBody>
+                    </Table>
+                </TabsContent>
+            </Tabs>
         </CardContent>
         <CardFooter className="flex items-center gap-2 border-t pt-6">
             <Button

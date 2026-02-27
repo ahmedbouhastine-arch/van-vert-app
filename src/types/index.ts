@@ -41,6 +41,7 @@ export type FlightLog = {
   date: string; // YYYY-MM-DD
   duration: number; // in hours
   aircraft: string;
+  flightType: 'PIC' | 'Solo' | 'Dual' | 'Unknown';
 };
 
 export type Application = {
