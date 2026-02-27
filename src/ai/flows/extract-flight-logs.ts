@@ -31,9 +31,12 @@ export async function extractFlightLogs(input: ExtractFlightLogsInput): Promise<
 
   const res = await ai.generate({
       model: 'googleai/gemini-2.0-flash',
-      prompt: `You are an expert aviation administrator. Your task is to analyze the provided PDF logbook and perform two steps:\n\n      **Step 1: Classify the Logbook Format**\n      Based on the layout and columns, determine the logbook\'s format:\n      - **\'standard\'**: The logbook has distinct, separate columns for flight times like "PIC" (Pilot In Command), "Solo", "Dual", and "Total Duration".\n      - **\'combined\'**: The logbook lacks separate columns for different flight times. PIC or Solo time is often the same as the total flight duration, potentially indicated by a checkmark or a single column for all flight time.\n      - **\'simple\'**: The logbook is very basic, primarily listing just the date, aircraft, and a single duration for each flight without further breakdown.\n\n      **Step 2: Extract Flight Entries**\n      Extract all individual flight entries. For each entry, provide ONLY the following:\n      - **date**: The flight date (format: YYYY-MM-DD).\n      - **aircraft**: The standardized aircraft model.\n      - **duration**: The total duration of the flight in hours (as a decimal).\n
-      Do NOT extract remarks, PIC status, or Solo status. Focus only on the three fields above.\n\n      Return a single JSON object containing the detected \'logbookFormat\' and an array of all extracted \'flights\'.`,
-      
+      prompt: [
+        {
+          text: `You are an expert aviation data extraction system. Your ONLY job is to extract EVERY SINGLE flight entry from this logbook PDF without skipping any.\n\nCRITICAL RULES:\n- Extract ALL flights from ALL pages — do not stop early\n- Do NOT summarize or sample — extract every individual row\n- If a page has 10 rows, extract all 10 rows\n- If the total logbook has 50 flights, return exactly 50 entries\n- Do not skip entries because they look similar to previous ones\n\nFor each flight entry extract:\n- date: exact flight date in YYYY-MM-DD format\n- aircraft: standardized aircraft model name\n- duration: total flight duration in decimal hours\n\nAlso classify the logbook format:\n- 'standard': has separate PIC, Solo, Dual, and Total columns\n- 'combined': single time column used for all flight types  \n- 'simple': minimal details, just date, aircraft, and duration\n\nReturn a JSON object with 'logbookFormat' and a 'flights' array containing every single flight entry found in the document. Missing entries is a critical failure.`
+        },
+        { media: { url: mediaUrl, contentType: 'application/pdf' } }
+      ],
       output: { schema: ExtractFlightLogsOutputSchema },
       config: {
         temperature: 0.1,
