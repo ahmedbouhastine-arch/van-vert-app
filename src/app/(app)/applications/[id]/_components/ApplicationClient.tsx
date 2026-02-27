@@ -198,20 +198,20 @@ export function ApplicationClient({
   const flightLogs = appState.flightLogs || [];
   const logbookFormat = appState.logbookFormat || 'simple';
 
-  // Determine flight type for a given log entry
-  const getFlightType = (log: FlightLog): 'PIC' | 'Solo' | 'Dual' | 'Unknown' => {
+  // Determine flight type for a given log entry and return display text
+  const getFlightTypeAndDisplay = (log: FlightLog): { type: 'PIC' | 'Solo' | 'Dual' | 'Unknown', display: string } => {
     if (logbookFormat === 'typeA') {
-      if ((log.pilotInCommand || 0) > 0) return 'PIC';
-      if ((log.solo || 0) > 0) return 'Solo';
-      if ((log.dualReceived || 0) > 0) return 'Dual';
+      if ((log.pilotInCommand || 0) > 0) return { type: 'PIC', display: 'PIC' };
+      if ((log.solo || 0) > 0) return { type: 'Solo', display: 'Solo' };
+      if ((log.dualReceived || 0) > 0) return { type: 'Dual', display: 'Dual' };
     } else if (logbookFormat === 'typeB') {
-      if ((log.pilotInCommand || 0) > 0) return 'PIC'; // PIC includes solo for type B
-      if ((log.dualReceived || 0) > 0) return 'Dual';
+      if ((log.pilotInCommand || 0) > 0) return { type: 'PIC', display: 'PIC (Incl. Solo)' };
+      if ((log.dualReceived || 0) > 0) return { type: 'Dual', display: 'Dual' };
     } else { // simple or unknown
       // Fallback for simple logbooks, use existing flightType if available
-      if (log.flightType) return log.flightType;
+      if (log.flightType) return { type: log.flightType, display: log.flightType };
     }
-    return 'Unknown';
+    return { type: 'Unknown', display: 'Unknown' };
   };
 
   // Calculate hours based on logbook format
@@ -243,8 +243,8 @@ export function ApplicationClient({
       return flightLogs;
     }
     // Filter using the dynamically determined flight type
-    return flightLogs.filter(log => getFlightType(log) === selectedFlightTypeFilter);
-  }, [flightLogs, selectedFlightTypeFilter, getFlightType]);
+    return flightLogs.filter(log => getFlightTypeAndDisplay(log).type === selectedFlightTypeFilter);
+  }, [flightLogs, selectedFlightTypeFilter, getFlightTypeAndDisplay]);
 
   const totalFilteredFlights = filteredFlightLogs.length;
   const totalPages = Math.ceil(totalFilteredFlights / ITEMS_PER_PAGE);
@@ -649,22 +649,26 @@ export function ApplicationClient({
                 </Card>
                 <Card className="bg-card text-card-foreground shadow-sm">
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">PIC Hours</CardTitle>
+                        <CardTitle className="text-sm font-medium">
+                            {logbookFormat === 'typeB' ? 'PIC (Incl. Solo)' : 'PIC Hours'}
+                        </CardTitle>
                         <Bot className="h-4 w-4 text-blue-500" />
                     </CardHeader>
                     <CardContent>
                         <div className="text-2xl font-bold text-blue-600">{picHours.toFixed(2)}</div>
                     </CardContent>
                 </Card>
-                <Card className="bg-card text-card-foreground shadow-sm">
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Solo Hours</CardTitle>
-                        <Bot className="h-4 w-4 text-green-500" />
-                    </CardHeader>
-                    <CardContent>
-                        <div className="text-2xl font-bold text-green-600">{soloHours.toFixed(2)}</div>
-                    </CardContent>
-                </Card>
+                {logbookFormat !== 'typeB' && (
+                    <Card className="bg-card text-card-foreground shadow-sm">
+                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                            <CardTitle className="text-sm font-medium">Solo Hours</CardTitle>
+                            <Bot className="h-4 w-4 text-green-500" />
+                        </CardHeader>
+                        <CardContent>
+                            <div className="text-2xl font-bold text-green-600">{soloHours.toFixed(2)}</div>
+                        </CardContent>
+                    </Card>
+                )}
                 <Card className="bg-card text-card-foreground shadow-sm">
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                         <CardTitle className="text-sm font-medium">Dual Hours</CardTitle>
@@ -718,28 +722,31 @@ export function ApplicationClient({
                         </TableHeader>
                         <TableBody>
                             {paginatedFlights && paginatedFlights.length > 0 ? (
-                                paginatedFlights.map((log, index) => (
-                                    <TableRow key={log.id} className={index % 2 === 0 ? 'bg-muted/30 hover:bg-muted' : 'hover:bg-muted'}>
-                                        <TableCell>{formatFlightDate(log.date)}</TableCell>
-                                        <TableCell>
-                                            <div className="font-medium">{log.aircraft}</div>
-                                        </TableCell>
-                                        <TableCell>{log.duration.toFixed(2)}</TableCell>
-                                        <TableCell>
-                                            <Badge
-                                                className={
-                                                    getFlightType(log) === 'PIC' ? 'bg-blue-600 text-blue-50 hover:bg-blue-500' :
-                                                    getFlightType(log) === 'Solo' ? 'bg-green-600 text-green-50 hover:bg-green-500' :
-                                                    getFlightType(log) === 'Dual' ? 'bg-orange-600 text-orange-50 hover:bg-orange-500' :
-                                                    'bg-gray-600 text-gray-50 hover:bg-gray-500'
-                                                }
-                                                variant="outline"
-                                            >
-                                                {getFlightType(log)}
-                                            </Badge>
-                                        </TableCell>
-                                    </TableRow>
-                                ))
+                                paginatedFlights.map((log, index) => {
+                                    const { type: flightType, display: flightTypeDisplay } = getFlightTypeAndDisplay(log);
+                                    return (
+                                        <TableRow key={log.id} className={index % 2 === 0 ? 'bg-muted/30 hover:bg-muted' : 'hover:bg-muted'}>
+                                            <TableCell>{formatFlightDate(log.date)}</TableCell>
+                                            <TableCell>
+                                                <div className="font-medium">{log.aircraft}</div>
+                                            </TableCell>
+                                            <TableCell>{log.duration.toFixed(2)}</TableCell>
+                                            <TableCell>
+                                                <Badge
+                                                    className={
+                                                        flightType === 'PIC' ? 'bg-blue-600 text-blue-50 hover:bg-blue-500' :
+                                                        flightType === 'Solo' ? 'bg-green-600 text-green-50 hover:bg-green-500' :
+                                                        flightType === 'Dual' ? 'bg-orange-600 text-orange-50 hover:bg-orange-500' :
+                                                        'bg-gray-600 text-gray-50 hover:bg-gray-500'
+                                                    }
+                                                    variant="outline"
+                                                >
+                                                    {flightTypeDisplay}
+                                                </Badge>
+                                            </TableCell>
+                                        </TableRow>
+                                    );
+                                })
                             ) : (
                                 <TableRow>
                                     <TableCell colSpan={4} className="h-24 text-center">No flight logs have been extracted yet or match the current filter.</TableCell>
