@@ -13,6 +13,7 @@ import { StatusBadge } from '@/components/StatusBadge';
 import { ChevronRight, FileText, Search } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { Badge } from '@/components/ui/badge';
+import { cn } from '@/lib/utils';
 
 // A new component for a single application card
 function ApplicationCard({ application, user }: { application: Application, user?: UserProfile }) {
