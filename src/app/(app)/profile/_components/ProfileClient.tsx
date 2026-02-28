@@ -13,7 +13,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Slider } from '@/components/ui/slider';
 import ReactCrop, { type Crop } from 'react-image-crop';
 import 'react-image-crop/dist/ReactCrop.css';
-import { Camera, RotateCcw, RotateCw, ZoomIn, ZoomOut, Save, Edit, Trash2, ShieldCheck, User as UserIcon, Plane, Lock } from 'lucide-react';
+import { Camera, RotateCcw, RotateCw, ZoomIn, ZoomOut, Save, Edit, Trash2, ShieldCheck, User as UserIcon, Plane, Lock, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { updateUserProfileAction, deleteUserAccountAction, uploadProfilePictureAction } from '@/app/actions';
 import { getAuth, signOut } from 'firebase/auth';
@@ -264,7 +264,7 @@ export function ProfileClient({ user: initialUser, claims, applications }) {
                       aspect={1}
                       circularCrop
                   >
-                      <img ref={imgRef} src={imgSrc} style={{ transform: `scale(${scale}) rotate(${rotate}deg)` }} alt="Crop me" />
+                      {imgSrc && <img ref={imgRef} src={imgSrc} style={{ transform: `scale(${scale}) rotate(${rotate}deg)` }} alt="Crop me" />}
                   </ReactCrop>
                   <div className="grid grid-cols-2 gap-4 mt-4">
                       <div className="flex items-center gap-2"><ZoomOut className="h-5 w-5" /><Slider value={[scale]} onValueChange={([val]) => setScale(val)} min={0.5} max={2} step={0.1} /><ZoomIn className="h-5 w-5" /></div>
