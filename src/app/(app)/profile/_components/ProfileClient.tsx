@@ -186,9 +186,9 @@ export function ProfileClient({ user: initialUser, claims, applications }) {
                   </div>
                   <h2 className="text-2xl font-semibold mt-4">{user.displayName}</h2>
                   <p className="text-muted-foreground">{user.email}</p>
-                  <p className="mt-2 capitalize text-sm font-medium">
+                  <div className="mt-2 capitalize text-sm font-medium">
                       <Badge variant="outline">{claims?.role || 'User'}</Badge>
-                  </p>
+                  </div>
               </Card>
 
               {/* Security Card */}
