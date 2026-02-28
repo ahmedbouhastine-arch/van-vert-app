@@ -17,6 +17,7 @@ import { Camera, RotateCcw, RotateCw, ZoomIn, ZoomOut, Save, Edit, Trash2, Shiel
 import { useToast } from '@/hooks/use-toast';
 import { updateUserProfileAction, deleteUserAccountAction, uploadProfilePictureAction } from '@/app/actions';
 import { getAuth, signOut } from 'firebase/auth';
+import { Badge } from '@/components/ui/badge';
 
 const canvasPreview = (image, canvas, crop) => {
     const ctx = canvas.getContext('2d');
