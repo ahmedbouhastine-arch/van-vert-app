@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useMemo } from 'react';
 import { useUser } from '@/firebase';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
@@ -13,16 +13,13 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Slider } from '@/components/ui/slider';
 import ReactCrop, { type Crop } from 'react-image-crop';
 import 'react-image-crop/dist/ReactCrop.css';
-import { Camera, RotateCcw, RotateCw, ZoomIn, ZoomOut, Save, Edit, Trash2, ShieldCheck, User as UserIcon, Plane, Lock, Loader2, Calendar as CalendarIcon } from 'lucide-react';
+import { Camera, RotateCcw, RotateCw, ZoomIn, ZoomOut, Save, Edit, Trash2, ShieldCheck, User as UserIcon, Plane, Lock, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { updateUserProfileAction, deleteUserAccountAction, uploadProfilePictureAction } from '@/app/actions';
 import { getAuth, signOut } from 'firebase/auth';
 import { Badge } from '@/components/ui/badge';
 import { useRouter } from 'next/navigation';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Calendar } from '@/components/ui/calendar';
-import { format } from 'date-fns';
-import { cn } from '@/lib/utils';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 const canvasPreview = (image, canvas, crop) => {
     const ctx = canvas.getContext('2d');
@@ -59,8 +56,7 @@ export function ProfileClient({ user: initialUser, claims, applications }) {
   
   const [formData, setFormData] = useState({
     displayName: user?.displayName || '',
-    birthDate: user?.birthDate || null, // New field for birth date
-    nationality: user?.nationality || '',
+    birthDate: user?.birthDate || '', 
   });
 
   const [imgSrc, setImgSrc] = useState('');
@@ -78,6 +74,52 @@ export function ProfileClient({ user: initialUser, claims, applications }) {
 
   const totalFlightHours = applications?.reduce((sum, app) => 
     sum + (app.flightLogs?.reduce((logSum, log) => logSum + log.duration, 0) || 0), 0) || 0;
+
+  // Date selection logic
+  const days = Array.from({ length: 31 }, (_, i) => i + 1);
+  const months = [
+    "January", "February", "March", "April", "May", "June",
+    "July", "August", "September", "October", "November", "December"
+  ];
+  const years = Array.from({ length: 2010 - 1940 + 1 }, (_, i) => 2010 - i);
+
+  const [selectedDay, setSelectedDay] = useState<string>(formData.birthDate ? new Date(formData.birthDate).getDate().toString() : '');
+  const [selectedMonth, setSelectedMonth] = useState<string>(formData.birthDate ? months[new Date(formData.birthDate).getMonth()] : '');
+  const [selectedYear, setSelectedYear] = useState<string>(formData.birthDate ? new Date(formData.birthDate).getFullYear().toString() : '');
+
+  const updateBirthDate = (day: string, month: string, year: string) => {
+      if (day && month && year) {
+          const monthIndex = months.indexOf(month);
+          // Create date in UTC to avoid timezone issues shifting the day
+          const date = new Date(Date.UTC(parseInt(year), monthIndex, parseInt(day)));
+          setFormData(prev => ({ ...prev, birthDate: date.toISOString().split('T')[0] }));
+      }
+  };
+
+  const handleDayChange = (val: string) => {
+      setSelectedDay(val);
+      updateBirthDate(val, selectedMonth, selectedYear);
+  };
+  const handleMonthChange = (val: string) => {
+      setSelectedMonth(val);
+      updateBirthDate(selectedDay, val, selectedYear);
+  };
+  const handleYearChange = (val: string) => {
+      setSelectedYear(val);
+      updateBirthDate(selectedDay, selectedMonth, val);
+  };
+
+  const formattedBirthDate = useMemo(() => {
+    if (!formData.birthDate) return 'N/A';
+    try {
+        // Parse the YYYY-MM-DD string directly to avoid timezone offsets
+        const [year, month, day] = formData.birthDate.split('-').map(Number);
+        const date = new Date(year, month - 1, day);
+        return date.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+    } catch {
+        return 'Invalid Date';
+    }
+  }, [formData.birthDate]);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
@@ -143,7 +185,6 @@ export function ProfileClient({ user: initialUser, claims, applications }) {
           const { success, updatedData } = await updateUserProfileAction({
               displayName: formData.displayName,
               birthDate: formData.birthDate,
-              nationality: formData.nationality
           }, idToken);
           
           if (success) {
@@ -237,41 +278,38 @@ export function ProfileClient({ user: initialUser, claims, applications }) {
                           <Label>Full Name</Label>
                           <Input value={formData.displayName} onChange={e => setFormData(f => ({...f, displayName: e.target.value}))} readOnly={!isEditing.personal} />
                       </div>
-                      <div>
+                      <div className="col-span-2 sm:col-span-1">
                           <Label>Birth Date</Label>
                           {isEditing.personal ? (
-                            <Popover>
-                                <PopoverTrigger asChild>
-                                    <Button
-                                    variant={"outline"}
-                                    className={cn(
-                                        "w-full justify-start text-left font-normal",
-                                        !formData.birthDate && "text-muted-foreground"
-                                    )}
-                                    >
-                                    <CalendarIcon className="mr-2 h-4 w-4" />
-                                    {formData.birthDate ? format(formData.birthDate, "PPP") : <span>Pick a date</span>}
-                                    </Button>
-                                </PopoverTrigger>
-                                <PopoverContent className="w-auto p-0">
-                                    <Calendar
-                                    mode="single"
-                                    selected={formData.birthDate}
-                                    onSelect={(date) => setFormData(f => ({...f, birthDate: date}))}
-                                    initialFocus
-                                    captionLayout="dropdown-buttons"
-                                    fromYear={1940}
-                                    toYear={2010}
-                                    />
-                                </PopoverContent>
-                            </Popover>
+                              <div className="grid grid-cols-3 gap-2 mt-1">
+                                  <Select value={selectedDay} onValueChange={handleDayChange}>
+                                      <SelectTrigger>
+                                          <SelectValue placeholder="Day" />
+                                      </SelectTrigger>
+                                      <SelectContent>
+                                          {days.map(d => <SelectItem key={d} value={d.toString()}>{d}</SelectItem>)}
+                                      </SelectContent>
+                                  </Select>
+                                  <Select value={selectedMonth} onValueChange={handleMonthChange}>
+                                      <SelectTrigger>
+                                          <SelectValue placeholder="Month" />
+                                      </SelectTrigger>
+                                      <SelectContent>
+                                          {months.map(m => <SelectItem key={m} value={m}>{m}</SelectItem>)}
+                                      </SelectContent>
+                                  </Select>
+                                  <Select value={selectedYear} onValueChange={handleYearChange}>
+                                      <SelectTrigger>
+                                          <SelectValue placeholder="Year" />
+                                      </SelectTrigger>
+                                      <SelectContent>
+                                          {years.map(y => <SelectItem key={y} value={y.toString()}>{y}</SelectItem>)}
+                                      </SelectContent>
+                                  </Select>
+                              </div>
                           ) : (
-                            <Input value={formData.birthDate ? format(new Date(formData.birthDate), "PPP") : 'N/A'} readOnly />
+                              <Input value={formattedBirthDate} readOnly className="mt-1" />
                           )}
-                      </div>
-                      <div>
-                          <Label>Nationality</Label>
-                          <Input value={formData.nationality} onChange={e => setFormData(f => ({...f, nationality: e.target.value}))} readOnly={!isEditing.personal} />
                       </div>
                   </CardContent>
                   {isEditing.personal && (

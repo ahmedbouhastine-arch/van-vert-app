@@ -314,6 +314,7 @@ export async function updateUserProfileAction(
         }
         
         const firestoreUpdates: Partial<UserProfile> = { ...data };
+        delete firestoreUpdates.nationality; // Ensure nationality is removed if it was passed
 
         if (Object.keys(authUpdates).length > 0) {
             console.log("Updating Firebase Auth user...");
