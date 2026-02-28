@@ -4,7 +4,7 @@ import 'server-only';
 import { adminAuth, adminFirestore, adminStorage } from '@/lib/firebase-admin-prewarmed';
 import { extractExpiryDate } from '@/ai/flows/extract-expiry-date';
 import { extractFlightLogs } from '@/ai/flows/extract-flight-logs';
-import type { FlightLog, Application, LogbookFormat } from '@/types';
+import type { FlightLog, Application, LogbookFormat, UserProfile } from '@/types';
 import { v4 as uuidv4 } from 'uuid';
 import { licenseTypes } from '@/lib/licensing';
 import admin from 'firebase-admin';
@@ -262,6 +262,9 @@ export async function uploadProfilePictureAction(formData: FormData, idToken?: s
         console.log(`uploadProfilePictureAction: Starting upload to gs://${bucket.name}/${storagePath}`);
         const photoURL = await uploadStreamToStorage(bucket, storagePath, file.stream(), file.type);
         console.log(`uploadProfilePictureAction: Upload successful. Public URL: ${photoURL}`);
+
+        await adminAuth.updateUser(user.uid, { photoURL });
+        await adminFirestore.collection('users').doc(user.uid).set({ photoURL }, { merge: true });
         
         return { photoURL };
     } catch (e: unknown) {
@@ -297,24 +300,38 @@ export async function getExpiryDateForSingleDocumentAction(
 }
 
 export async function updateUserProfileAction(
-    data: { displayName?: string; phoneNumber?: string },
+    data: Partial<UserProfile>,
     idToken?: string
-): Promise<{ success: boolean }> {
+): Promise<{ success: boolean; updatedData: Partial<UserProfile> }> {
+    console.log("updateUserProfileAction: Action started with data:", data);
     try {
         const user = await getAuthenticatedUser(idToken);
+        const { uid } = user;
         
         const authUpdates: { displayName?: string; phoneNumber?: string } = {};
-        if (data.displayName) authUpdates.displayName = data.displayName;
-        if (data.phoneNumber) authUpdates.phoneNumber = data.phoneNumber;
+        if (data.displayName) {
+            authUpdates.displayName = data.displayName;
+        }
         
+        const firestoreUpdates: Partial<UserProfile> = { ...data };
+
         if (Object.keys(authUpdates).length > 0) {
-            await adminAuth.updateUser(user.uid, authUpdates);
+            console.log("Updating Firebase Auth user...");
+            await adminAuth.updateUser(uid, authUpdates);
+            console.log("Firebase Auth user updated.");
         }
 
-        return { success: true };
+        if (Object.keys(firestoreUpdates).length > 0) {
+            console.log("Updating Firestore user document...");
+            await adminFirestore.collection('users').doc(uid).set(firestoreUpdates, { merge: true });
+            console.log("Firestore user document updated.");
+        }
+
+        return { success: true, updatedData: firestoreUpdates };
     } catch (e) {
+        console.error('updateUserProfileAction: Update error:', JSON.stringify(e, null, 2));
         handleServerAuthError(e, 'updateUserProfileAction');
-        return { success: false };
+        return { success: false, updatedData: {} };
     }
 }
 

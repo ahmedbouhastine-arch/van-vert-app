@@ -13,12 +13,16 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Slider } from '@/components/ui/slider';
 import ReactCrop, { type Crop } from 'react-image-crop';
 import 'react-image-crop/dist/ReactCrop.css';
-import { Camera, RotateCcw, RotateCw, ZoomIn, ZoomOut, Save, Edit, Trash2, ShieldCheck, User as UserIcon, Plane, Lock, Loader2 } from 'lucide-react';
+import { Camera, RotateCcw, RotateCw, ZoomIn, ZoomOut, Save, Edit, Trash2, ShieldCheck, User as UserIcon, Plane, Lock, Loader2, Calendar as CalendarIcon } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { updateUserProfileAction, deleteUserAccountAction, uploadProfilePictureAction } from '@/app/actions';
 import { getAuth, signOut } from 'firebase/auth';
 import { Badge } from '@/components/ui/badge';
 import { useRouter } from 'next/navigation';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Calendar } from '@/components/ui/calendar';
+import { format } from 'date-fns';
+import { cn } from '@/lib/utils';
 
 const canvasPreview = (image, canvas, crop) => {
     const ctx = canvas.getContext('2d');
@@ -55,8 +59,8 @@ export function ProfileClient({ user: initialUser, claims, applications }) {
   
   const [formData, setFormData] = useState({
     displayName: user?.displayName || '',
-    birthDate: '', // New field for birth date
-    // ... add other pilot info fields if needed
+    birthDate: user?.birthDate || null, // New field for birth date
+    nationality: user?.nationality || '',
   });
 
   const [imgSrc, setImgSrc] = useState('');
@@ -94,7 +98,6 @@ export function ProfileClient({ user: initialUser, claims, applications }) {
 
     setIsUploading(true);
     
-    // This will be fun to implement...
     const scaleX = image.naturalWidth / image.width;
     const scaleY = image.naturalHeight / image.height;
 
@@ -123,7 +126,7 @@ export function ProfileClient({ user: initialUser, claims, applications }) {
         const { photoURL: newPhotoURL } = await uploadProfilePictureAction(formData, idToken);
         
         setPhotoURL(newPhotoURL);
-        router.refresh(); // Re-fetches user data
+        router.refresh(); 
         toast({ title: "Profile picture updated!" });
     } catch (error) {
         console.error('Profile picture upload failed:', error);
@@ -137,15 +140,19 @@ export function ProfileClient({ user: initialUser, claims, applications }) {
   const handleSaveSection = async (section: 'personal' | 'pilot') => {
       try {
           const idToken = await user.getIdToken();
-          await updateUserProfileAction({
+          const { success, updatedData } = await updateUserProfileAction({
               displayName: formData.displayName,
-              // Note: You'll need to update the server action to handle birthDate
-              // For now, it will just save the displayName
+              birthDate: formData.birthDate,
+              nationality: formData.nationality
           }, idToken);
           
-          router.refresh();
-          toast({ title: `${section.charAt(0).toUpperCase() + section.slice(1)} Information Saved` });
-          setIsEditing(prev => ({ ...prev, [section]: false }));
+          if (success) {
+            router.refresh();
+            toast({ title: `${section.charAt(0).toUpperCase() + section.slice(1)} Information Saved` });
+            setIsEditing(prev => ({ ...prev, [section]: false }));
+          } else {
+              throw new Error("Update failed");
+          }
       } catch (error) {
           toast({ variant: 'destructive', title: "Save Failed", description: "Could not update your profile." });
       }
@@ -232,9 +239,40 @@ export function ProfileClient({ user: initialUser, claims, applications }) {
                       </div>
                       <div>
                           <Label>Birth Date</Label>
-                          <Input type="date" value={formData.birthDate} onChange={e => setFormData(f => ({...f, birthDate: e.target.value}))} readOnly={!isEditing.personal} />
+                          {isEditing.personal ? (
+                            <Popover>
+                                <PopoverTrigger asChild>
+                                    <Button
+                                    variant={"outline"}
+                                    className={cn(
+                                        "w-full justify-start text-left font-normal",
+                                        !formData.birthDate && "text-muted-foreground"
+                                    )}
+                                    >
+                                    <CalendarIcon className="mr-2 h-4 w-4" />
+                                    {formData.birthDate ? format(formData.birthDate, "PPP") : <span>Pick a date</span>}
+                                    </Button>
+                                </PopoverTrigger>
+                                <PopoverContent className="w-auto p-0">
+                                    <Calendar
+                                    mode="single"
+                                    selected={formData.birthDate}
+                                    onSelect={(date) => setFormData(f => ({...f, birthDate: date}))}
+                                    initialFocus
+                                    captionLayout="dropdown-buttons"
+                                    fromYear={1940}
+                                    toYear={2010}
+                                    />
+                                </PopoverContent>
+                            </Popover>
+                          ) : (
+                            <Input value={formData.birthDate ? format(new Date(formData.birthDate), "PPP") : 'N/A'} readOnly />
+                          )}
                       </div>
-                      {/* ... other personal fields */}
+                      <div>
+                          <Label>Nationality</Label>
+                          <Input value={formData.nationality} onChange={e => setFormData(f => ({...f, nationality: e.target.value}))} readOnly={!isEditing.personal} />
+                      </div>
                   </CardContent>
                   {isEditing.personal && (
                       <CardFooter className="flex justify-end gap-2">
