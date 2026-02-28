@@ -276,3 +276,37 @@ export async function getExpiryDateForSingleDocumentAction(
         handleServerAuthError(e, 'getExpiryDateForSingleDocumentAction');
     }
 }
+
+export async function updateUserProfileAction(
+    data: { displayName?: string; phoneNumber?: string },
+    idToken?: string
+): Promise<{ success: boolean }> {
+    try {
+        const user = await getAuthenticatedUser(idToken);
+        
+        const authUpdates: { displayName?: string; phoneNumber?: string } = {};
+        if (data.displayName) authUpdates.displayName = data.displayName;
+        if (data.phoneNumber) authUpdates.phoneNumber = data.phoneNumber;
+        
+        if (Object.keys(authUpdates).length > 0) {
+            await adminAuth.updateUser(user.uid, authUpdates);
+        }
+
+        return { success: true };
+    } catch (e) {
+        handleServerAuthError(e, 'updateUserProfileAction');
+        return { success: false };
+    }
+}
+
+export async function deleteUserAccountAction(idToken?: string): Promise<{ success: boolean }> {
+    try {
+        const user = await getAuthenticatedUser(idToken);
+        await adminAuth.deleteUser(user.uid);
+        // You might want to also clean up Firestore data associated with the user
+        return { success: true };
+    } catch (e) {
+        handleServerAuthError(e, 'deleteUserAccountAction');
+        return { success: false };
+    }
+}
