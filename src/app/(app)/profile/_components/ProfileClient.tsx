@@ -18,6 +18,7 @@ import { useToast } from '@/hooks/use-toast';
 import { updateUserProfileAction, deleteUserAccountAction, uploadProfilePictureAction } from '@/app/actions';
 import { getAuth, signOut } from 'firebase/auth';
 import { Badge } from '@/components/ui/badge';
+import { useRouter } from 'next/navigation';
 
 const canvasPreview = (image, canvas, crop) => {
     const ctx = canvas.getContext('2d');
@@ -45,6 +46,7 @@ const canvasPreview = (image, canvas, crop) => {
 export function ProfileClient({ user: initialUser, claims, applications }) {
   const { user, mutate } = useUser();
   const { toast } = useToast();
+  const router = useRouter();
   
   const [isEditing, setIsEditing] = useState({
       personal: false,
@@ -65,6 +67,7 @@ export function ProfileClient({ user: initialUser, claims, applications }) {
   const [isCropModalOpen, setIsCropModalOpen] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [photoURL, setPhotoURL] = useState(user?.photoURL);
 
   const imgRef = useRef<HTMLImageElement>(null);
   const previewCanvasRef = useRef<HTMLCanvasElement>(null);
@@ -117,9 +120,10 @@ export function ProfileClient({ user: initialUser, claims, applications }) {
 
     try {
         const idToken = await user.getIdToken();
-        const { photoURL } = await uploadProfilePictureAction(formData, idToken);
+        const { photoURL: newPhotoURL } = await uploadProfilePictureAction(formData, idToken);
         
-        await mutate(); // Re-fetches user data
+        setPhotoURL(newPhotoURL);
+        router.refresh(); // Re-fetches user data
         toast({ title: "Profile picture updated!" });
     } catch (error) {
         console.error('Profile picture upload failed:', error);
@@ -138,7 +142,7 @@ export function ProfileClient({ user: initialUser, claims, applications }) {
               phoneNumber: formData.phoneNumber,
           }, idToken);
           
-          await mutate();
+          router.refresh();
           toast({ title: `${section.charAt(0).toUpperCase() + section.slice(1)} Information Saved` });
           setIsEditing(prev => ({ ...prev, [section]: false }));
       } catch (error) {
@@ -177,7 +181,7 @@ export function ProfileClient({ user: initialUser, claims, applications }) {
               <Card className="text-center flex flex-col items-center p-8">
                   <div className="relative group">
                       <Avatar className="h-32 w-32 border-4 border-background shadow-md">
-                          <AvatarImage src={user.photoURL} alt={user.displayName || ''} />
+                          <AvatarImage src={photoURL} alt={user.displayName || ''} />
                           <AvatarFallback className="text-4xl bg-primary/10 text-primary">{user.displayName?.charAt(0) || user.email?.charAt(0)}</AvatarFallback>
                       </Avatar>
                       <label className="absolute inset-0 flex items-center justify-center bg-black/50 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer">
