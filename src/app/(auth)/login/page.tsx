@@ -1,3 +1,36 @@
+'use client';
+export const dynamic = 'force-dynamic';
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useState, useEffect } from "react";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Separator } from "@/components/ui/separator";
+import { signInWithEmailAndPassword } from "firebase/auth";
+import { useToast } from "@/hooks/use-toast";
+import { useAuth, useUser, useFirestore } from "@/firebase";
+import { GoogleIcon } from "@/components/GoogleIcon";
+import { LoadingScreen } from "@/components/LoadingScreen";
+import { Eye, EyeOff, Loader2, Mail, Lock, Plane, AtSign } from "lucide-react";
+import { signInWithGoogle, sendPasswordResetEmailAction } from "@/firebase/auth-actions";
+import { motion } from "framer-motion";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+  DialogClose,
+} from "@/components/ui/dialog";
 
 const LoginPage = () => {
     const router = useRouter();
