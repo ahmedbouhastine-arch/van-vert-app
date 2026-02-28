@@ -140,6 +140,32 @@ export async function uploadFlightLogAction(formData: FormData, idToken?: string
     }
 }
 
+export async function updateFlightLogsAction(applicationId: string, flights: FlightLog[], idToken?: string): Promise<{ success: boolean }> {
+    try {
+        const user = await getAuthenticatedUser(idToken);
+        
+        const appRef = adminFirestore.collection('applications').doc(applicationId);
+        const appSnapshot = await appRef.get();
+        if (!appSnapshot.exists) {
+            throw new Error("Application not found.");
+        }
+        const applicationData = appSnapshot.data() as Application;
+        if (applicationData.userId !== user.uid) {
+            throw new Error("User does not have permission to access this application.");
+        }
+
+        await appRef.update({
+            flightLogs: flights,
+            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
+
+        return { success: true };
+    } catch (e: unknown) {
+        handleServerAuthError(e, 'updateFlightLogsAction');
+        return { success: false };
+    }
+}
+
 export async function createApplicationAction(
     licenseId: string,
     idToken?: string,
