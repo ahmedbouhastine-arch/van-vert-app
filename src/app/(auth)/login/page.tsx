@@ -18,7 +18,7 @@ import { signInWithEmailAndPassword } from "firebase/auth";
 import { useAuth, useUser, useFirestore } from "@/firebase";
 import { GoogleIcon } from "@/components/GoogleIcon";
 import { LoadingScreen } from "@/components/LoadingScreen";
-import { Eye, EyeOff, Loader2, AtSign, Lock, Plane } from "lucide-react";
+import { Eye, EyeOff, Loader2, AtSign, Lock } from "lucide-react";
 import { signInWithGoogle, sendPasswordResetEmailAction } from "@/firebase/auth-actions";
 import { motion } from "framer-motion";
 import {
@@ -43,10 +43,14 @@ const LoginPage = () => {
     const [forgotPasswordEmail, setForgotPasswordEmail] = useState("");
 
     useEffect(() => {
-        if (!loading && user && claims) {
-            const isAdmin = ['reviewer', 'admin', 'head-admin'].includes(claims.role);
-            const homePath = isAdmin ? '/admin' : '/dashboard';
-            router.push(homePath);
+        if (!loading && user) {
+            if (user.emailVerified) {
+                const isAdmin = claims && ['reviewer', 'admin', 'head-admin'].includes(claims.role);
+                const homePath = isAdmin ? '/admin' : '/dashboard';
+                router.push(homePath);
+            } else {
+                router.push('/verify-email');
+            }
         }
     }, [user, loading, claims, router]);
 
@@ -59,10 +63,7 @@ const LoginPage = () => {
         
         try {
             await signInWithEmailAndPassword(auth, email, password);
-            toast({
-              title: "Login Successful",
-              description: "Redirecting to your dashboard...",
-            });
+            // Redirect is handled by the useEffect hook
         } catch (error: unknown) {
           let description = "An unexpected error occurred. Please try again.";
           const err = (error as { code?: unknown }) || {};
@@ -90,17 +91,11 @@ const LoginPage = () => {
         setIsSubmitting(true);
         const result = await signInWithGoogle(auth, firestore);
         
-        if (result.success) {
-            toast({
-              title: "Login Successful",
-              description: "Redirecting to your dashboard...",
-            });
-        } else if (result.error) {
+        if (result.error) {
             toast({ variant: 'destructive', title: 'Login Failed', description: result.error });
             setIsSubmitting(false);
-        } else {
-            setIsSubmitting(false);
         }
+        // Redirect is handled by the useEffect hook
     }
 
     const handlePasswordReset = async (event: React.FormEvent<HTMLFormElement>) => {
@@ -140,14 +135,11 @@ const LoginPage = () => {
       >
         <Card className="bg-slate-900/80 backdrop-blur-sm border-slate-700 shadow-2xl shadow-blue-500/10 rounded-xl">
           <CardHeader className="text-center">
-            <div className="flex justify-center items-center mb-4">
-              <Plane className="h-12 w-12 text-blue-400" />
-            </div>
             <CardTitle className="text-3xl font-bold text-white font-headline tracking-tight">
-              AeroLog
+              van-vert
             </CardTitle>
             <CardDescription className="text-slate-400">
-              Your aviation journey starts here.
+              Sign in to your account.
             </CardDescription>
           </CardHeader>
           <CardContent>

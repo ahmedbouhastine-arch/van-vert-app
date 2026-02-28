@@ -13,17 +13,14 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Separator } from "@/components/ui/separator";
-import { CheckCircle2, XCircle, Eye, EyeOff, Loader2, User as UserIcon, Camera, Plane, AtSign, Lock } from "lucide-react";
+import { CheckCircle2, XCircle, Eye, EyeOff, Loader2, User as UserIcon, Plane, AtSign, Lock } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { getAuth, createUserWithEmailAndPassword, updateProfile, deleteUser } from "firebase/auth";
+import { getAuth, createUserWithEmailAndPassword, updateProfile, deleteUser, sendEmailVerification } from "firebase/auth";
 import { useFirebaseApp, useFirestore, useUser } from "@/firebase";
 import { doc, setDoc, serverTimestamp } from "firebase/firestore";
 import { GoogleIcon } from "@/components/GoogleIcon";
 import { LoadingScreen } from "@/components/LoadingScreen";
 import { signInWithGoogle } from "@/firebase/auth-actions";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import * as serverActions from "@/app/actions";
 import { motion } from "framer-motion";
 
@@ -39,14 +36,12 @@ export default function RegisterPage() {
     const [password, setPassword] = useState("");
     const [showPassword, setShowPassword] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
-    const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
     const [avatarFile, setAvatarFile] = useState<File | null>(null);
-    const avatarInputRef = useRef<HTMLInputElement>(null);
 
     const app = useFirebaseApp();
     const auth = getAuth(app);
     const firestore = useFirestore();
-    const { loading } = useUser();
+    const { loading, user } = useUser();
 
     const validatedRequirements = passwordRequirements.map(req => ({
         ...req,
@@ -54,18 +49,6 @@ export default function RegisterPage() {
     }));
 
     const allRequirementsMet = validatedRequirements.every(req => req.isValid);
-
-    const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0];
-        if (file) {
-            setAvatarFile(file);
-            const reader = new FileReader();
-            reader.onloadend = () => {
-                setAvatarPreview(reader.result as string);
-            };
-            reader.readAsDataURL(file);
-        }
-    };
 
     const handleRegister = (event: React.FormEvent<HTMLFormElement>) => {
         event.preventDefault();
@@ -108,13 +91,11 @@ export default function RegisterPage() {
                             photoURL: photoURL,
                             role: email === 'head-admin@test.va' ? 'head-admin' : 'user',
                             createdAt: serverTimestamp(),
-                        }) : Promise.reject("Firestore not available")
+                        }) : Promise.reject("Firestore not available"),
+                        sendEmailVerification(user),
                     ]);
                     
-                    toast({
-                        title: "Registration successful!",
-                        description: "You are now being redirected.",
-                    });
+                    router.push('/verify-email');
 
                 } catch (dbError) {
                     await deleteUser(user).catch(deleteError => {
@@ -152,20 +133,15 @@ export default function RegisterPage() {
         setIsSubmitting(true);
         const result = await signInWithGoogle(auth, firestore);
         
-        if (result.success) {
-            toast({
-              title: "Sign up Successful",
-              description: "Redirecting to your dashboard...",
-            });
-        } else if (result.error) {
+        if (result.error) {
             toast({ variant: 'destructive', title: 'Sign up Failed', description: result.error });
             setIsSubmitting(false);
         } else {
-            setIsSubmitting(false);
+             router.push('/dashboard');
         }
     }
 
-    if (loading) {
+    if (loading || user) {
         return <LoadingScreen text="Finalizing account setup..."/>;
     }
 

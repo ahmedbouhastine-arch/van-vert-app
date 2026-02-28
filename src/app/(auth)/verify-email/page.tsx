@@ -1,99 +1,65 @@
 'use client';
-export const dynamic = 'force-dynamic';
+
 import { useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
-import { useUser, useAuth } from '@/firebase';
-import { LoadingScreen } from '@/components/LoadingScreen';
+import { useUser } from '@/firebase';
+import { useEffect } from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { sendEmailVerification, signOut } from 'firebase/auth';
+import { sendEmailVerification } from 'firebase/auth';
 import { useToast } from '@/hooks/use-toast';
-import { Mail, Loader2, LogOut } from 'lucide-react';
+import { Loader2, MailCheck } from 'lucide-react';
 
 export default function VerifyEmailPage() {
-    const { user, loading, claims } = useUser();
-    const auth = useAuth();
-    const router = useRouter();
-    const { toast } = useToast();
-    const [isSending, setIsSending] = useState(false);
+  const { user, loading } = useUser();
+  const router = useRouter();
+  const { toast } = useToast();
 
-    useEffect(() => {
-        if (loading) {
-            return;
-        }
-        if (!user) {
-            router.push('/login');
-            return;
-        }
+  useEffect(() => {
+    if (!loading && user?.emailVerified) {
+      router.push('/dashboard');
+    }
+  }, [user, loading, router]);
 
-        // If email is verified, redirect away from this page.
-        // Also check for claims to ensure profile is loaded.
-        if (user.emailVerified && claims) {
-            const isAdmin = ['reviewer', 'admin', 'head-admin'].includes(claims.role);
-            const homePath = isAdmin ? '/admin' : '/dashboard';
-            router.push(homePath);
-        }
-    }, [user, loading, claims, router]);
-    
-    const handleResendVerification = async () => {
-        if (!user) return;
-        setIsSending(true);
+  const handleResendVerification = async () => {
+    if (user) {
         try {
             await sendEmailVerification(user);
-            toast({
-                title: "Verification Email Sent",
-                description: `A new verification link has been sent to ${user.email}.`,
-            });
-        } catch (error: unknown) {
-            const err = (error as { message?: unknown }) || {};
-            const description = typeof err.message === 'string'
-                ? err.message
-                : "There was an error sending the verification email. Please try again shortly.";
-            toast({
-                variant: 'destructive',
-                title: 'Failed to Send',
-                description: description,
-            });
-        } finally {
-            setIsSending(false);
+            toast({ title: "Verification Email Sent", description: "A new verification link has been sent to your email address." });
+        } catch (error) {
+            toast({ variant: "destructive", title: "Error", description: "Failed to resend verification email. Please try again later." });
         }
-    };
-
-    const handleLogout = async () => {
-        await signOut(auth);
-        router.push('/login');
-    };
-
-    // While loading user state or if user is verified (and about to be redirected)
-    if (loading || (user && user.emailVerified)) {
-        return <LoadingScreen text="Checking verification status..." />;
     }
+  };
 
-    // If user is loaded but not verified
+  if (loading) {
     return (
-        <Card>
-            <CardHeader className="items-center text-center">
-                <Mail className="h-12 w-12 text-primary mb-4" />
-                <CardTitle className="text-2xl font-headline">Verify Your Email</CardTitle>
-                <CardDescription>
-                    A verification link has been sent to your email address: <span className="font-semibold text-foreground">{user?.email}</span>. Please click the link to continue.
-                </CardDescription>
-            </CardHeader>
-            <CardContent className="grid gap-4">
-                <Button onClick={handleResendVerification} disabled={isSending}>
-                    {isSending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                    Resend Verification Email
-                </Button>
-                <p className="text-xs text-center text-muted-foreground">
-                    After verifying, you may need to log in again.
-                </p>
-            </CardContent>
-            <CardFooter>
-                 <Button variant="outline" className="w-full" onClick={handleLogout}>
-                    <LogOut className="mr-2 h-4 w-4" />
-                    Logout
-                </Button>
-            </CardFooter>
-        </Card>
+        <div className="flex items-center justify-center min-h-screen">
+            <Loader2 className="h-12 w-12 animate-spin text-blue-400" />
+        </div>
     );
+  }
+
+  return (
+    <div className="flex items-center justify-center min-h-screen bg-slate-900">
+      <Card className="w-full max-w-md bg-slate-900/80 backdrop-blur-sm border-slate-700 shadow-2xl shadow-blue-500/10 rounded-xl">
+        <CardHeader className="text-center">
+            <div className="flex justify-center items-center mb-4">
+                <MailCheck className="h-12 w-12 text-blue-400" />
+            </div>
+          <CardTitle className="text-3xl font-bold text-white font-headline tracking-tight">Verify Your Email</CardTitle>
+        </CardHeader>
+        <CardContent className="text-center text-slate-400">
+          <p className="mb-6">
+            We&apos;ve sent a verification email to <span className="font-semibold text-blue-400">{user?.email}</span>. Please check your inbox and click the link to activate your account.
+          </p>
+          <p className="mb-8 text-sm">
+            If you haven&apos;t received the email, please check your spam folder or click the button below to resend it.
+          </p>
+          <Button onClick={handleResendVerification} className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-lg text-base transition-all duration-300 ease-in-out transform hover:scale-105 shadow-lg shadow-blue-600/20">
+            Resend Verification Email
+          </Button>
+        </CardContent>
+      </Card>
+    </div>
+  );
 }
