@@ -26,10 +26,10 @@ function AdminApplicationsPage() {
           <div className="space-y-4">
             {allApplications.docs.map((doc) => (
               <Link key={doc.id} href={`/admin/applications/${doc.id}`}>
-                <p className="block p-4 border rounded-lg hover:bg-gray-50">
+                <div className="block p-4 border rounded-lg hover:bg-gray-50">
                   <h2 className="text-lg font-semibold">{doc.data().name}</h2>
                   <p className="text-sm text-gray-500">{doc.data().email}</p>
-                </p>
+                </div>
               </Link>
             ))}
           </div>
@@ -44,10 +44,10 @@ function AdminApplicationsPage() {
           <div className="space-y-4">
             {draftApplications.docs.map((doc) => (
               <Link key={doc.id} href={`/admin/applications/${doc.id}`}>
-                <p className="block p-4 border rounded-lg hover:bg-gray-50">
+                <div className="block p-4 border rounded-lg hover:bg-gray-50">
                   <h2 className="text-lg font-semibold">{doc.data().name}</h2>
                   <p className="text-sm text-gray-500">{doc.data().email}</p>
-                </p>
+                </div>
               </Link>
             ))}
           </div>
