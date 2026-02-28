@@ -122,6 +122,7 @@ export function ProfileClient({ user: initialUser, claims, applications }) {
         await mutate(); // Re-fetches user data
         toast({ title: "Profile picture updated!" });
     } catch (error) {
+        console.error('Profile picture upload failed:', error);
         toast({ variant: "destructive", title: "Upload Failed", description: "Could not save your new profile picture." });
     } finally {
         setIsUploading(false);

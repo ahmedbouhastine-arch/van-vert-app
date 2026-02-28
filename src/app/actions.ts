@@ -79,6 +79,7 @@ type StorageBucket = {
 };
 
 async function uploadStreamToStorage(bucket: StorageBucket, path: string, stream: ReadableStream, mimeType: string) {
+    console.log(`Starting upload to gs://${bucket.name}/${path}`);
     const file = bucket.file(path);
     const writeStream = file.createWriteStream({
         metadata: { contentType: mimeType } as Record<string, unknown>,
@@ -96,10 +97,18 @@ async function uploadStreamToStorage(bucket: StorageBucket, path: string, stream
         writeStream.end();
 
         return new Promise<string>((resolve, reject) => {
-            writeStream.on('finish', () => resolve(`https://storage.googleapis.com/${bucket.name}/${path}`));
-            writeStream.on('error', (...args: unknown[]) => reject(args[0]));
+            writeStream.on('finish', () => {
+                const publicUrl = `https://storage.googleapis.com/${bucket.name}/${path}`;
+                console.log(`Upload finished. Public URL: ${publicUrl}`);
+                resolve(publicUrl);
+            });
+            writeStream.on('error', (...args: unknown[]) => {
+                console.error('Upload stream error:', JSON.stringify(args[0], null, 2));
+                reject(args[0]);
+            });
         });
     } catch (error) {
+        console.error('Error during upload stream processing:', JSON.stringify(error, null, 2));
         if (typeof writeStream.destroy === 'function') writeStream.destroy();
         throw error;
     }
@@ -234,19 +243,29 @@ export async function extractExpiryDateAction(args: {applicationId: string, docu
 }
 
 export async function uploadProfilePictureAction(formData: FormData, idToken?: string): Promise<{ photoURL: string }> {
+    console.log('uploadProfilePictureAction: Action started.');
     try {
         const token = idToken ?? (formData.get('idToken') as string | undefined);
         const user = await getAuthenticatedUser(token);
         const file = formData.get('file') as File;
-        if (!file) throw new Error("No file provided for profile picture.");
+        
+        if (!file) {
+            console.error('uploadProfilePictureAction: No file provided.');
+            throw new Error("No file provided for profile picture.");
+        }
+
+        console.log(`uploadProfilePictureAction: File received. Size: ${file.size}, Type: ${file.type}`);
         
         const bucket = adminStorage.bucket();
+        const storagePath = `profile-pictures/${user.uid}/${file.name || 'profile.png'}`;
         
-        const storagePath = `profile-pictures/${user.uid}/${file.name}`;
+        console.log(`uploadProfilePictureAction: Starting upload to gs://${bucket.name}/${storagePath}`);
         const photoURL = await uploadStreamToStorage(bucket, storagePath, file.stream(), file.type);
+        console.log(`uploadProfilePictureAction: Upload successful. Public URL: ${photoURL}`);
         
         return { photoURL };
     } catch (e: unknown) {
+        console.error('uploadProfilePictureAction: Upload error:', JSON.stringify(e, null, 2));
         handleServerAuthError(e, 'uploadProfilePictureAction');
     }
 }
