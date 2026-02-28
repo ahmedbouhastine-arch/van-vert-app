@@ -55,7 +55,7 @@ export function ProfileClient({ user: initialUser, claims, applications }) {
   
   const [formData, setFormData] = useState({
     displayName: user?.displayName || '',
-    phoneNumber: user?.phoneNumber || '',
+    birthDate: '', // New field for birth date
     // ... add other pilot info fields if needed
   });
 
@@ -139,7 +139,8 @@ export function ProfileClient({ user: initialUser, claims, applications }) {
           const idToken = await user.getIdToken();
           await updateUserProfileAction({
               displayName: formData.displayName,
-              phoneNumber: formData.phoneNumber,
+              // Note: You'll need to update the server action to handle birthDate
+              // For now, it will just save the displayName
           }, idToken);
           
           router.refresh();
@@ -230,8 +231,8 @@ export function ProfileClient({ user: initialUser, claims, applications }) {
                           <Input value={formData.displayName} onChange={e => setFormData(f => ({...f, displayName: e.target.value}))} readOnly={!isEditing.personal} />
                       </div>
                       <div>
-                          <Label>Phone Number</Label>
-                          <Input value={formData.phoneNumber} onChange={e => setFormData(f => ({...f, phoneNumber: e.target.value}))} readOnly={!isEditing.personal} />
+                          <Label>Birth Date</Label>
+                          <Input type="date" value={formData.birthDate} onChange={e => setFormData(f => ({...f, birthDate: e.target.value}))} readOnly={!isEditing.personal} />
                       </div>
                       {/* ... other personal fields */}
                   </CardContent>
