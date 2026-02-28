@@ -238,17 +238,6 @@ export function ProfileClient({ user: initialUser, claims, applications }) {
                   )}
               </Card>
 
-              {/* Pilot Information Card */}
-              <Card>
-                  <CardHeader className="flex items-center gap-2"><Plane className="h-5 w-5" /><CardTitle>Pilot Information</CardTitle></CardHeader>
-                  <CardContent className="grid sm:grid-cols-2 gap-4">
-                      <div><Label>License Number</Label><Input value="N/A" readOnly /></div>
-                      <div><Label>License Type</Label><Input value="N/A" readOnly /></div>
-                      <div><Label>Medical Expiry</Label><Input value="N/A" readOnly /></div>
-                      <div><Label>Total Flight Hours</Label><Input value={totalFlightHours.toFixed(1)} readOnly /></div>
-                  </CardContent>
-              </Card>
-
               {/* Danger Zone Card */}
               <Card className="border-red-500/50">
                   <CardHeader>
