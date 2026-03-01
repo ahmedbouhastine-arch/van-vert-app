@@ -15,7 +15,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { CheckCircle2, XCircle, Eye, EyeOff, Loader2, User as UserIcon, Plane, AtSign, Lock } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { getAuth, createUserWithEmailAndPassword, updateProfile, deleteUser, sendEmailVerification } from "firebase/auth";
+import { getAuth, createUserWithEmailAndPassword, updateProfile, deleteUser } from "firebase/auth";
 import { useFirebaseApp, useFirestore, useUser } from "@/firebase";
 import { doc, setDoc, serverTimestamp } from "firebase/firestore";
 import { GoogleIcon } from "@/components/GoogleIcon";
@@ -92,7 +92,7 @@ export default function RegisterPage() {
                             role: email === 'head-admin@test.va' ? 'head-admin' : 'user',
                             createdAt: serverTimestamp(),
                         }) : Promise.reject("Firestore not available"),
-                        sendEmailVerification(user),
+                        serverActions.sendVerificationEmailAction(email),
                     ]);
                     
                     router.push('/verify-email');

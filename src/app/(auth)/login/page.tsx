@@ -19,7 +19,8 @@ import { useAuth, useUser, useFirestore } from "@/firebase";
 import { GoogleIcon } from "@/components/GoogleIcon";
 import { LoadingScreen } from "@/components/LoadingScreen";
 import { Eye, EyeOff, Loader2, AtSign, Lock } from "lucide-react";
-import { signInWithGoogle, sendPasswordResetEmailAction } from "@/firebase/auth-actions";
+import { signInWithGoogle } from "@/firebase/auth-actions";
+import { sendPasswordResetEmailAction } from '@/app/actions';
 import { motion } from "framer-motion";
 import {
   Dialog,
