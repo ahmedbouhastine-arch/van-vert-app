@@ -8,6 +8,7 @@ import type { FlightLog, Application, LogbookFormat, UserProfile } from '@/types
 import { v4 as uuidv4 } from 'uuid';
 import { licenseTypes } from '@/lib/licensing';
 import admin from 'firebase-admin';
+import { sendVerificationEmail, sendPasswordResetEmail } from '@/lib/send-email';
 
 async function getAuthenticatedUser(idToken?: string) {
     if (!idToken) {
@@ -345,5 +346,27 @@ export async function deleteUserAccountAction(idToken?: string): Promise<{ succe
     } catch (e) {
         handleServerAuthError(e, 'deleteUserAccountAction');
         return { success: false };
+    }
+}
+
+export async function sendVerificationEmailAction(email: string) {
+    try {
+        const verificationLink = await adminAuth.generateEmailVerificationLink(email);
+        await sendVerificationEmail(email, verificationLink);
+        return { success: true };
+    } catch (error) {
+        console.error('Error sending verification email:', error);
+        return { success: false, error: error.message };
+    }
+}
+
+export async function sendPasswordResetEmailAction(email: string) {
+    try {
+        const resetLink = await adminAuth.generatePasswordResetLink(email);
+        await sendPasswordResetEmail(email, resetLink);
+        return { success: true };
+    } catch (error) {
+        console.error('Error sending password reset email:', error);
+        return { success: false, error: error.message };
     }
 }

@@ -102,17 +102,24 @@ const LoginPage = () => {
         event.preventDefault();
         setIsSubmitting(true);
         try {
-            await sendPasswordResetEmailAction(forgotPasswordEmail);
-            toast({
-              title: "Password Reset Email Sent",
-              description: "Please check your inbox for further instructions.",
-            });
-            setIsForgotPasswordOpen(false);
+            const result = await sendPasswordResetEmailAction(forgotPasswordEmail);
+            if (result.success) {
+                toast({
+                  description: "Password reset email sent! Check your inbox.",
+                });
+                setIsForgotPasswordOpen(false);
+            } else {
+                toast({
+                    variant: 'destructive',
+                    title: 'Error',
+                    description: result.error || 'Failed to send password reset email. Please try again.',
+                });
+            }
         } catch (error: unknown) {
             toast({
                 variant: 'destructive',
                 title: 'Error',
-                description: 'Failed to send password reset email. Please try again.',
+                description: 'An unexpected error occurred. Please try again.',
             });
         } finally {
             setIsSubmitting(false);
