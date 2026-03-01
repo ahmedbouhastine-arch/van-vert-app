@@ -8,7 +8,16 @@ import type { FlightLog, Application, LogbookFormat, UserProfile } from '@/types
 import { v4 as uuidv4 } from 'uuid';
 import { licenseTypes } from '@/lib/licensing';
 import admin from 'firebase-admin';
-import { sendVerificationEmail, sendPasswordResetEmail } from '@/lib/send-email';
+import {
+    sendVerificationEmail,
+    sendPasswordResetEmail,
+    sendApplicationReceivedEmail,
+    sendApplicationApprovedEmail,
+    sendApplicationRejectedEmail,
+    sendApplicationNeedsMoreInfoEmail,
+    sendWelcomeEmail,
+    sendPasswordChangedEmail
+} from '@/lib/send-email';
 
 async function getAuthenticatedUser(idToken?: string) {
     if (!idToken) {
@@ -182,6 +191,7 @@ export async function createApplicationAction(
 ): Promise<{ applicationId: string }> {
     try {
         const user = await getAuthenticatedUser(idToken);
+        const userRecord = await adminAuth.getUser(user.uid);
         const licenseType = licenseTypes.find(lt => lt.id === licenseId);
         if (!licenseType) throw new Error(`License type with ID "${licenseId}" not found.`);
 
@@ -216,6 +226,7 @@ export async function createApplicationAction(
         };
         
         await adminFirestore.collection('applications').doc(newAppId).set(appData);
+        await sendApplicationReceivedEmail(userRecord.email, userRecord.displayName, newAppId);
         return { applicationId: newAppId };
     } catch (e: unknown) {
         handleServerAuthError(e, 'createApplicationAction');
@@ -353,6 +364,8 @@ export async function sendVerificationEmailAction(email: string) {
     try {
         const verificationLink = await adminAuth.generateEmailVerificationLink(email);
         await sendVerificationEmail(email, verificationLink);
+        const user = await adminAuth.getUserByEmail(email);
+        await sendWelcomeEmailAction(user.email, user.displayName, 'https://van-vert-app--REDACTED_FIREBASE_PROJECT_ID.europe-west4.hosted.app/dashboard');
         return { success: true };
     } catch (error) {
         console.error('Error sending verification email:', error);
@@ -367,6 +380,75 @@ export async function sendPasswordResetEmailAction(email: string) {
         return { success: true };
     } catch (error) {
         console.error('Error sending password reset email:', error);
+        return { success: false, error: error.message };
+    }
+}
+
+export async function approveApplicationAction(applicationId: string, idToken?: string) {
+    try {
+        await getAuthenticatedUser(idToken);
+        const appRef = adminFirestore.collection('applications').doc(applicationId);
+        await appRef.update({ status: 'approved', updatedAt: admin.firestore.FieldValue.serverTimestamp() });
+        const appSnapshot = await appRef.get();
+        const appData = appSnapshot.data();
+        const user = await adminAuth.getUser(appData.userId);
+        await sendApplicationApprovedEmail(user.email, user.displayName, 'https://van-vert-app--REDACTED_FIREBASE_PROJECT_ID.europe-west4.hosted.app/dashboard');
+        return { success: true };
+    } catch (error) {
+        console.error('Error approving application:', error);
+        return { success: false, error: error.message };
+    }
+}
+
+export async function rejectApplicationAction(applicationId: string, reason: string, idToken?: string) {
+    try {
+        await getAuthenticatedUser(idToken);
+        const appRef = adminFirestore.collection('applications').doc(applicationId);
+        await appRef.update({ status: 'rejected', feedback: reason, updatedAt: admin.firestore.FieldValue.serverTimestamp() });
+        const appSnapshot = await appRef.get();
+        const appData = appSnapshot.data();
+        const user = await adminAuth.getUser(appData.userId);
+        await sendApplicationRejectedEmail(user.email, user.displayName, reason);
+        return { success: true };
+    } catch (error) {
+        console.error('Error rejecting application:', error);
+        return { success: false, error: error.message };
+    }
+}
+
+export async function sendApplicationNeedsMoreInfoEmailAction(applicationId: string, requiredInfo: string, idToken?: string) {
+    try {
+        await getAuthenticatedUser(idToken);
+        const appRef = adminFirestore.collection('applications').doc(applicationId);
+        const appSnapshot = await appRef.get();
+        const appData = appSnapshot.data();
+        const user = await adminAuth.getUser(appData.userId);
+        await sendApplicationNeedsMoreInfoEmail(user.email, user.displayName, requiredInfo, 'https://van-vert-app--REDACTED_FIREBASE_PROJECT_ID.europe-west4.hosted.app/dashboard');
+        return { success: true };
+    } catch (error) {
+        console.error('Error sending needs more info email:', error);
+        return { success: false, error: error.message };
+    }
+}
+
+export async function sendWelcomeEmailAction(email: string, name: string, dashboardUrl: string) {
+    try {
+        await sendWelcomeEmail(email, name, dashboardUrl);
+        return { success: true };
+    } catch (error) {
+        console.error('Error sending welcome email:', error);
+        return { success: false, error: error.message };
+    }
+}
+
+export async function sendPasswordChangedEmailAction(email: string, name: string, idToken?: string) {
+    try {
+        await getAuthenticatedUser(idToken);
+        const resetLink = await adminAuth.generatePasswordResetLink(email);
+        await sendPasswordChangedEmail(email, name, new Date().toISOString(), resetLink);
+        return { success: true };
+    } catch (error) {
+        console.error('Error sending password changed email:', error);
         return { success: false, error: error.message };
     }
 }
