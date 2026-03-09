@@ -1,44 +1,43 @@
+runConfig:
+  minInstances: 0
+
 env:
-  - variable: NEXTAUTH_URL
-    value: "https://REDACTED_FIREBASE_PROJECT_ID.web.app"
-    availability:
-      - BUILD
-      - RUNTIME
-  - variable: NEXTAUTH_SECRET
-    value: "a7e6b7c8d9e0f1a2b3c4d5e6f7a8b9c0"
-    availability:
-      - BUILD
-      - RUNTIME
   - variable: NEXT_PUBLIC_FIREBASE_API_KEY
-    secret: NEXT_PUBLIC_FIREBASE_API_KEY
+    value: "AIzaSyAYHlWqc5lF5dvxlNYs6k3Q3c_ukk4EyAQ"
     availability:
       - BUILD
       - RUNTIME
+
   - variable: NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN
-    secret: NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN
+    value: "REDACTED_FIREBASE_AUTH_DOMAIN"
     availability:
       - BUILD
       - RUNTIME
+
   - variable: NEXT_PUBLIC_FIREBASE_PROJECT_ID
-    secret: NEXT_PUBLIC_FIREBASE_PROJECT_ID
+    value: "REDACTED_FIREBASE_PROJECT_ID"
     availability:
       - BUILD
       - RUNTIME
+
   - variable: NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET
-    secret: NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET
+    value: "REDACTED_FIREBASE_STORAGE_BUCKET"
     availability:
       - BUILD
       - RUNTIME
+
   - variable: NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID
-    secret: NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID
+    value: "REDACTED_FIREBASE_SENDER_ID"
     availability:
       - BUILD
       - RUNTIME
+
   - variable: NEXT_PUBLIC_FIREBASE_APP_ID
-    secret: NEXT_PUBLIC_FIREBASE_APP_ID
+    value: "REDACTED_FIREBASE_APP_ID"
     availability:
       - BUILD
       - RUNTIME
+
   - variable: RESEND_API_KEY
     secret: RESEND_API_KEY
     availability:
