@@ -201,12 +201,13 @@ export function ApplicationClient({
   const flightLogs = appState.flightLogs || [];
   const logbookFormat = appState.logbookFormat || 'simple';
 
-  const calculateHours = (logs: FlightLog[], type: 'total' | 'PIC' | 'Solo' | 'Dual') => {
+  const calculateHours = (logs: FlightLog[], type: 'total' | 'PIC' | 'Solo' | 'Dual' | 'Instrument') => {
     return logs.reduce((sum, log) => {
       if (type === 'total') return sum + (log.duration || 0);
       if (type === 'PIC') return sum + (log.pilotInCommand || 0);
       if (type === 'Solo') return sum + (log.solo || 0);
       if (type === 'Dual') return sum + (log.dualReceived || 0);
+      if (type === 'Instrument') return sum + (log.instrumentSimulatedHours || 0);
       return sum;
     }, 0);
   };
@@ -215,6 +216,7 @@ export function ApplicationClient({
   const picHours = useMemo(() => calculateHours(flightLogs, 'PIC'), [flightLogs]);
   const soloHours = useMemo(() => calculateHours(flightLogs, 'Solo'), [flightLogs]);
   const dualHours = useMemo(() => calculateHours(flightLogs, 'Dual'), [flightLogs]);
+  const instrumentSimHours = useMemo(() => calculateHours(flightLogs, 'Instrument'), [flightLogs]);
 
   const filteredFlightLogs = useMemo(() => {
     if (selectedFlightTypeFilter === 'All') {
@@ -609,7 +611,7 @@ export function ApplicationClient({
             </div>
         </CardHeader>
         <CardContent>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
                 <Card className="bg-card text-card-foreground shadow-sm">
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                         <CardTitle className="text-sm font-medium">Total Hours</CardTitle>
@@ -619,35 +621,48 @@ export function ApplicationClient({
                         <div className="text-2xl font-bold">{totalFlightHours.toFixed(2)}</div>
                     </CardContent>
                 </Card>
-                <Card className="bg-card text-card-foreground shadow-sm">
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">
-                            {logbookFormat === 'typeB' ? 'PIC (Incl. Solo)' : 'PIC Hours'}
-                        </CardTitle>
-                        <Bot className="h-4 w-4 text-blue-500" />
-                    </CardHeader>
-                    <CardContent>
-                        <div className="text-2xl font-bold text-blue-600">{picHours.toFixed(2)}</div>
-                    </CardContent>
-                </Card>
-                {logbookFormat === 'typeA' && (
-                    <Card className="bg-card text-card-foreground shadow-sm">
-                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                            <CardTitle className="text-sm font-medium">Solo Hours</CardTitle>
-                            <Bot className="h-4 w-4 text-green-500" />
-                        </CardHeader>
-                        <CardContent>
-                            <div className="text-2xl font-bold text-green-600">{soloHours.toFixed(2)}</div>
-                        </CardContent>
-                    </Card>
+                {logbookFormat !== 'simple' && (
+                    <>
+                        <Card className="bg-card text-card-foreground shadow-sm">
+                            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                                <CardTitle className="text-sm font-medium">
+                                    {logbookFormat === 'typeB' ? 'PIC Hours (Incl. Solo)' : 'PIC Hours'}
+                                </CardTitle>
+                                <Bot className="h-4 w-4 text-blue-500" />
+                            </CardHeader>
+                            <CardContent>
+                                <div className="text-2xl font-bold text-blue-600">{picHours.toFixed(2)}</div>
+                            </CardContent>
+                        </Card>
+                        {logbookFormat !== 'typeB' && (
+                            <Card className="bg-card text-card-foreground shadow-sm">
+                                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                                    <CardTitle className="text-sm font-medium">Solo Hours</CardTitle>
+                                    <Bot className="h-4 w-4 text-green-500" />
+                                </CardHeader>
+                                <CardContent>
+                                    <div className="text-2xl font-bold text-green-600">{soloHours.toFixed(2)}</div>
+                                </CardContent>
+                            </Card>
+                        )}
+                        <Card className="bg-card text-card-foreground shadow-sm">
+                            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                                <CardTitle className="text-sm font-medium">Dual Hours</CardTitle>
+                                <Bot className="h-4 w-4 text-orange-500" />
+                            </CardHeader>
+                            <CardContent>
+                                <div className="text-2xl font-bold text-orange-600">{dualHours.toFixed(2)}</div>
+                            </CardContent>
+                        </Card>
+                    </>
                 )}
                 <Card className="bg-card text-card-foreground shadow-sm">
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Dual Hours</CardTitle>
-                        <Bot className="h-4 w-4 text-orange-500" />
+                        <CardTitle className="text-sm font-medium">Instrument / Sim</CardTitle>
+                        <Bot className="h-4 w-4 text-amber-500" />
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-bold text-orange-600">{dualHours.toFixed(2)}</div>
+                        <div className="text-2xl font-bold text-amber-500">{instrumentSimHours.toFixed(2)}</div>
                     </CardContent>
                 </Card>
             </div>
