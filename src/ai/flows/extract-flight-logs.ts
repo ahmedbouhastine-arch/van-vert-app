@@ -236,8 +236,12 @@ export async function extractFlightLogs(input: ExtractFlightLogsInput): Promise<
   }
 
   const hasPicInclSolo = entities.some(e => e.type === 'PIC_hours_solo_incl');
-  const hasSeparateSolo = entities.some(e => e.type === 'solo_incl');
-  const logbookFormat = hasSeparateSolo ? 'typeA' : hasPicInclSolo ? 'typeB' : 'simple';
+  const hasSoloInclText = entities.some(e => e.type === 'solo_incl');
+
+  // solo_incl entity means the logbook header says "INCL. SOLO" → typeB
+  // If no solo_incl text but has PIC column → typeA (separate columns)
+  // If neither → simple
+  const logbookFormat = hasSoloInclText ? 'typeB' : hasPicInclSolo ? 'typeA' : 'simple';
 
   console.log('Detected logbook format:', logbookFormat);
 
