@@ -611,6 +611,9 @@ export function ApplicationClient({
             </div>
         </CardHeader>
         <CardContent>
+             <div className="mb-4 text-xs text-muted-foreground">
+                Detected format: <span className="font-bold text-white">{logbookFormat}</span>
+             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
                 <Card className="bg-card text-card-foreground shadow-sm">
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -634,7 +637,7 @@ export function ApplicationClient({
                                 <div className="text-2xl font-bold text-blue-600">{picHours.toFixed(2)}</div>
                             </CardContent>
                         </Card>
-                        {logbookFormat !== 'typeB' && (
+                        {logbookFormat === 'typeA' && (
                             <Card className="bg-card text-card-foreground shadow-sm">
                                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                                     <CardTitle className="text-sm font-medium">Solo Hours</CardTitle>

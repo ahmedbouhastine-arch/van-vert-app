@@ -153,6 +153,13 @@ export async function uploadFlightLogAction(formData: FormData, idToken?: string
             id: uuidv4(),
         }));
 
+        await appRef.update({
+            flightLogs: extractedLogs,
+            flightLogPdfUrl: publicUrl,
+            logbookFormat: logbookFormat,
+            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
+
         return { publicUrl, extractedLogs, logbookFormat };
     } catch (e: unknown) {
         handleServerAuthError(e, 'uploadFlightLogAction');
