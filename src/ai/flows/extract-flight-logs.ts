@@ -1,4 +1,3 @@
-
 'use server';
 import 'server-only';
 import { DocumentProcessorServiceClient } from '@google-cloud/documentai';
@@ -65,6 +64,91 @@ function parseDocumentAIDate(rawDate: string, year?: string): string {
   return '';
 }
 
+function normalizeAircraft(raw: string): string {
+  if (!raw) return 'Unknown';
+  return raw
+    .replace(/^\(-/, 'C-')   // "(-172" → "C-172"
+    .replace(/^0-/, 'C-')    // "0-172" → "C-172"
+    .replace(/^c-/i, 'C-')   // normalize lowercase
+    .trim();
+}
+
+function parseHours(raw: string): number {
+  if (!raw || raw === '-') return 0;
+  const trimmed = raw.trim();
+
+  // Single digit "0" → 0.0 not a standalone value to skip
+  if (trimmed === '0') return 0;
+
+  // Already a proper decimal like "1.3"
+  if (/^\d+\.\d+$/.test(trimmed)) return parseFloat(trimmed);
+
+  // Two numbers separated by space, newline, or tab: "1 3" → 1.3, "0 8" → 0.8
+  const parts = trimmed.split(/[\s\n\t]+/);
+  if (parts.length === 2) {
+    const whole = parseInt(parts[0]) || 0;
+    const tenths = parseInt(parts[1]) || 0;
+    return parseFloat(`${whole}.${tenths}`);
+  }
+
+  // Single compact number like "13" → 1.3, "08" → 0.8, "16" → 1.6
+  // Rule: if 2 digits, first digit = whole hours, second digit = tenths
+  if (/^\d{2}$/.test(trimmed)) {
+    const whole = parseInt(trimmed[0]);
+    const tenths = parseInt(trimmed[1]);
+    return parseFloat(`${whole}.${tenths}`);
+  }
+
+  // Single digit like "8" → 0.8, "1" → could be 1.0
+  // If single digit and <= 8, treat as tenths only (0.X)
+  if (/^\d$/.test(trimmed)) {
+    const digit = parseInt(trimmed);
+    if (digit <= 8) return parseFloat(`0.${digit}`);
+    return digit;
+  }
+
+  return 0;
+}
+
+function inferMissingDate(lastDate: string, nextDate: string): string {
+  if (!lastDate) return '';
+
+  const last = new Date(lastDate);
+  const lastDay = last.getDate();
+  const lastMonth = last.getMonth(); // 0-indexed
+  const lastYear = last.getFullYear();
+
+  // If we have a next valid date, infer based on range
+  if (nextDate) {
+    const next = new Date(nextDate);
+    const nextDay = next.getDate();
+
+    // Missing date is between lastDate and nextDate
+    // Guess the midpoint day in the same month/year as last
+    if (lastDay >= 0 && lastDay <= 9 && nextDay >= 10 && nextDay <= 19) {
+      // Missing is likely in the 1x range
+      const guessDay = Math.round((lastDay + nextDay) / 2);
+      const guessed = new Date(lastYear, lastMonth, guessDay);
+      return guessed.toISOString().split('T')[0];
+    }
+    if (lastDay >= 10 && lastDay <= 19 && nextDay >= 20 && nextDay <= 29) {
+      const guessDay = Math.round((lastDay + nextDay) / 2);
+      const guessed = new Date(lastYear, lastMonth, guessDay);
+      return guessed.toISOString().split('T')[0];
+    }
+    if (lastDay >= 20 && lastDay <= 29 && nextDay >= 30) {
+      const guessDay = Math.round((lastDay + nextDay) / 2);
+      const guessed = new Date(lastYear, lastMonth, guessDay);
+      return guessed.toISOString().split('T')[0];
+    }
+  }
+
+  // Cannot confidently infer — return empty string so user fixes manually
+  // But still keep the year and month so the UI can show "Unknown day, February 2019"
+  const monthYear = `${lastYear}-${String(lastMonth + 1).padStart(2, '0')}-00`;
+  return monthYear;
+}
+
 export async function extractFlightLogs(input: ExtractFlightLogsInput): Promise<ExtractFlightLogsOutput> {
   const mediaUrl = input.storagePath || input.flightLogPdf;
   if (!mediaUrl) throw new Error('No PDF source provided.');
@@ -86,6 +170,10 @@ export async function extractFlightLogs(input: ExtractFlightLogsInput): Promise<
 
   console.log('Total entities from Document AI:', entities.length);
   console.log('Entity types found:', [...new Set(entities.map(e => e.type))]);
+  console.log('Raw hour entities:', entities
+    .filter(e => ['dual_hours','PIC_hours_solo_incl','instrument_hours','solo_incl'].includes(e.type ?? ''))
+    .map(e => ({ type: e.type, raw: e.mentionText }))
+  );
 
   type RowData = {
     date?: string;
@@ -133,16 +221,16 @@ export async function extractFlightLogs(input: ExtractFlightLogsInput): Promise<
         row.aircraft = value;
         break;
       case 'dual_hours':
-        row.dualReceived = parseFloat(value) || 0;
+        row.dualReceived = parseHours(value);
         break;
       case 'PIC_hours_solo_incl':
-        row.pilotInCommand = parseFloat(value) || 0;
+        row.pilotInCommand = parseHours(value);
         break;
       case 'instrument_hours':
-        row.instrumentSimulatedHours = parseFloat(value) || 0;
+        row.instrumentSimulatedHours = parseHours(value);
         break;
       case 'solo_incl':
-        row.solo = parseFloat(value) || 0;
+        row.solo = parseHours(value);
         break;
     }
   }
@@ -154,24 +242,60 @@ export async function extractFlightLogs(input: ExtractFlightLogsInput): Promise<
   console.log('Detected logbook format:', logbookFormat);
 
   const currentYear = new Date().getFullYear();
-  const flights = Array.from(rowMap.values())
+  
+  const allMapped = Array.from(rowMap.values())
     .sort((a, b) => (a.pageIndex ?? 0) - (b.pageIndex ?? 0) || (a.yPos ?? 0) - (b.yPos ?? 0))
     .map(row => ({
       date: parseDocumentAIDate(row.date ?? '', row.year ?? pageYearMap.get(row.pageIndex ?? 0)),
-      aircraft: row.aircraft ?? 'Unknown',
+      aircraft: normalizeAircraft(row.aircraft ?? 'Unknown'),
       duration: (row.dualReceived ?? 0) + (row.pilotInCommand ?? 0) + (row.solo ?? 0),
       dualReceived: row.dualReceived ?? 0,
       pilotInCommand: row.pilotInCommand ?? 0,
       solo: row.solo ?? 0,
       instrumentSimulatedHours: row.instrumentSimulatedHours ?? 0,
-    }))
-    .filter(f => {
-      const dateValid = /^\d{4}-\d{2}-\d{2}$/.test(f.date) &&
-        !isNaN(new Date(f.date).getTime()) &&
-        new Date(f.date).getFullYear() >= 1990 &&
-        new Date(f.date).getFullYear() <= currentYear;
-      return dateValid && f.duration > 0;
-    });
+    }));
+
+  // Carry forward missing dates
+  let lastValidDate = '';
+  const flightsWithDates = allMapped.map((f, index) => {
+    if (f.date) {
+      lastValidDate = f.date;
+      return f;
+    }
+
+    // Look ahead for next valid date
+    const nextValidDate = allMapped.slice(index + 1).find(r => !!r.date)?.date ?? '';
+    const inferredDate = inferMissingDate(lastValidDate, nextValidDate);
+
+    return { ...f, date: inferredDate };
+  });
+
+  console.log('ALL rows before filter:', JSON.stringify(flightsWithDates, null, 2));
+  console.log('Rows failing filter:', flightsWithDates.filter(f => {
+    const dateValid =
+      // Normal valid date
+      (/^\d{4}-\d{2}-\d{2}$/.test(f.date) &&
+      !isNaN(new Date(f.date).getTime()) &&
+      new Date(f.date).getFullYear() >= 1990 &&
+      new Date(f.date).getFullYear() <= currentYear)
+      ||
+      // Unknown day date like "2019-02-00"
+      /^\d{4}-\d{2}-00$/.test(f.date);
+    return !(dateValid && f.duration > 0);
+  }));
+
+  const flights = flightsWithDates.filter(f => {
+    const dateValid =
+      // Normal valid date
+      (/^\d{4}-\d{2}-\d{2}$/.test(f.date) &&
+      !isNaN(new Date(f.date).getTime()) &&
+      new Date(f.date).getFullYear() >= 1990 &&
+      new Date(f.date).getFullYear() <= currentYear)
+      ||
+      // Unknown day date like "2019-02-00"
+      /^\d{4}-\d{2}-00$/.test(f.date);
+    return dateValid && f.duration > 0;
+  });
 
   console.log(`Built ${flights.length} flights from Document AI entities`);
   console.log('Sample flights:', JSON.stringify(flights.slice(0, 3), null, 2));
