@@ -25,7 +25,8 @@ import {
   Download,
   X,
   RefreshCw,
-  ChevronLeft, ChevronRight, Edit2, Check as CheckIcon
+  ChevronLeft, ChevronRight, Edit2, Check as CheckIcon,
+  Plus, Trash2
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -36,7 +37,10 @@ import { checkRecency, type CheckRecencyOutput } from "@/ai/flows/check-recency"
 import * as serverActions from '@/app/actions';
 import { useFirestore, errorEmitter, FirestorePermissionError, useAuth, useFirebaseApp } from "@/firebase";
 import { doc, serverTimestamp, updateDoc, collection, addDoc } from "firebase/firestore";
+import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
+import { v4 as uuidv4 } from 'uuid';
 
 // Helper function to safely format dates, whether they are Timestamps or strings
 const safeFormatDate = (date: FirebaseTimestamp | Date | string | undefined | null, formatString: string) => {
@@ -197,6 +201,10 @@ export function ApplicationClient({
   const [isUploadingLog, setIsUploadingLog] = useState(false);
   const [selectedFlightTypeFilter, setSelectedFlightTypeFilter] = useState<'All' | 'PIC' | 'Solo' | 'Dual' | 'Instrument'>('All');
   const [currentPage, setCurrentPage] = useState(1);
+
+  const [isReviewMode, setIsReviewMode] = useState(false);
+  const [editableFlights, setEditableFlights] = useState<FlightLog[]>([]);
+  const [isSavingLogs, setIsSavingLogs] = useState(false);
 
   const flightLogs = appState.flightLogs || [];
   const logbookFormat = appState.logbookFormat || 'simple';
@@ -542,6 +550,69 @@ export function ApplicationClient({
     handleRecencyCheck();
   }, [appState.flightLogs, toast]);
 
+  const handleToggleReviewMode = () => {
+    if (!isReviewMode) {
+      setEditableFlights([...flightLogs]);
+    }
+    setIsReviewMode(!isReviewMode);
+  };
+
+  const handleEditableFlightChange = (id: string, field: keyof FlightLog, value: any) => {
+    setEditableFlights(prev => prev.map(log => {
+      if (log.id === id) {
+        const updatedLog = { ...log, [field]: value };
+        // Recalculate duration if hours changed
+        if (['dualReceived', 'pilotInCommand', 'solo'].includes(field)) {
+          updatedLog.duration = (Number(updatedLog.dualReceived) || 0) + 
+                                (Number(updatedLog.pilotInCommand) || 0) + 
+                                (Number(updatedLog.solo) || 0);
+        }
+        return updatedLog;
+      }
+      return log;
+    }));
+  };
+
+  const handleAddEditableFlight = () => {
+    const newFlight: FlightLog = {
+      id: uuidv4(),
+      date: new Date().toISOString().split('T')[0],
+      duration: 0,
+      aircraft: 'Unknown',
+      flightType: 'Unknown',
+      dualReceived: 0,
+      pilotInCommand: 0,
+      solo: 0,
+      instrumentSimulatedHours: 0
+    };
+    setEditableFlights(prev => [...prev, newFlight]);
+  };
+
+  const handleRemoveEditableFlight = (id: string) => {
+    setEditableFlights(prev => prev.filter(log => log.id !== id));
+  };
+
+  const handleSaveReviewChanges = async () => {
+    setIsSavingLogs(true);
+    try {
+        const idToken = await auth.currentUser?.getIdToken();
+        const result = await serverActions.updateFlightLogsAction(appState.id, editableFlights, idToken);
+        
+        if (result.success) {
+            setAppState(prev => ({ ...prev, flightLogs: editableFlights }));
+            setIsReviewMode(false);
+            toast({ title: "Changes Saved", description: "Flight logs have been updated." });
+        } else {
+            throw new Error("Failed to update logs");
+        }
+    } catch (error) {
+        console.error("Save failed:", error);
+        toast({ variant: "destructive", title: "Save Failed", description: "Could not save flight log changes." });
+    } finally {
+        setIsSavingLogs(false);
+    }
+  };
+
   const allDocsUploaded = appState.documents.every(doc => doc.status !== 'missing');
   const isSubmitted = appState.status !== 'draft';
 
@@ -601,12 +672,20 @@ export function ApplicationClient({
                             <p className="text-sm text-muted-foreground">Total Hours</p>
                         </div>
                     )}
-                    {appState.flightLogs && appState.flightLogs.length > 0 && (
-                        <Button onClick={handleRecalculateHours} variant="secondary" size="sm" className="mt-2">
-                            <RefreshCw className="mr-2 h-4 w-4" />
-                            Recalculate
-                        </Button>
-                    )}
+                    <div className="flex gap-2">
+                        {appState.flightLogs && appState.flightLogs.length > 0 && !isReviewMode && (
+                            <Button onClick={handleRecalculateHours} variant="secondary" size="sm" className="mt-2">
+                                <RefreshCw className="mr-2 h-4 w-4" />
+                                Recalculate
+                            </Button>
+                        )}
+                         {appState.flightLogs && appState.flightLogs.length > 0 && !isSubmitted && !isReviewMode && (
+                             <Button onClick={handleToggleReviewMode} variant="outline" size="sm" className="mt-2">
+                                <Edit2 className="mr-2 h-4 w-4" />
+                                Review & Edit
+                            </Button>
+                        )}
+                    </div>
                 </div>
             </div>
         </CardHeader>
@@ -631,30 +710,30 @@ export function ApplicationClient({
                                 <CardTitle className="text-sm font-medium">
                                     {logbookFormat === 'typeB' ? 'PIC Hours (Incl. Solo)' : 'PIC Hours'}
                                 </CardTitle>
-                                <Bot className="h-4 w-4 text-blue-500" />
+                                <Bot className="h-4 w-4 text-muted-foreground" />
                             </CardHeader>
                             <CardContent>
-                                <div className="text-2xl font-bold text-blue-600">{picHours.toFixed(2)}</div>
+                                <div className="text-2xl font-bold">{picHours.toFixed(2)}</div>
                             </CardContent>
                         </Card>
                         {logbookFormat === 'typeA' && (
                             <Card className="bg-card text-card-foreground shadow-sm">
                                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                                     <CardTitle className="text-sm font-medium">Solo Hours</CardTitle>
-                                    <Bot className="h-4 w-4 text-green-500" />
+                                    <Bot className="h-4 w-4 text-muted-foreground" />
                                 </CardHeader>
                                 <CardContent>
-                                    <div className="text-2xl font-bold text-green-600">{soloHours.toFixed(2)}</div>
+                                    <div className="text-2xl font-bold">{soloHours.toFixed(2)}</div>
                                 </CardContent>
                             </Card>
                         )}
                         <Card className="bg-card text-card-foreground shadow-sm">
                             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                                 <CardTitle className="text-sm font-medium">Dual Hours</CardTitle>
-                                <Bot className="h-4 w-4 text-orange-500" />
+                                <Bot className="h-4 w-4 text-muted-foreground" />
                             </CardHeader>
                             <CardContent>
-                                <div className="text-2xl font-bold text-orange-600">{dualHours.toFixed(2)}</div>
+                                <div className="text-2xl font-bold">{dualHours.toFixed(2)}</div>
                             </CardContent>
                         </Card>
                     </>
@@ -662,10 +741,10 @@ export function ApplicationClient({
                 <Card className="bg-card text-card-foreground shadow-sm">
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                         <CardTitle className="text-sm font-medium">Instrument / Sim</CardTitle>
-                        <Bot className="h-4 w-4 text-amber-500" />
+                        <Bot className="h-4 w-4 text-muted-foreground" />
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-bold text-amber-500">{instrumentSimHours.toFixed(2)}</div>
+                        <div className="text-2xl font-bold">{instrumentSimHours.toFixed(2)}</div>
                     </CardContent>
                 </Card>
             </div>
@@ -691,152 +770,245 @@ export function ApplicationClient({
 
             {appState.flightLogs && appState.flightLogs.length > 0 && (
                 <div className="mb-4">
-                    <div className="flex items-center gap-2 mb-4 overflow-x-auto pb-2">
-                        <Button 
-                            variant={selectedFlightTypeFilter === 'All' ? 'default' : 'outline'} 
-                            size="sm" 
-                            onClick={() => setSelectedFlightTypeFilter('All')}
-                        >
-                            All
-                        </Button>
-                        {logbookFormat !== 'simple' && (
-                            <>
+                    {!isReviewMode ? (
+                        <>
+                            <div className="flex items-center gap-2 mb-4 overflow-x-auto pb-2">
                                 <Button 
-                                    variant={selectedFlightTypeFilter === 'Dual' ? 'default' : 'outline'} 
+                                    variant={selectedFlightTypeFilter === 'All' ? 'default' : 'outline'} 
                                     size="sm" 
-                                    onClick={() => setSelectedFlightTypeFilter('Dual')}
+                                    onClick={() => setSelectedFlightTypeFilter('All')}
                                 >
-                                    Dual
+                                    All
                                 </Button>
-                                <Button 
-                                    variant={selectedFlightTypeFilter === 'PIC' ? 'default' : 'outline'} 
-                                    size="sm" 
-                                    onClick={() => setSelectedFlightTypeFilter('PIC')}
-                                >
-                                    {logbookFormat === 'typeB' ? 'PIC (Incl. Solo)' : 'PIC'}
-                                </Button>
-                                {logbookFormat === 'typeA' && (
-                                    <Button 
-                                        variant={selectedFlightTypeFilter === 'Solo' ? 'default' : 'outline'} 
-                                        size="sm" 
-                                        onClick={() => setSelectedFlightTypeFilter('Solo')}
-                                    >
-                                        Solo
-                                    </Button>
-                                )}
-                            </>
-                        )}
-                        <Button 
-                            variant={selectedFlightTypeFilter === 'Instrument' ? 'default' : 'outline'} 
-                            size="sm" 
-                            onClick={() => setSelectedFlightTypeFilter('Instrument')}
-                        >
-                            Instrument
-                        </Button>
-                    </div>
-
-                    <div className="mb-4 text-sm text-muted-foreground">
-                        Showing {Math.min((currentPage - 1) * ITEMS_PER_PAGE + 1, totalFilteredFlights)}-{Math.min(currentPage * ITEMS_PER_PAGE, totalFilteredFlights)} of {totalFilteredFlights} flights
-                    </div>
-                    
-                    <div className="space-y-3">
-                        {paginatedFlights.length > 0 ? (
-                            paginatedFlights.map((log) => (
-                                <Card key={log.id} className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                                    <div>
-                                        <div className="font-medium text-base">{formatFlightDate(log.date)}</div>
-                                        <div className="text-sm text-muted-foreground">{log.aircraft}</div>
-                                    </div>
-                                    <div className="flex flex-wrap gap-2 justify-end">
+                                {logbookFormat !== 'simple' && (
+                                    <>
+                                        <Button 
+                                            variant={selectedFlightTypeFilter === 'Dual' ? 'default' : 'outline'} 
+                                            size="sm" 
+                                            onClick={() => setSelectedFlightTypeFilter('Dual')}
+                                        >
+                                            Dual
+                                        </Button>
+                                        <Button 
+                                            variant={selectedFlightTypeFilter === 'PIC' ? 'default' : 'outline'} 
+                                            size="sm" 
+                                            onClick={() => setSelectedFlightTypeFilter('PIC')}
+                                        >
+                                            {logbookFormat === 'typeB' ? 'PIC (Incl. Solo)' : 'PIC'}
+                                        </Button>
                                         {logbookFormat === 'typeA' && (
-                                            <>
-                                                {(log.dualReceived || 0) > 0 && (
-                                                    <Badge variant="outline" className="bg-blue-500/20 text-blue-400 border-blue-500/30">
-                                                        DUAL {log.dualReceived?.toFixed(2)}h
-                                                    </Badge>
-                                                )}
-                                                {(log.pilotInCommand || 0) > 0 && (
-                                                    <Badge variant="outline" className="bg-green-500/20 text-green-400 border-green-500/30">
-                                                        PIC {log.pilotInCommand?.toFixed(2)}h
-                                                    </Badge>
-                                                )}
-                                                {(log.solo || 0) > 0 && (
-                                                    <Badge variant="outline" className="bg-purple-500/20 text-purple-400 border-purple-500/30">
-                                                        SOLO {log.solo?.toFixed(2)}h
-                                                    </Badge>
-                                                )}
-                                            </>
+                                            <Button 
+                                                variant={selectedFlightTypeFilter === 'Solo' ? 'default' : 'outline'} 
+                                                size="sm" 
+                                                onClick={() => setSelectedFlightTypeFilter('Solo')}
+                                            >
+                                                Solo
+                                            </Button>
                                         )}
-                                        {logbookFormat === 'typeB' && (
-                                            <>
-                                                {(log.dualReceived || 0) > 0 && (
-                                                    <Badge variant="outline" className="bg-blue-500/20 text-blue-400 border-blue-500/30">
-                                                        DUAL {log.dualReceived?.toFixed(2)}h
-                                                    </Badge>
-                                                )}
-                                                {(log.pilotInCommand || 0) > 0 && (
-                                                    <Badge variant="outline" className="bg-green-500/20 text-green-400 border-green-500/30">
-                                                        PIC (INCL. SOLO) {log.pilotInCommand?.toFixed(2)}h
-                                                    </Badge>
-                                                )}
-                                            </>
-                                        )}
-                                        {logbookFormat === 'simple' && (
-                                            <Badge variant="outline" className="bg-slate-500/20 text-slate-400 border-slate-500/30">
-                                                FLIGHT {log.duration.toFixed(2)}h
-                                            </Badge>
-                                        )}
-                                        {(log.instrumentSimulatedHours || 0) > 0 && (
-                                            <Badge variant="outline" className="bg-amber-500/20 text-amber-400 border-amber-500/30">
-                                                INSTRUMENT {log.instrumentSimulatedHours?.toFixed(2)}h
-                                            </Badge>
-                                        )}
-                                        {logbookFormat !== 'simple' && (
-                                             <Badge variant="outline" className="bg-slate-500/20 text-slate-400 border-slate-500/30">
-                                                TOTAL {log.duration.toFixed(2)}h
-                                            </Badge>
-                                        )}
-                                    </div>
-                                </Card>
-                            ))
-                        ) : (
-                            <div className="text-center py-8 text-muted-foreground border rounded-lg border-dashed">
-                                No flight logs have been extracted yet or match the current filter.
-                            </div>
-                        )}
-                    </div>
-
-                    <div className="flex items-center justify-end space-x-2 py-4">
-                        <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-                            disabled={currentPage === 1}
-                        >
-                            <ChevronLeft className="h-4 w-4 mr-2" />Previous
-                        </Button>
-                        <div className="flex items-center space-x-1">
-                            {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
-                                <Button
-                                    key={page}
-                                    variant={currentPage === page ? "secondary" : "outline"}
-                                    size="sm"
-                                    onClick={() => setCurrentPage(page)}
-                                    className={currentPage === page ? "bg-primary text-primary-foreground" : ""}
+                                    </>
+                                )}
+                                <Button 
+                                    variant={selectedFlightTypeFilter === 'Instrument' ? 'default' : 'outline'} 
+                                    size="sm" 
+                                    onClick={() => setSelectedFlightTypeFilter('Instrument')}
                                 >
-                                    {page}
+                                    Instrument
                                 </Button>
-                            ))}
+                            </div>
+
+                            <div className="mb-4 text-sm text-muted-foreground">
+                                Showing {Math.min((currentPage - 1) * ITEMS_PER_PAGE + 1, totalFilteredFlights)}-{Math.min(currentPage * ITEMS_PER_PAGE, totalFilteredFlights)} of {totalFilteredFlights} flights
+                            </div>
+                            
+                            <div className="space-y-3">
+                                {paginatedFlights.length > 0 ? (
+                                    paginatedFlights.map((log) => (
+                                        <Card key={log.id} className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                                            <div>
+                                                <div className="font-medium text-base">{formatFlightDate(log.date)}</div>
+                                                <div className="text-sm text-muted-foreground">{log.aircraft}</div>
+                                            </div>
+                                            <div className="flex flex-wrap gap-2 justify-end">
+                                                {logbookFormat === 'typeA' && (
+                                                    <>
+                                                        {(log.dualReceived || 0) > 0 && (
+                                                            <Badge variant="outline" className="bg-blue-500/20 text-blue-400 border-blue-500/30">
+                                                                DUAL {log.dualReceived?.toFixed(2)}h
+                                                            </Badge>
+                                                        )}
+                                                        {(log.pilotInCommand || 0) > 0 && (
+                                                            <Badge variant="outline" className="bg-green-500/20 text-green-400 border-green-500/30">
+                                                                PIC {log.pilotInCommand?.toFixed(2)}h
+                                                            </Badge>
+                                                        )}
+                                                        {(log.solo || 0) > 0 && (
+                                                            <Badge variant="outline" className="bg-purple-500/20 text-purple-400 border-purple-500/30">
+                                                                SOLO {log.solo?.toFixed(2)}h
+                                                            </Badge>
+                                                        )}
+                                                    </>
+                                                )}
+                                                {logbookFormat === 'typeB' && (
+                                                    <>
+                                                        {(log.dualReceived || 0) > 0 && (
+                                                            <Badge variant="outline" className="bg-blue-500/20 text-blue-400 border-blue-500/30">
+                                                                DUAL {log.dualReceived?.toFixed(2)}h
+                                                            </Badge>
+                                                        )}
+                                                        {(log.pilotInCommand || 0) > 0 && (
+                                                            <Badge variant="outline" className="bg-green-500/20 text-green-400 border-green-500/30">
+                                                                PIC (INCL. SOLO) {log.pilotInCommand?.toFixed(2)}h
+                                                            </Badge>
+                                                        )}
+                                                    </>
+                                                )}
+                                                {logbookFormat === 'simple' && (
+                                                    <Badge variant="outline" className="bg-slate-500/20 text-slate-400 border-slate-500/30">
+                                                        FLIGHT {log.duration.toFixed(2)}h
+                                                    </Badge>
+                                                )}
+                                                {(log.instrumentSimulatedHours || 0) > 0 && (
+                                                    <Badge variant="outline" className="bg-amber-500/20 text-amber-400 border-amber-500/30">
+                                                        INSTRUMENT {log.instrumentSimulatedHours?.toFixed(2)}h
+                                                    </Badge>
+                                                )}
+                                                {logbookFormat !== 'simple' && (
+                                                     <Badge variant="outline" className="bg-slate-500/20 text-slate-400 border-slate-500/30">
+                                                        TOTAL {log.duration.toFixed(2)}h
+                                                    </Badge>
+                                                )}
+                                            </div>
+                                        </Card>
+                                    ))
+                                ) : (
+                                    <div className="text-center py-8 text-muted-foreground border rounded-lg border-dashed">
+                                        No flight logs have been extracted yet or match the current filter.
+                                    </div>
+                                )}
+                            </div>
+
+                            <div className="flex items-center justify-end space-x-2 py-4">
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                                    disabled={currentPage === 1}
+                                >
+                                    <ChevronLeft className="h-4 w-4 mr-2" />Previous
+                                </Button>
+                                <div className="flex items-center space-x-1">
+                                    {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
+                                        <Button
+                                            key={page}
+                                            variant={currentPage === page ? "secondary" : "outline"}
+                                            size="sm"
+                                            onClick={() => setCurrentPage(page)}
+                                            className={currentPage === page ? "bg-primary text-primary-foreground" : ""}
+                                        >
+                                            {page}
+                                        </Button>
+                                    ))}
+                                </div>
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                                    disabled={currentPage === totalPages}
+                                >
+                                    Next<ChevronRight className="h-4 w-4 ml-2" />
+                                </Button>
+                            </div>
+                        </>
+                    ) : (
+                        <div className="space-y-4">
+                            <div className="border rounded-md">
+                                <Table>
+                                    <TableHeader>
+                                        <TableRow>
+                                            <TableHead>Date</TableHead>
+                                            <TableHead>Aircraft</TableHead>
+                                            <TableHead>Dual</TableHead>
+                                            <TableHead>{logbookFormat === 'typeB' ? 'PIC (Incl. Solo)' : 'PIC'}</TableHead>
+                                            {logbookFormat === 'typeA' && <TableHead>Solo</TableHead>}
+                                            <TableHead>Inst / Sim</TableHead>
+                                            <TableHead className="w-[50px]"></TableHead>
+                                        </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
+                                        {editableFlights.map((log) => (
+                                            <TableRow key={log.id}>
+                                                <TableCell className="p-2">
+                                                    <Input 
+                                                        value={log.date} 
+                                                        onChange={(e) => handleEditableFlightChange(log.id, 'date', e.target.value)}
+                                                        className="w-[130px] h-8 text-sm"
+                                                    />
+                                                </TableCell>
+                                                <TableCell className="p-2">
+                                                    <Input 
+                                                        value={log.aircraft} 
+                                                        onChange={(e) => handleEditableFlightChange(log.id, 'aircraft', e.target.value)}
+                                                        className="w-[100px] h-8 text-sm"
+                                                    />
+                                                </TableCell>
+                                                <TableCell className="p-2">
+                                                    <Input 
+                                                        type="number" step="0.1" 
+                                                        value={log.dualReceived || ''} 
+                                                        onChange={(e) => handleEditableFlightChange(log.id, 'dualReceived', parseFloat(e.target.value) || 0)}
+                                                        className="w-[80px] h-8 text-sm"
+                                                    />
+                                                </TableCell>
+                                                <TableCell className="p-2">
+                                                    <Input 
+                                                        type="number" step="0.1" 
+                                                        value={log.pilotInCommand || ''} 
+                                                        onChange={(e) => handleEditableFlightChange(log.id, 'pilotInCommand', parseFloat(e.target.value) || 0)}
+                                                        className="w-[80px] h-8 text-sm"
+                                                    />
+                                                </TableCell>
+                                                {logbookFormat === 'typeA' && (
+                                                    <TableCell className="p-2">
+                                                        <Input 
+                                                            type="number" step="0.1" 
+                                                            value={log.solo || ''} 
+                                                            onChange={(e) => handleEditableFlightChange(log.id, 'solo', parseFloat(e.target.value) || 0)}
+                                                            className="w-[80px] h-8 text-sm"
+                                                        />
+                                                    </TableCell>
+                                                )}
+                                                <TableCell className="p-2">
+                                                    <Input 
+                                                        type="number" step="0.1" 
+                                                        value={log.instrumentSimulatedHours || ''} 
+                                                        onChange={(e) => handleEditableFlightChange(log.id, 'instrumentSimulatedHours', parseFloat(e.target.value) || 0)}
+                                                        className="w-[80px] h-8 text-sm"
+                                                    />
+                                                </TableCell>
+                                                <TableCell className="p-2">
+                                                    <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive" onClick={() => handleRemoveEditableFlight(log.id)}>
+                                                        <Trash2 className="h-4 w-4" />
+                                                    </Button>
+                                                </TableCell>
+                                            </TableRow>
+                                        ))}
+                                    </TableBody>
+                                </Table>
+                            </div>
+                            <Button variant="outline" size="sm" onClick={handleAddEditableFlight} className="w-full border-dashed">
+                                <Plus className="mr-2 h-4 w-4" /> Add Flight Row
+                            </Button>
+                            <div className="flex justify-end gap-2 pt-4 border-t">
+                                <Button variant="outline" onClick={handleToggleReviewMode} disabled={isSavingLogs}>
+                                    Cancel
+                                </Button>
+                                <Button onClick={handleSaveReviewChanges} disabled={isSavingLogs}>
+                                    {isSavingLogs ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+                                    Save Changes
+                                </Button>
+                            </div>
                         </div>
-                        <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
-                            disabled={currentPage === totalPages}
-                        >
-                            Next<ChevronRight className="h-4 w-4 ml-2" />
-                        </Button>
-                    </div>
+                    )}
                 </div>
             )}
         </CardContent>
