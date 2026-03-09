@@ -195,71 +195,43 @@ export function ApplicationClient({
   const [selectedFlightTypeFilter, setSelectedFlightTypeFilter] = useState<'All' | 'PIC' | 'Solo' | 'Dual'>('All');
   const [currentPage, setCurrentPage] = useState(1);
 
-  const [isReviewMode, setIsReviewMode] = useState(false);
-  const [editedLogs, setEditedLogs] = useState<Record<string, 'PIC' | 'Solo' | 'Dual'>>({});
-  const [isSavingLogs, setIsSavingLogs] = useState(false);
-
   const flightLogs = appState.flightLogs || [];
   const logbookFormat = appState.logbookFormat || 'simple';
 
-  // Determine flight type for a given log entry and return display text
-  const getFlightTypeAndDisplay = (log: FlightLog): { type: 'PIC' | 'Solo' | 'Dual' | 'Unknown', display: string } => {
-    // Check for edited type first
-    if (editedLogs[log.id]) {
-        const type = editedLogs[log.id];
-        let display = type;
-        if (logbookFormat === 'typeB' && type === 'PIC') {
-            display = 'PIC (Incl. Solo)';
-        }
-        return { type, display };
-    }
-
+  const getFlightType = (log: FlightLog): 'PIC' | 'Solo' | 'Dual' | 'Unknown' => {
     if (logbookFormat === 'typeA') {
-      if ((log.pilotInCommand || 0) > 0) return { type: 'PIC', display: 'PIC' };
-      if ((log.solo || 0) > 0) return { type: 'Solo', display: 'Solo' };
-      if ((log.dualReceived || 0) > 0) return { type: 'Dual', display: 'Dual' };
+      if ((log.pilotInCommand || 0) > 0) return 'PIC';
+      if ((log.solo || 0) > 0) return 'Solo';
+      if ((log.dualReceived || 0) > 0) return 'Dual';
     } else if (logbookFormat === 'typeB') {
-      if ((log.pilotInCommand || 0) > 0) return { type: 'PIC', display: 'PIC (Incl. Solo)' };
-      if ((log.dualReceived || 0) > 0) return { type: 'Dual', display: 'Dual' };
+      if ((log.pilotInCommand || 0) > 0) return 'PIC';
+      if ((log.dualReceived || 0) > 0) return 'Dual';
     } else { // simple or unknown
-      // Fallback for simple logbooks, use existing flightType if available
-      if (log.flightType) return { type: log.flightType, display: log.flightType };
+      if (log.flightType) return log.flightType;
     }
-    return { type: 'Unknown', display: 'Unknown' };
+    return 'Unknown';
   };
 
-  // Calculate hours based on logbook format
   const calculateHours = (logs: FlightLog[], type: 'total' | 'PIC' | 'Solo' | 'Dual') => {
     return logs.reduce((sum, log) => {
-      const { type: flightType } = getFlightTypeAndDisplay(log);
-      
+      const flightType = getFlightType(log);
       if (type === 'total') return sum + (log.duration || 0);
-
-      if (logbookFormat === 'typeA') {
-        if (type === 'PIC' && flightType === 'PIC') return sum + (log.duration || 0);
-        if (type === 'Solo' && flightType === 'Solo') return sum + (log.duration || 0);
-        if (type === 'Dual' && flightType === 'Dual') return sum + (log.duration || 0);
-      } else if (logbookFormat === 'typeB') {
-        if (type === 'PIC' && flightType === 'PIC') return sum + (log.duration || 0);
-        if (type === 'Dual' && flightType === 'Dual') return sum + (log.duration || 0);
-        if (type === 'Solo') return sum + 0; 
-      }
+      if (flightType === type) return sum + (log.duration || 0);
       return sum;
     }, 0);
   };
 
-  const totalFlightHours = useMemo(() => calculateHours(flightLogs, 'total'), [flightLogs, logbookFormat, editedLogs]);
-  const picHours = useMemo(() => calculateHours(flightLogs, 'PIC'), [flightLogs, logbookFormat, editedLogs]);
-  const soloHours = useMemo(() => calculateHours(flightLogs, 'Solo'), [flightLogs, logbookFormat, editedLogs]);
-  const dualHours = useMemo(() => calculateHours(flightLogs, 'Dual'), [flightLogs, logbookFormat, editedLogs]);
+  const totalFlightHours = useMemo(() => calculateHours(flightLogs, 'total'), [flightLogs]);
+  const picHours = useMemo(() => calculateHours(flightLogs, 'PIC'), [flightLogs, logbookFormat]);
+  const soloHours = useMemo(() => calculateHours(flightLogs, 'Solo'), [flightLogs, logbookFormat]);
+  const dualHours = useMemo(() => calculateHours(flightLogs, 'Dual'), [flightLogs, logbookFormat]);
 
   const filteredFlightLogs = useMemo(() => {
     if (selectedFlightTypeFilter === 'All') {
       return flightLogs;
     }
-    // Filter using the dynamically determined flight type
-    return flightLogs.filter(log => getFlightTypeAndDisplay(log).type === selectedFlightTypeFilter);
-  }, [flightLogs, selectedFlightTypeFilter, getFlightTypeAndDisplay]);
+    return flightLogs.filter(log => getFlightType(log) === selectedFlightTypeFilter);
+  }, [flightLogs, selectedFlightTypeFilter, logbookFormat]);
 
   const totalFilteredFlights = filteredFlightLogs.length;
   const totalPages = Math.ceil(totalFilteredFlights / ITEMS_PER_PAGE);
@@ -269,11 +241,10 @@ export function ApplicationClient({
     return filteredFlightLogs.slice(startIndex, endIndex);
   }, [filteredFlightLogs, currentPage]);
 
-  // Reset pagination when filter changes
   useEffect(() => {
     setCurrentPage(1);
   }, [selectedFlightTypeFilter]);
-  
+
   const handlePersistChanges = (updates: Partial<Application>, successToast: {title: string, description?: string} | null) => {
     if (!firestore) return;
     const appRef = doc(firestore, 'applications', appState.id);
@@ -301,7 +272,6 @@ export function ApplicationClient({
             title: "Save Failed",
             description: "Your changes could not be saved. Please try again.",
         });
-        // Revert to initial state on failure
         setAppState(initialApplication);
     });
   };
@@ -380,14 +350,11 @@ export function ApplicationClient({
     }
   };
 
-
   const handleDateChange = (docId: string, date: string) => {
     const newDocuments = appState.documents.map((doc) =>
         doc.id === docId ? { ...doc, expiryDate: date } : doc
     );
-
     setAppState((prev) => ({ ...prev, documents: newDocuments }));
-
     handlePersistChanges(
         { documents: newDocuments }, 
         { title: "Expiry Date Saved", description: "The expiry date has been updated." }
@@ -398,9 +365,7 @@ export function ApplicationClient({
     const newDocuments = appState.documents.map((doc) =>
         doc.id === docId ? { ...doc, expiryDate: "" } : doc
     );
-
     setAppState((prev) => ({ ...prev, documents: newDocuments }));
-
     handlePersistChanges(
         { documents: newDocuments }, 
         { title: "Expiry Date Cleared", description: "The expiry date has been removed." }
@@ -540,7 +505,6 @@ export function ApplicationClient({
   const handleRecalculateHours = () => {
     const logs = appState.flightLogs || [];
     const total = logs.reduce((sum, log) => sum + (Number(log.duration) || 0), 0);
-    // setTotalFlightHours(total); // No longer needed as totalFlightHours is a useMemo
     
     toast({
         title: "Hours Recalculated",
@@ -562,7 +526,6 @@ export function ApplicationClient({
                 flights: logs.map(f => ({
                     date: f.date,
                     duration: f.duration,
-                    // Only pass relevant fields for recency check, it doesn't need flightType or other hours
                 }))
             });
             setRecencyResult(result);
@@ -580,67 +543,6 @@ export function ApplicationClient({
 
     handleRecencyCheck();
   }, [appState.flightLogs, toast]);
-
-  const handleToggleReviewMode = () => {
-    setIsReviewMode(!isReviewMode);
-    setEditedLogs({}); // Clear edits when toggling
-  };
-
-  const handleLogTypeChange = (logId: string, newType: 'PIC' | 'Solo' | 'Dual') => {
-    setEditedLogs(prev => ({
-        ...prev,
-        [logId]: newType
-    }));
-  };
-
-  const handleSaveChanges = async () => {
-    setIsSavingLogs(true);
-    
-    // Create updated logs array
-    const updatedLogs = appState.flightLogs.map(log => {
-        if (editedLogs[log.id]) {
-            const newType = editedLogs[log.id];
-            const duration = log.duration || 0;
-            
-            // Reset all hours
-            const newLog = { 
-                ...log, 
-                pilotInCommand: 0, 
-                dualReceived: 0, 
-                solo: 0,
-                flightType: newType as any // Should ideally match the type definition but for now casting
-            };
-
-            // Set specific hours based on new type
-            if (newType === 'PIC') newLog.pilotInCommand = duration;
-            if (newType === 'Dual') newLog.dualReceived = duration;
-            if (newType === 'Solo') newLog.solo = duration;
-
-            return newLog;
-        }
-        return log;
-    });
-
-    try {
-        const idToken = await auth.currentUser?.getIdToken();
-        const result = await serverActions.updateFlightLogsAction(appState.id, updatedLogs, idToken);
-        
-        if (result.success) {
-            setAppState(prev => ({ ...prev, flightLogs: updatedLogs }));
-            setEditedLogs({});
-            setIsReviewMode(false);
-            toast({ title: "Changes Saved", description: "Flight logs have been updated." });
-        } else {
-            throw new Error("Failed to update logs");
-        }
-    } catch (error) {
-        console.error("Save failed:", error);
-        toast({ variant: "destructive", title: "Save Failed", description: "Could not save flight log changes." });
-    } finally {
-        setIsSavingLogs(false);
-    }
-  };
-
 
   const allDocsUploaded = appState.documents.every(doc => doc.status !== 'missing');
   const isSubmitted = appState.status !== 'draft';
@@ -701,7 +603,7 @@ export function ApplicationClient({
                             <p className="text-sm text-muted-foreground">Total Hours</p>
                         </div>
                     )}
-                    {appState.flightLogs && appState.flightLogs.length > 0 && !isReviewMode && (
+                    {appState.flightLogs && appState.flightLogs.length > 0 && (
                         <Button onClick={handleRecalculateHours} variant="secondary" size="sm" className="mt-2">
                             <RefreshCw className="mr-2 h-4 w-4" />
                             Recalculate
@@ -711,7 +613,6 @@ export function ApplicationClient({
             </div>
         </CardHeader>
         <CardContent>
-            {/* Summary Cards */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
                 <Card className="bg-card text-card-foreground shadow-sm">
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -733,7 +634,7 @@ export function ApplicationClient({
                         <div className="text-2xl font-bold text-blue-600">{picHours.toFixed(2)}</div>
                     </CardContent>
                 </Card>
-                {logbookFormat !== 'typeB' && (
+                {logbookFormat === 'typeA' && (
                     <Card className="bg-card text-card-foreground shadow-sm">
                         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                             <CardTitle className="text-sm font-medium">Solo Hours</CardTitle>
@@ -775,135 +676,106 @@ export function ApplicationClient({
             ) : null}
 
             {appState.flightLogs && appState.flightLogs.length > 0 && (
-                <div className="flex items-center justify-between mb-4">
-                    <Tabs defaultValue="All" onValueChange={(value) => setSelectedFlightTypeFilter(value as 'All' | 'PIC' | 'Solo' | 'Dual')} className="w-full">
-                        <div className="flex items-center justify-between">
-                            <TabsList className="grid w-[400px] grid-cols-4">
-                                <TabsTrigger value="All">All</TabsTrigger>
-                                <TabsTrigger value="PIC">PIC</TabsTrigger>
-                                <TabsTrigger value="Solo">Solo</TabsTrigger>
-                                <TabsTrigger value="Dual">Dual</TabsTrigger>
-                            </TabsList>
-                            <div className="flex gap-2">
-                                {isReviewMode ? (
-                                    <Button size="sm" onClick={handleSaveChanges} disabled={isSavingLogs}>
-                                        {isSavingLogs ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-                                        Save Changes
-                                    </Button>
-                                ) : (
-                                    <Button size="sm" variant="outline" onClick={handleToggleReviewMode} disabled={isSubmitted}>
-                                        <Edit2 className="mr-2 h-4 w-4" />
-                                        Review
-                                    </Button>
-                                )}
-                            </div>
+                <div className="mb-4">
+                    <Tabs defaultValue="All" onValueChange={(value) => setSelectedFlightTypeFilter(value as 'All' | 'PIC' | 'Solo' | 'Dual')}>
+                        <TabsList className="grid w-full max-w-md grid-cols-4 mb-4">
+                            <TabsTrigger value="All">All</TabsTrigger>
+                            <TabsTrigger value="PIC">PIC</TabsTrigger>
+                            {logbookFormat === 'typeA' && <TabsTrigger value="Solo">Solo</TabsTrigger>}
+                            <TabsTrigger value="Dual">Dual</TabsTrigger>
+                        </TabsList>
+                        <div className="mb-4 text-sm text-muted-foreground">
+                            Showing {Math.min((currentPage - 1) * ITEMS_PER_PAGE + 1, totalFilteredFlights)}-{Math.min(currentPage * ITEMS_PER_PAGE, totalFilteredFlights)} of {totalFilteredFlights} flights
                         </div>
-                        {/* The TabsContent will render the same table, filtered by selectedFlightTypeFilter */}
-                        <TabsContent value={selectedFlightTypeFilter} className="mt-4">
-                            <div className="mb-4 text-sm text-muted-foreground">
-                                Showing {Math.min((currentPage - 1) * ITEMS_PER_PAGE + 1, totalFilteredFlights)}-{Math.min(currentPage * ITEMS_PER_PAGE, totalFilteredFlights)} of {totalFilteredFlights} flights
-                            </div>
-                            <Table>
-                                <TableHeader>
-                                    <TableRow className="hover:bg-transparent">
-                                        <TableHead>Date</TableHead>
-                                        <TableHead>Aircraft</TableHead>
-                                        <TableHead>Duration (hrs)</TableHead>
-                                        <TableHead>Type</TableHead>
-                                    </TableRow>
-                                </TableHeader>
-                                <TableBody>
-                                    {paginatedFlights && paginatedFlights.length > 0 ? (
-                                        paginatedFlights.map((log, index) => {
-                                            const { type: flightType, display: flightTypeDisplay } = getFlightTypeAndDisplay(log);
-                                            const isEdited = editedLogs[log.id];
-                                            return (
-                                                <TableRow key={log.id} className={`${index % 2 === 0 ? 'bg-muted/30 hover:bg-muted' : 'hover:bg-muted'} ${isEdited ? 'border-l-2 border-yellow-500 bg-yellow-500/5' : ''}`}>
-                                                    <TableCell>{formatFlightDate(log.date)}</TableCell>
-                                                    <TableCell>
-                                                        <div className="font-medium">{log.aircraft}</div>
-                                                    </TableCell>
-                                                    <TableCell>{log.duration.toFixed(2)}</TableCell>
-                                                    <TableCell>
-                                                        {isReviewMode ? (
-                                                            <div className="flex items-center space-x-1">
-                                                                <button
-                                                                    onClick={() => handleLogTypeChange(log.id, 'Dual')}
-                                                                    className={`px-2 py-1 text-xs rounded-full border ${flightType === 'Dual' ? 'bg-orange-600 text-white border-orange-600' : 'bg-transparent text-muted-foreground border-border hover:bg-muted'}`}
-                                                                >
-                                                                    Dual
-                                                                </button>
-                                                                <button
-                                                                    onClick={() => handleLogTypeChange(log.id, 'PIC')}
-                                                                    className={`px-2 py-1 text-xs rounded-full border ${flightType === 'PIC' ? 'bg-blue-600 text-white border-blue-600' : 'bg-transparent text-muted-foreground border-border hover:bg-muted'}`}
-                                                                >
-                                                                    PIC
-                                                                </button>
-                                                                {logbookFormat === 'typeA' && (
-                                                                    <button
-                                                                        onClick={() => handleLogTypeChange(log.id, 'Solo')}
-                                                                        className={`px-2 py-1 text-xs rounded-full border ${flightType === 'Solo' ? 'bg-green-600 text-white border-green-600' : 'bg-transparent text-muted-foreground border-border hover:bg-muted'}`}
-                                                                    >
-                                                                        Solo
-                                                                    </button>
-                                                                )}
-                                                            </div>
-                                                        ) : (
-                                                            <Badge
-                                                                className={
-                                                                    flightType === 'PIC' ? 'bg-blue-600 text-blue-50 hover:bg-blue-500' :
-                                                                    flightType === 'Solo' ? 'bg-green-600 text-green-50 hover:bg-green-500' :
-                                                                    flightType === 'Dual' ? 'bg-orange-600 text-orange-50 hover:bg-orange-500' :
-                                                                    'bg-gray-600 text-gray-50 hover:bg-gray-500'
-                                                                }
-                                                                variant="outline"
-                                                            >
-                                                                {flightTypeDisplay}
-                                                            </Badge>
-                                                        )}
-                                                    </TableCell>
-                                                </TableRow>
-                                            );
-                                        })
-                                    ) : (
-                                        <TableRow>
-                                            <TableCell colSpan={4} className="h-24 text-center">No flight logs have been extracted yet or match the current filter.</TableCell>
-                                        </TableRow>
+                        <Table>
+                            <TableHeader>
+                                <TableRow className="hover:bg-transparent">
+                                    <TableHead>Date</TableHead>
+                                    <TableHead>Aircraft</TableHead>
+                                    {logbookFormat === 'typeA' && (
+                                        <>
+                                            <TableHead className="text-right">Dual Received</TableHead>
+                                            <TableHead className="text-right">PIC</TableHead>
+                                            <TableHead className="text-right">Solo</TableHead>
+                                        </>
                                     )}
-                                </TableBody>
-                            </Table>
-                            <div className="flex items-center justify-end space-x-2 py-4">
-                                <Button
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-                                    disabled={currentPage === 1}
-                                >
-                                    <ChevronLeft className="h-4 w-4 mr-2" />Previous
-                                </Button>
-                                <div className="flex items-center space-x-1">
-                                    {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
-                                        <Button
-                                            key={page}
-                                            variant={currentPage === page ? "secondary" : "outline"}
-                                            size="sm"
-                                            onClick={() => setCurrentPage(page)}
-                                            className={currentPage === page ? "bg-primary text-primary-foreground" : ""}
-                                        >
-                                            {page}
-                                        </Button>
-                                    ))}
-                                </div>
-                                <Button
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
-                                    disabled={currentPage === totalPages}
-                                >
-                                    Next<ChevronRight className="h-4 w-4 ml-2" />
-                                </Button>
+                                    {logbookFormat === 'typeB' && (
+                                        <>
+                                            <TableHead className="text-right">Dual Received</TableHead>
+                                            <TableHead className="text-right">PIC (Incl. Solo)</TableHead>
+                                        </>
+                                    )}
+                                    <TableHead className="text-right">Instrument / Simulated</TableHead>
+                                    <TableHead className="text-right">Duration</TableHead>
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                                {paginatedFlights.length > 0 ? (
+                                    paginatedFlights.map((log, index) => (
+                                        <TableRow key={log.id} className={`${index % 2 === 0 ? 'bg-muted/30 hover:bg-muted' : 'hover:bg-muted'}`}>
+                                            <TableCell>{formatFlightDate(log.date)}</TableCell>
+                                            <TableCell><div className="font-medium">{log.aircraft}</div></TableCell>
+                                            {logbookFormat === 'typeA' && (
+                                                <>
+                                                    <TableCell className="text-right">{(log.dualReceived || 0).toFixed(2)}</TableCell>
+                                                    <TableCell className="text-right">{(log.pilotInCommand || 0).toFixed(2)}</TableCell>
+                                                    <TableCell className="text-right">{(log.solo || 0).toFixed(2)}</TableCell>
+                                                </>
+                                            )}
+                                            {logbookFormat === 'typeB' && (
+                                                <>
+                                                    <TableCell className="text-right">{(log.dualReceived || 0).toFixed(2)}</TableCell>
+                                                    <TableCell className="text-right">{(log.pilotInCommand || 0).toFixed(2)}</TableCell>
+                                                </>
+                                            )}
+                                            <TableCell className="text-right">{log.instrumentSimulatedHours ? log.instrumentSimulatedHours.toFixed(2) : '-'}</TableCell>
+                                            <TableCell className="text-right">{log.duration.toFixed(2)}</TableCell>
+                                        </TableRow>
+                                    ))
+                                ) : (
+                                    <TableRow>
+                                        <TableCell colSpan={
+                                            logbookFormat === 'typeA' ? 7 :
+                                            logbookFormat === 'typeB' ? 6 :
+                                            4
+                                        } className="h-24 text-center">
+                                            No flight logs have been extracted yet or match the current filter.
+                                        </TableCell>
+                                    </TableRow>
+                                )}
+                            </TableBody>
+                        </Table>
+                        <div className="flex items-center justify-end space-x-2 py-4">
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                                disabled={currentPage === 1}
+                            >
+                                <ChevronLeft className="h-4 w-4 mr-2" />Previous
+                            </Button>
+                            <div className="flex items-center space-x-1">
+                                {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
+                                    <Button
+                                        key={page}
+                                        variant={currentPage === page ? "secondary" : "outline"}
+                                        size="sm"
+                                        onClick={() => setCurrentPage(page)}
+                                        className={currentPage === page ? "bg-primary text-primary-foreground" : ""}
+                                    >
+                                        {page}
+                                    </Button>
+                                ))}
                             </div>
-                        </TabsContent>
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                                disabled={currentPage === totalPages}
+                            >
+                                Next<ChevronRight className="h-4 w-4 ml-2" />
+                            </Button>
+                        </div>
                     </Tabs>
                 </div>
             )}

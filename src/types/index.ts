@@ -45,6 +45,7 @@ export type FlightLog = {
   dualReceived?: number; // in hours
   pilotInCommand?: number; // in hours
   solo?: number; // in hours
+  instrumentSimulatedHours?: number;
 };
 
 export type LogbookFormat = 'typeA' | 'typeB' | 'simple';
