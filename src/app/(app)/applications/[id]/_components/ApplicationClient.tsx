@@ -676,7 +676,7 @@ export function ApplicationClient({
                         {appState.flightLogs && appState.flightLogs.length > 0 && !isReviewMode && (
                             <Button onClick={handleRecalculateHours} variant="secondary" size="sm" className="mt-2">
                                 <RefreshCw className="mr-2 h-4 w-4" />
-                                Recalculate
+                                Refresh Totals
                             </Button>
                         )}
                          {appState.flightLogs && appState.flightLogs.length > 0 && !isSubmitted && !isReviewMode && (
@@ -690,9 +690,6 @@ export function ApplicationClient({
             </div>
         </CardHeader>
         <CardContent>
-             <div className="mb-4 text-xs text-muted-foreground">
-                Detected format: <span className="font-bold text-white">{logbookFormat}</span>
-             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
                 <Card className="bg-card text-card-foreground shadow-sm">
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -705,7 +702,7 @@ export function ApplicationClient({
                 </Card>
                 {logbookFormat !== 'simple' && (
                     <>
-                        <Card className="bg-card text-card-foreground shadow-sm">
+                        <Card className="bg-card text-card-foreground shadow-sm border-green-500/30 bg-green-500/10">
                             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                                 <CardTitle className="text-sm font-medium">
                                     {logbookFormat === 'typeB' ? 'PIC Hours (Incl. Solo)' : 'PIC Hours'}
@@ -713,38 +710,38 @@ export function ApplicationClient({
                                 <Bot className="h-4 w-4 text-muted-foreground" />
                             </CardHeader>
                             <CardContent>
-                                <div className="text-2xl font-bold">{picHours.toFixed(2)}</div>
+                                <div className="text-2xl font-bold text-green-400">{picHours.toFixed(2)}</div>
                             </CardContent>
                         </Card>
                         {logbookFormat === 'typeA' && (
-                            <Card className="bg-card text-card-foreground shadow-sm">
+                            <Card className="bg-card text-card-foreground shadow-sm border-purple-500/30 bg-purple-500/10">
                                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                                     <CardTitle className="text-sm font-medium">Solo Hours</CardTitle>
                                     <Bot className="h-4 w-4 text-muted-foreground" />
                                 </CardHeader>
                                 <CardContent>
-                                    <div className="text-2xl font-bold">{soloHours.toFixed(2)}</div>
+                                    <div className="text-2xl font-bold text-purple-400">{soloHours.toFixed(2)}</div>
                                 </CardContent>
                             </Card>
                         )}
-                        <Card className="bg-card text-card-foreground shadow-sm">
+                        <Card className="bg-card text-card-foreground shadow-sm border-blue-500/30 bg-blue-500/10">
                             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                                 <CardTitle className="text-sm font-medium">Dual Hours</CardTitle>
                                 <Bot className="h-4 w-4 text-muted-foreground" />
                             </CardHeader>
                             <CardContent>
-                                <div className="text-2xl font-bold">{dualHours.toFixed(2)}</div>
+                                <div className="text-2xl font-bold text-blue-400">{dualHours.toFixed(2)}</div>
                             </CardContent>
                         </Card>
                     </>
                 )}
-                <Card className="bg-card text-card-foreground shadow-sm">
+                <Card className="bg-card text-card-foreground shadow-sm border-amber-500/30 bg-amber-500/10">
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                         <CardTitle className="text-sm font-medium">Simulated Instrument</CardTitle>
                         <Bot className="h-4 w-4 text-muted-foreground" />
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-bold">{instrumentSimHours.toFixed(2)}</div>
+                        <div className="text-2xl font-bold text-amber-400">{instrumentSimHours.toFixed(2)}</div>
                     </CardContent>
                 </Card>
             </div>
@@ -762,7 +759,9 @@ export function ApplicationClient({
                             {recencyResult.hasRecency ? 'Recency Requirement Met' : 'Recency Requirement Not Met'}
                         </h4>
                         <p className="text-sm">
-                            You have logged <strong>{recencyResult.totalHours} hours</strong> in the last 6 months.
+                            {recencyResult.hasRecency 
+                                ? `You have logged ${recencyResult.totalHours} hours in the last 6 months.`
+                                : `Your logged flights are outside the 6-month window. Flights must be within the last 6 months to meet recency requirements.`}
                         </p>
                     </div>
                 </div>
@@ -822,11 +821,16 @@ export function ApplicationClient({
                             
                             <div className="space-y-3">
                                 {paginatedFlights.length > 0 ? (
-                                    paginatedFlights.map((log) => (
+                                    paginatedFlights.map((log, index) => (
                                         <Card key={log.id} className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                                            <div>
-                                                <div className="font-medium text-base">{formatFlightDate(log.date)}</div>
-                                                <div className="text-sm text-muted-foreground">{log.aircraft}</div>
+                                            <div className="flex items-center gap-4">
+                                                <div className="text-sm font-bold text-muted-foreground w-8 shrink-0">
+                                                    #{((currentPage - 1) * ITEMS_PER_PAGE) + index + 1}
+                                                </div>
+                                                <div>
+                                                    <div className="font-medium text-base">{formatFlightDate(log.date)}</div>
+                                                    <div className="text-sm text-muted-foreground">{log.aircraft}</div>
+                                                </div>
                                             </div>
                                             <div className="flex flex-wrap gap-2 justify-end">
                                                 {logbookFormat === 'typeA' && (
@@ -870,11 +874,6 @@ export function ApplicationClient({
                                                 {(log.instrumentSimulatedHours || 0) > 0 && (
                                                     <Badge variant="outline" className="bg-amber-500/20 text-amber-400 border-amber-500/30">
                                                         INSTRUMENT {log.instrumentSimulatedHours?.toFixed(2)}h
-                                                    </Badge>
-                                                )}
-                                                {logbookFormat !== 'simple' && (
-                                                     <Badge variant="outline" className="bg-slate-500/20 text-slate-400 border-slate-500/30">
-                                                        TOTAL {log.duration.toFixed(2)}h
                                                     </Badge>
                                                 )}
                                             </div>
@@ -921,7 +920,7 @@ export function ApplicationClient({
                         </>
                     ) : (
                         <div className="space-y-4">
-                            <div className="border rounded-md">
+                            <div className="border rounded-md overflow-x-auto">
                                 <Table>
                                     <TableHeader>
                                         <TableRow>
