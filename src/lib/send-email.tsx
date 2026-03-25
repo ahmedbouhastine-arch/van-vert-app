@@ -13,14 +13,13 @@ import {
  * IMPORTANT: In this mode, Resend ONLY allows sending to the email address associated 
  * with your Resend account. To send to any email, you must verify a custom domain in Resend.
  */
-const FROM_EMAIL = 'Vanvert No-reply <noreply@vanvert.co>';
+const FROM_EMAIL = 'Van-Vert <onboarding@resend.dev>';
 
 async function sendEmail(options: { to: string; subject: string; react: React.ReactElement }) {
   const apiKey = process.env.RESEND_API_KEY;
   
   if (!apiKey || apiKey === 'MISSING_API_KEY') {
     console.error('❌ EMAIL ERROR: RESEND_API_KEY is missing from environment variables.');
-    console.warn('To fix this: Add RESEND_API_KEY to your .env file or your hosting provider secrets.');
     return { success: false, error: 'Resend API key is missing' };
   }
 
@@ -34,16 +33,10 @@ async function sendEmail(options: { to: string; subject: string; react: React.Re
 
     if (error) {
       console.error('❌ Resend API Error:', JSON.stringify(error, null, 2));
-      
-      // Provide a helpful hint for the most common testing error
-      if (error.message?.includes('onboarding@resend.dev')) {
-        console.warn('💡 HINT: You are likely trying to send to an email address that is not your Resend account email while using the test domain.');
-      }
-      
       return { success: false, error: error.message };
     }
 
-    console.log(`✅ Email sent successfully: "${options.subject}" to ${options.to}. ID: ${data?.id}`);
+    console.log(`✅ Email sent successfully: "${options.subject}" to ${options.to}`);
     return { success: true, id: data?.id };
   } catch (err: any) {
     console.error('❌ Unexpected error in sendEmail wrapper:', err);

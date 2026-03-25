@@ -6,7 +6,7 @@ import {
   Container,
   Section,
   Text,
-  Button,
+  Link,
   Hr,
   Heading,
 } from '@react-email/components';
@@ -23,6 +23,8 @@ const container = {
   margin: '0 auto',
   padding: '20px 0 48px',
   marginBottom: '64px',
+  borderRadius: '8px',
+  border: '1px solid #e6ebf1',
 };
 
 const box = {
@@ -41,10 +43,6 @@ const paragraph = {
   textAlign: 'left' as const,
 };
 
-const anchor = {
-  color: '#556cd6',
-};
-
 const button = {
   backgroundColor: '#2563eb',
   borderRadius: '5px',
@@ -56,12 +54,14 @@ const button = {
   display: 'block',
   width: '100%',
   padding: '12px',
+  marginTop: '24px',
 };
 
 const footer = {
   color: '#8898aa',
   fontSize: '12px',
   lineHeight: '16px',
+  marginTop: '24px',
 };
 
 interface VerificationEmailProps {
@@ -79,9 +79,9 @@ export const VerificationEmailTemplate = ({ verificationUrl }: VerificationEmail
           <Text style={paragraph}>
             Welcome to Van-Vert! To complete your registration and start your pilot license conversion, please verify your email address.
           </Text>
-          <Button style={button} href={verificationUrl}>
+          <Link style={button} href={verificationUrl}>
             Verify Email Address
-          </Button>
+          </Link>
           <Hr style={hr} />
           <Text style={footer}>
             If you didn't request this email, you can safely ignore it.
@@ -108,9 +108,9 @@ export const WelcomeEmailTemplate = ({ name, dashboardUrl }: WelcomeEmailProps) 
           <Text style={paragraph}>
             We're thrilled to have you on board. Van-Vert is designed to make your pilot license conversion process as smooth as possible.
           </Text>
-          <Button style={button} href={dashboardUrl}>
+          <Link style={button} href={dashboardUrl}>
             Go to My Dashboard
-          </Button>
+          </Link>
           <Hr style={hr} />
           <Text style={footer}>
             Van-Vert — Built for the modern aviator.
@@ -136,9 +136,9 @@ export const PasswordResetEmailTemplate = ({ resetUrl }: PasswordResetEmailProps
           <Text style={paragraph}>
             We received a request to reset your password. Click the button below to choose a new one.
           </Text>
-          <Button style={button} href={resetUrl}>
+          <Link style={button} href={resetUrl}>
             Reset Password
-          </Button>
+          </Link>
           <Text style={paragraph}>
             This link will expire in 1 hour. If you didn't request a password reset, please ignore this email.
           </Text>
@@ -173,9 +173,9 @@ export const ApplicationStatusEmailTemplate = ({ name, status, feedback, dashboa
               <Text style={{ ...paragraph, fontStyle: 'italic' }}>{feedback}</Text>
             </Section>
           )}
-          <Button style={button} href={dashboardUrl}>
+          <Link style={button} href={dashboardUrl}>
             View Application Details
-          </Button>
+          </Link>
           <Hr style={hr} />
         </Section>
       </Container>
