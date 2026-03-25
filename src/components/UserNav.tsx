@@ -43,9 +43,8 @@ export function UserNav() {
         description: "You have been securely logged out.",
       });
       
-      // 3. Navigate smoothly
-      router.push('/login');
-      router.refresh(); // Clear any cached server components
+      // 3. Navigate securely forcing a full state wipe
+      window.location.href = '/login';
     } catch (error: unknown) {
       const err = (error as { message?: unknown }) || {};
       toast({

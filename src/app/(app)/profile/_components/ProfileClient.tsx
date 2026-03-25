@@ -210,8 +210,7 @@ export function ProfileClient({ user: initialUser, claims, applications }) {
         await fetch('/api/auth/session/logout', { method: 'POST' });
         await signOut(getAuth());
         
-        router.push('/login');
-        router.refresh();
+        window.location.href = '/login';
       } catch (error) {
           toast({ variant: 'destructive', title: "Deletion Failed", description: "Could not delete your account." });
       } finally {
