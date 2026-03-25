@@ -1,88 +1,116 @@
-
 import { resend } from './resend';
+import * as React from 'react';
+import { 
+  VerificationEmailTemplate, 
+  WelcomeEmailTemplate, 
+  PasswordResetEmailTemplate, 
+  ApplicationStatusEmailTemplate 
+} from './emails/templates';
+
+const FROM_EMAIL = 'Van-Vert <onboarding@resend.dev>';
+
+async function sendEmail(options: { to: string; subject: string; react: React.ReactElement }) {
+  if (!process.env.RESEND_API_KEY) {
+    console.error('CRITICAL: RESEND_API_KEY is missing. Email skipped:', options.subject);
+    return { success: false, error: 'API key missing' };
+  }
+
+  try {
+    const { data, error } = await resend.emails.send({
+      from: FROM_EMAIL,
+      to: options.to,
+      subject: options.subject,
+      react: options.react,
+    });
+
+    if (error) {
+      console.error('Resend API Error:', JSON.stringify(error, null, 2));
+      return { success: false, error: error.message };
+    }
+
+    console.log(`Email sent successfully: ${options.subject} to ${options.to}. ID: ${data?.id}`);
+    return { success: true, id: data?.id };
+  } catch (err: any) {
+    console.error('Unexpected error in sendEmail:', err);
+    return { success: false, error: err.message };
+  }
+}
 
 export async function sendVerificationEmail(toEmail: string, verificationUrl: string) {
-  console.log('Sending via Resend to:', toEmail);
-  await resend.emails.send({
-    from: 'onboarding@resend.dev',
+  return sendEmail({
     to: toEmail,
     subject: 'Verify your email address — Van-Vert',
-    template_id: 'fc9fb7dc-b701-4c91-a741-9d265779373e',
-    variables: {
-      verificationUrl: verificationUrl
-    }
+    react: <VerificationEmailTemplate verificationUrl={verificationUrl} />,
   });
 }
 
 export async function sendPasswordResetEmail(toEmail: string, resetUrl: string) {
-  console.log('Sending password reset via Resend to:', toEmail);
-  await resend.emails.send({
-    from: 'onboarding@resend.dev',
+  return sendEmail({
     to: toEmail,
     subject: 'Reset your password — Van-Vert',
-    template_id: '77214652-f633-4be1-8e42-af6b3475351f',
-    variables: {
-      resetUrl: resetUrl
-    }
+    react: <PasswordResetEmailTemplate resetUrl={resetUrl} />,
   });
 }
 
 export async function sendApplicationReceivedEmail(toEmail: string, name: string, applicationId: string) {
-  await resend.emails.send({
-    from: 'onboarding@resend.dev',
+  // Use a generic status template for simpler logic
+  return sendEmail({
     to: toEmail,
     subject: "We've received your application — Van-Vert",
-    template_id: 'e95585d0-eddc-4e8c-9ecc-cda18da7319c',
-    variables: { name, applicationId }
+    react: <ApplicationStatusEmailTemplate 
+      name={name} 
+      status="Received" 
+      dashboardUrl={`https://van-vert-app--REDACTED_FIREBASE_PROJECT_ID.europe-west4.hosted.app/applications/${applicationId}`} 
+    />,
   });
 }
 
 export async function sendApplicationApprovedEmail(toEmail: string, name: string, dashboardUrl: string) {
-  await resend.emails.send({
-    from: 'onboarding@resend.dev',
+  return sendEmail({
     to: toEmail,
     subject: 'Your application has been approved — Van-Vert',
-    template_id: '74b562ec-e410-47c6-a99c-48452768f607',
-    variables: { name, dashboardUrl }
+    react: <ApplicationStatusEmailTemplate name={name} status="Approved" dashboardUrl={dashboardUrl} />,
   });
 }
 
 export async function sendApplicationRejectedEmail(toEmail: string, name: string, rejectionReason: string) {
-  await resend.emails.send({
-    from: 'onboarding@resend.dev',
+  return sendEmail({
     to: toEmail,
     subject: 'Update on your application — Van-Vert',
-    template_id: 'bf34a034-6fd2-4fc4-b421-34951a4a61e7',
-    variables: { name, rejectionReason }
+    react: <ApplicationStatusEmailTemplate 
+      name={name} 
+      status="Rejected" 
+      feedback={rejectionReason} 
+      dashboardUrl="https://van-vert-app--REDACTED_FIREBASE_PROJECT_ID.europe-west4.hosted.app/dashboard" 
+    />,
   });
 }
 
 export async function sendApplicationNeedsMoreInfoEmail(toEmail: string, name: string, requiredInfo: string, dashboardUrl: string) {
-  await resend.emails.send({
-    from: 'onboarding@resend.dev',
+  return sendEmail({
     to: toEmail,
     subject: 'Action required — additional documents needed — Van-Vert',
-    template_id: '19e4cf87-cb05-4e98-a3ea-b61256e918ae',
-    variables: { name, requiredInfo, dashboardUrl }
+    react: <ApplicationStatusEmailTemplate 
+      name={name} 
+      status="Needs More Information" 
+      feedback={requiredInfo} 
+      dashboardUrl={dashboardUrl} 
+    />,
   });
 }
 
 export async function sendWelcomeEmail(toEmail: string, name: string, dashboardUrl: string) {
-  await resend.emails.send({
-    from: 'onboarding@resend.dev',
+  return sendEmail({
     to: toEmail,
     subject: 'Welcome to Van-Vert ✈️',
-    template_id: '99a00527-678f-47fb-91d0-411325431790',
-    variables: { name, dashboardUrl }
+    react: <WelcomeEmailTemplate name={name} dashboardUrl={dashboardUrl} />,
   });
 }
 
 export async function sendPasswordChangedEmail(toEmail: string, name: string, changedAt: string, resetUrl: string) {
-  await resend.emails.send({
-    from: 'onboarding@resend.dev',
+  return sendEmail({
     to: toEmail,
     subject: 'Your password has been changed — Van-Vert',
-    template_id: '12da407c-40bf-4134-83af-85c98eda7853',
-    variables: { name, changedAt, resetUrl }
+    react: <PasswordResetEmailTemplate resetUrl={resetUrl} />, // Reusing reset template for safety
   });
 }

@@ -32,19 +32,13 @@ async function getAuthenticatedUser(idToken?: string) {
     }
 }
 
-
-/**
- * Handles server-side errors, providing specific guidance for common IAM permission issues.
- * @param error The error object caught.
- * @param context A string identifying where the error occurred (e.g., the function name).
- */
 function handleServerAuthError(error: unknown, context: string) {
     const err = (error as { message?: unknown; code?: unknown }) || {};
     const errorMessage = typeof err.message === 'string' ? err.message.toLowerCase() : '';
     const errorCode = err.code;
 
     const isAuthError =
-        errorCode === 7 || // gRPC code for PERMISSION_DENIED
+        errorCode === 7 || 
         errorCode === 'PERMISSION_DENIED' ||
         errorMessage.includes('credential') ||
         errorMessage.includes('access token') ||
@@ -58,13 +52,9 @@ function handleServerAuthError(error: unknown, context: string) {
             `Authentication failed on the server. This is likely an IAM permission issue with the App Hosting service account. Please ensure the service account has the 'Storage Object Admin' and 'Vertex AI User' roles in your Google Cloud project.`
         );
     }
-
-    // For non-auth errors, re-throw the original error
     throw error;
 }
 
-
-// Helper to handle timeouts
 async function withTimeout<T>(promise: Promise<T>, timeoutMs: number = 120000): Promise<T> {
     return Promise.race([
         promise,
@@ -89,7 +79,6 @@ type StorageBucket = {
 };
 
 async function uploadStreamToStorage(bucket: StorageBucket, path: string, stream: ReadableStream, mimeType: string) {
-    console.log(`Starting upload to gs://${bucket.name}/${path}`);
     const file = bucket.file(path);
     const writeStream = file.createWriteStream({
         metadata: { contentType: mimeType } as Record<string, unknown>,
@@ -101,7 +90,6 @@ async function uploadStreamToStorage(bucket: StorageBucket, path: string, stream
         while (true) {
             const { done, value } = await reader.read();
             if (done) break;
-            // value is a Uint8Array chunk for readable streams
             writeStream.write(value as unknown);
         }
         writeStream.end();
@@ -109,16 +97,13 @@ async function uploadStreamToStorage(bucket: StorageBucket, path: string, stream
         return new Promise<string>((resolve, reject) => {
             writeStream.on('finish', () => {
                 const publicUrl = `https://storage.googleapis.com/${bucket.name}/${path}`;
-                console.log(`Upload finished. Public URL: ${publicUrl}`);
                 resolve(publicUrl);
             });
             writeStream.on('error', (...args: unknown[]) => {
-                console.error('Upload stream error:', JSON.stringify(args[0], null, 2));
                 reject(args[0]);
             });
         });
     } catch (error) {
-        console.error('Error during upload stream processing:', JSON.stringify(error, null, 2));
         if (typeof writeStream.destroy === 'function') writeStream.destroy();
         throw error;
     }
@@ -142,7 +127,6 @@ export async function uploadFlightLogAction(formData: FormData, idToken?: string
         }
 
         const bucket = adminStorage.bucket();
-
         const storagePath = `applications/${applicationId}/flight-log-${uuidv4()}.pdf`;
         const publicUrl = await uploadStreamToStorage(bucket, storagePath, file.stream(), file.type);
         
@@ -169,7 +153,6 @@ export async function uploadFlightLogAction(formData: FormData, idToken?: string
 export async function updateFlightLogsAction(applicationId: string, flights: FlightLog[], idToken?: string): Promise<{ success: boolean }> {
     try {
         const user = await getAuthenticatedUser(idToken);
-        
         const appRef = adminFirestore.collection('applications').doc(applicationId);
         const appSnapshot = await appRef.get();
         if (!appSnapshot.exists) {
@@ -233,7 +216,7 @@ export async function createApplicationAction(
         };
         
         await adminFirestore.collection('applications').doc(newAppId).set(appData);
-        await sendApplicationReceivedEmail(userRecord.email, userRecord.displayName, newAppId);
+        await sendApplicationReceivedEmail(userRecord.email, userRecord.displayName || 'Pilot', newAppId);
         return { applicationId: newAppId };
     } catch (e: unknown) {
         handleServerAuthError(e, 'createApplicationAction');
@@ -262,32 +245,24 @@ export async function extractExpiryDateAction(args: {applicationId: string, docu
 }
 
 export async function uploadProfilePictureAction(formData: FormData, idToken?: string): Promise<{ photoURL: string }> {
-    console.log('uploadProfilePictureAction: Action started.');
     try {
         const token = idToken ?? (formData.get('idToken') as string | undefined);
         const user = await getAuthenticatedUser(token);
         const file = formData.get('file') as File;
         
         if (!file) {
-            console.error('uploadProfilePictureAction: No file provided.');
             throw new Error("No file provided for profile picture.");
         }
 
-        console.log(`uploadProfilePictureAction: File received. Size: ${file.size}, Type: ${file.type}`);
-        
         const bucket = adminStorage.bucket();
         const storagePath = `profile-pictures/${user.uid}/${file.name || 'profile.png'}`;
-        
-        console.log(`uploadProfilePictureAction: Starting upload to gs://${bucket.name}/${storagePath}`);
         const photoURL = await uploadStreamToStorage(bucket, storagePath, file.stream(), file.type);
-        console.log(`uploadProfilePictureAction: Upload successful. Public URL: ${photoURL}`);
 
         await adminAuth.updateUser(user.uid, { photoURL });
         await adminFirestore.collection('users').doc(user.uid).set({ photoURL }, { merge: true });
         
         return { photoURL };
     } catch (e: unknown) {
-        console.error('uploadProfilePictureAction: Upload error:', JSON.stringify(e, null, 2));
         handleServerAuthError(e, 'uploadProfilePictureAction');
     }
 }
@@ -309,8 +284,6 @@ export async function getExpiryDateForSingleDocumentAction(
         const docToProcess = application.documents.find(d => d.id === docId);
         if (!docToProcess || !docToProcess.fileUrl) throw new Error("Invalid document for AI check.");
         
-        // Ensure the file URL is a valid data URI or accessible URL for the AI model.
-        // For Storage URLs, you might need to fetch the content and convert to a data URI if the AI requires it.
         const { expiryDate } = await withTimeout(extractExpiryDate({ documentDataUri: docToProcess.fileUrl }));
         return { expiryDate: expiryDate || null };
     } catch (e: unknown) {
@@ -322,7 +295,6 @@ export async function updateUserProfileAction(
     data: Partial<UserProfile>,
     idToken?: string
 ): Promise<{ success: boolean; updatedData: Partial<UserProfile> }> {
-    console.log("updateUserProfileAction: Action started with data:", data);
     try {
         const user = await getAuthenticatedUser(idToken);
         const { uid } = user;
@@ -333,23 +305,18 @@ export async function updateUserProfileAction(
         }
         
         const firestoreUpdates: Partial<UserProfile> = { ...data };
-        delete firestoreUpdates.nationality; // Ensure nationality is removed if it was passed
+        delete (firestoreUpdates as any).nationality;
 
         if (Object.keys(authUpdates).length > 0) {
-            console.log("Updating Firebase Auth user...");
             await adminAuth.updateUser(uid, authUpdates);
-            console.log("Firebase Auth user updated.");
         }
 
         if (Object.keys(firestoreUpdates).length > 0) {
-            console.log("Updating Firestore user document...");
             await adminFirestore.collection('users').doc(uid).set(firestoreUpdates, { merge: true });
-            console.log("Firestore user document updated.");
         }
 
         return { success: true, updatedData: firestoreUpdates };
     } catch (e) {
-        console.error('updateUserProfileAction: Update error:', JSON.stringify(e, null, 2));
         handleServerAuthError(e, 'updateUserProfileAction');
         return { success: false, updatedData: {} };
     }
@@ -359,7 +326,6 @@ export async function deleteUserAccountAction(idToken?: string): Promise<{ succe
     try {
         const user = await getAuthenticatedUser(idToken);
         await adminAuth.deleteUser(user.uid);
-        // You might want to also clean up Firestore data associated with the user
         return { success: true };
     } catch (e) {
         handleServerAuthError(e, 'deleteUserAccountAction');
@@ -369,13 +335,20 @@ export async function deleteUserAccountAction(idToken?: string): Promise<{ succe
 
 export async function sendVerificationEmailAction(email: string) {
     try {
+        console.log(`Starting verification email action for: ${email}`);
         const verificationLink = await adminAuth.generateEmailVerificationLink(email);
-        await sendVerificationEmail(email, verificationLink);
+        const result = await sendVerificationEmail(email, verificationLink);
+        
+        if (!result.success) {
+            throw new Error(result.error);
+        }
+
         const user = await adminAuth.getUserByEmail(email);
-        await sendWelcomeEmailAction(user.email, user.displayName, 'https://van-vert-app--REDACTED_FIREBASE_PROJECT_ID.europe-west4.hosted.app/dashboard');
+        await sendWelcomeEmailAction(user.email, user.displayName || 'Pilot', 'https://van-vert-app--REDACTED_FIREBASE_PROJECT_ID.europe-west4.hosted.app/dashboard');
+        
         return { success: true };
-    } catch (error) {
-        console.error('Error sending verification email:', error);
+    } catch (error: any) {
+        console.error('Error in sendVerificationEmailAction:', error);
         return { success: false, error: error.message };
     }
 }
@@ -383,9 +356,10 @@ export async function sendVerificationEmailAction(email: string) {
 export async function sendPasswordResetEmailAction(email: string) {
     try {
         const resetLink = await adminAuth.generatePasswordResetLink(email);
-        await sendPasswordResetEmail(email, resetLink);
+        const result = await sendPasswordResetEmail(email, resetLink);
+        if (!result.success) throw new Error(result.error);
         return { success: true };
-    } catch (error) {
+    } catch (error: any) {
         console.error('Error sending password reset email:', error);
         return { success: false, error: error.message };
     }
@@ -399,9 +373,9 @@ export async function approveApplicationAction(applicationId: string, idToken?: 
         const appSnapshot = await appRef.get();
         const appData = appSnapshot.data();
         const user = await adminAuth.getUser(appData.userId);
-        await sendApplicationApprovedEmail(user.email, user.displayName, 'https://van-vert-app--REDACTED_FIREBASE_PROJECT_ID.europe-west4.hosted.app/dashboard');
+        await sendApplicationApprovedEmail(user.email, user.displayName || 'Pilot', 'https://van-vert-app--REDACTED_FIREBASE_PROJECT_ID.europe-west4.hosted.app/dashboard');
         return { success: true };
-    } catch (error) {
+    } catch (error: any) {
         console.error('Error approving application:', error);
         return { success: false, error: error.message };
     }
@@ -415,9 +389,9 @@ export async function rejectApplicationAction(applicationId: string, reason: str
         const appSnapshot = await appRef.get();
         const appData = appSnapshot.data();
         const user = await adminAuth.getUser(appData.userId);
-        await sendApplicationRejectedEmail(user.email, user.displayName, reason);
+        await sendApplicationRejectedEmail(user.email, user.displayName || 'Pilot', reason);
         return { success: true };
-    } catch (error) {
+    } catch (error: any) {
         console.error('Error rejecting application:', error);
         return { success: false, error: error.message };
     }
@@ -430,9 +404,9 @@ export async function sendApplicationNeedsMoreInfoEmailAction(applicationId: str
         const appSnapshot = await appRef.get();
         const appData = appSnapshot.data();
         const user = await adminAuth.getUser(appData.userId);
-        await sendApplicationNeedsMoreInfoEmail(user.email, user.displayName, requiredInfo, 'https://van-vert-app--REDACTED_FIREBASE_PROJECT_ID.europe-west4.hosted.app/dashboard');
+        await sendApplicationNeedsMoreInfoEmail(user.email, user.displayName || 'Pilot', requiredInfo, 'https://van-vert-app--REDACTED_FIREBASE_PROJECT_ID.europe-west4.hosted.app/dashboard');
         return { success: true };
-    } catch (error) {
+    } catch (error: any) {
         console.error('Error sending needs more info email:', error);
         return { success: false, error: error.message };
     }
@@ -440,9 +414,10 @@ export async function sendApplicationNeedsMoreInfoEmailAction(applicationId: str
 
 export async function sendWelcomeEmailAction(email: string, name: string, dashboardUrl: string) {
     try {
-        await sendWelcomeEmail(email, name, dashboardUrl);
+        const result = await sendWelcomeEmail(email, name, dashboardUrl);
+        if (!result.success) throw new Error(result.error);
         return { success: true };
-    } catch (error) {
+    } catch (error: any) {
         console.error('Error sending welcome email:', error);
         return { success: false, error: error.message };
     }
@@ -452,9 +427,10 @@ export async function sendPasswordChangedEmailAction(email: string, name: string
     try {
         await getAuthenticatedUser(idToken);
         const resetLink = await adminAuth.generatePasswordResetLink(email);
-        await sendPasswordChangedEmail(email, name, new Date().toISOString(), resetLink);
+        const result = await sendPasswordChangedEmail(email, name, new Date().toISOString(), resetLink);
+        if (!result.success) throw new Error(result.error);
         return { success: true };
-    } catch (error) {
+    } catch (error: any) {
         console.error('Error sending password changed email:', error);
         return { success: false, error: error.message };
     }
