@@ -3,7 +3,7 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
 const protectedRoutes = ['/dashboard', '/admin', '/applications', '/profile', '/settings'];
-const publicRoutes = ['/login', '/register', '/forgot-password', '/verify-email'];
+const publicRoutes = ['/login', '/register', '/forgot-password'];
 
 export function middleware(request: NextRequest) {
     const sessionCookie = request.cookies.get('session');

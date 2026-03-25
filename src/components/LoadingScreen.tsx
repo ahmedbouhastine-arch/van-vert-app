@@ -1,9 +1,11 @@
+
 'use client';
 
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Plane, LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { getAuth, signOut } from "firebase/auth";
 
 export function LoadingScreen({ text = "Loading..." }: { text?: string }) {
   const [showForceSignOut, setShowForceSignOut] = useState(false);
@@ -19,14 +21,18 @@ export function LoadingScreen({ text = "Loading..." }: { text?: string }) {
 
   const handleForceReset = async () => {
     try {
-      // 1. Force wipe the server session cookie
+      // 1. Sign out of Firebase client SDK to clear IndexedDB state
+      const auth = getAuth();
+      await signOut(auth);
+
+      // 2. Force wipe the server session cookie
       await fetch('/api/auth/session/logout', { method: 'POST' });
       
-      // 2. Wipe client-side storage to unstick any bugged states
+      // 3. Wipe remaining client-side storage to unstick any bugged states
       localStorage.clear();
       sessionStorage.clear();
       
-      // 3. Hard reload the window to the login page to guarantee a fresh state
+      // 4. Hard reload the window to the login page to guarantee a fresh state
       window.location.href = "/login";
     } catch (error) {
       window.location.href = "/login";
