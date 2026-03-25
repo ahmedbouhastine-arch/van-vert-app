@@ -5,23 +5,16 @@ import Link from "next/link";
 import { useRouter } from 'next/navigation';
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { useToast } from '@/hooks/use-toast';
 import { signInWithEmailAndPassword } from "firebase/auth";
 import { useAuth, useUser, useFirestore } from "@/firebase";
 import { GoogleIcon } from "@/components/GoogleIcon";
 import { LoadingScreen } from "@/components/LoadingScreen";
-import { Eye, EyeOff, Loader2, AtSign, Lock } from "lucide-react";
+import { Eye, EyeOff, Loader2, AtSign, Lock, ArrowLeft, Plane } from "lucide-react";
 import { signInWithGoogle } from "@/firebase/auth-actions";
 import { sendPasswordResetEmailAction } from '@/app/actions';
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   Dialog,
   DialogContent,
@@ -64,11 +57,9 @@ const LoginPage = () => {
         
         try {
             await signInWithEmailAndPassword(auth, email, password);
-            // Redirect is handled by the useEffect hook
-        } catch (error: unknown) {
+        } catch (error: any) {
           let description = "An unexpected error occurred. Please try again.";
-          const err = (error as { code?: unknown }) || {};
-          if (typeof err.code === 'string' && ['auth/invalid-credential', 'auth/user-not-found', 'auth/wrong-password'].includes(err.code)) {
+          if (['auth/invalid-credential', 'auth/user-not-found', 'auth/wrong-password'].includes(error.code)) {
             description = "Invalid email or password. Please try again.";
           }
           toast({
@@ -96,7 +87,6 @@ const LoginPage = () => {
             toast({ variant: 'destructive', title: 'Login Failed', description: result.error });
             setIsSubmitting(false);
         }
-        // Redirect is handled by the useEffect hook
     }
 
     const handlePasswordReset = async (event: React.FormEvent<HTMLFormElement>) => {
@@ -116,7 +106,7 @@ const LoginPage = () => {
                     description: result.error || 'Failed to send password reset email. Please try again.',
                 });
             }
-        } catch (error: unknown) {
+        } catch (error: any) {
             toast({
                 variant: 'destructive',
                 title: 'Error',
@@ -129,146 +119,161 @@ const LoginPage = () => {
     }
 
     if (loading || user) {
-      return <LoadingScreen text="Authenticating..." />;
+      return <LoadingScreen text="Checking your credentials..." />;
     }
 
   return (
-    <div className="flex items-center justify-center min-h-screen relative overflow-hidden">
-      <div className="absolute inset-0 bg-[url('/grid.svg')] bg-center [mask-image:linear-gradient(180deg,white,rgba(255,255,255,0))]"></div>
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5 }}
-        className="w-full max-w-md"
-      >
-        <Card className="bg-slate-900/80 backdrop-blur-sm border-slate-700 shadow-2xl shadow-blue-500/10 rounded-xl">
-          <CardHeader className="text-center">
-            <CardTitle className="text-3xl font-bold text-white font-headline tracking-tight">
-              van-vert
-            </CardTitle>
-            <CardDescription className="text-slate-400">
-              Sign in to your account.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleLogin} className="grid gap-4">
-              <div className="relative">
-                <AtSign className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
-                <Input
-                  id="email"
-                  name="email"
-                  type="email"
-                  placeholder="pilot@example.com"
-                  required
-                  disabled={isSubmitting}
-                  className="pl-10 bg-slate-800/60 border-slate-700 text-white placeholder:text-slate-500 rounded-lg focus:ring-2 focus:ring-offset-2 focus:ring-offset-slate-900 focus:ring-blue-500 transition-all"
-                />
+    <div className="min-h-screen flex flex-col relative overflow-hidden bg-slate-950">
+      {/* Background decoration */}
+      <div className="absolute inset-0 z-0">
+        <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-primary/20 rounded-full blur-[120px] animate-pulse" />
+        <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-blue-500/10 rounded-full blur-[120px]" />
+      </div>
+
+      <div className="flex-1 flex items-center justify-center p-4 z-10">
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.4, ease: "easeOut" }}
+          className="w-full max-w-md"
+        >
+          <div className="mb-8 flex justify-center">
+            <Link href="/" className="group flex items-center gap-2">
+              <div className="p-3 rounded-2xl bg-primary/10 text-primary group-hover:bg-primary group-hover:text-white transition-all duration-300">
+                <Plane className="h-8 w-8" />
               </div>
-              <div className="grid gap-2">
-                <div className="relative">
-                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
+            </Link>
+          </div>
+
+          <div className="glass-card p-8 rounded-3xl shadow-2xl space-y-8">
+            <div className="text-center space-y-2">
+              <h1 className="text-3xl font-extrabold font-headline tracking-tight text-white">Welcome Back</h1>
+              <p className="text-muted-foreground">Log in to your Van-Vert account</p>
+            </div>
+
+            <form onSubmit={handleLogin} className="space-y-4">
+              <div className="space-y-2">
+                <div className="relative group">
+                  <AtSign className="absolute left-3 top-3 h-5 w-5 text-muted-foreground group-focus-within:text-primary transition-colors" />
+                  <Input
+                    id="email"
+                    name="email"
+                    type="email"
+                    placeholder="pilot@example.com"
+                    required
+                    disabled={isSubmitting}
+                    className="pl-10 h-12 bg-white/5 border-white/10 rounded-xl focus:ring-primary/50 transition-all text-white"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <div className="relative group">
+                  <Lock className="absolute left-3 top-3 h-5 w-5 text-muted-foreground group-focus-within:text-primary transition-colors" />
                   <Input
                     id="password"
                     name="password"
                     type={showPassword ? "text" : "password"}
                     required
-                    className="pl-10 pr-10 bg-slate-800/60 border-slate-700 text-white placeholder:text-slate-500 rounded-lg focus:ring-2 focus:ring-offset-2 focus:ring-offset-slate-900 focus:ring-blue-500 transition-all"
+                    placeholder="••••••••"
                     disabled={isSubmitting}
+                    className="pl-10 pr-10 h-12 bg-white/5 border-white/10 rounded-xl focus:ring-primary/50 transition-all text-white"
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute inset-y-0 right-0 flex items-center px-3 text-muted-foreground hover:text-white"
-                    aria-label={showPassword ? 'Hide password' : 'Show password'}
+                    className="absolute right-3 top-3 text-muted-foreground hover:text-white transition-colors"
                     disabled={isSubmitting}
                   >
-                    {showPassword ? (
-                      <EyeOff className="h-5 w-5" />
-                    ) : (
-                      <Eye className="h-5 w-5" />
-                    )}
+                    {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
                   </button>
                 </div>
-                 <div className="flex items-center justify-end">
-                    <Button variant="link" size="sm" type="button" onClick={() => setIsForgotPasswordOpen(true)} className="text-blue-400 hover:text-blue-300 px-0">
-                      Forgot your password?
-                    </Button>
+                <div className="flex justify-end">
+                  <button
+                    type="button"
+                    onClick={() => setIsForgotPasswordOpen(true)}
+                    className="text-sm font-medium text-primary hover:text-primary/80 transition-colors"
+                  >
+                    Forgot password?
+                  </button>
                 </div>
               </div>
+
               <Button
                 type="submit"
-                className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-lg text-base transition-all duration-300 ease-in-out transform hover:scale-105 shadow-lg shadow-blue-600/20"
                 disabled={isSubmitting}
+                className="w-full h-12 rounded-xl text-lg font-bold shadow-lg shadow-primary/20 hover:scale-[1.02] transition-all bg-primary hover:bg-primary/90"
               >
-                 {isSubmitting && <Loader2 className="mr-2 h-5 w-5 animate-spin" />}
-                Login
+                {isSubmitting ? <Loader2 className="h-5 w-5 animate-spin" /> : "Sign In"}
               </Button>
             </form>
-            <div className="relative my-6">
+
+            <div className="relative">
               <div className="absolute inset-0 flex items-center">
-                <span className="w-full border-t border-slate-700" />
+                <div className="w-full border-t border-white/10"></div>
               </div>
               <div className="relative flex justify-center text-xs uppercase">
-                <span className="bg-slate-900/80 px-2 text-slate-400">
-                  Or continue with
-                </span>
+                <span className="bg-slate-900/50 backdrop-blur-md px-2 text-muted-foreground">Or continue with</span>
               </div>
             </div>
+
             <Button
               variant="outline"
-              className="w-full bg-slate-800/60 border-slate-700 text-white hover:bg-slate-700/60 hover:text-white font-semibold py-3 rounded-lg transition-all"
+              type="button"
               onClick={handleGoogleLogin}
               disabled={isSubmitting}
+              className="w-full h-12 rounded-xl border-white/10 bg-white/5 hover:bg-white/10 transition-all text-white flex gap-3"
             >
-              <GoogleIcon className="mr-3 h-5 w-5" />
-              Sign in with Google
+              <GoogleIcon className="h-5 w-5" />
+              Google Authentication
             </Button>
-            <div className="mt-6 text-center text-sm">
-              <p className="text-slate-400">
-                Don&apos;t have an account?{" "}
-                <Link href="/register" className="font-semibold text-blue-400 hover:text-blue-300 underline underline-offset-2">
-                  Sign up
-                </Link>
-              </p>
-            </div>
-          </CardContent>
-        </Card>
-      </motion.div>
+
+            <p className="text-center text-sm text-muted-foreground">
+              New to Van-Vert?{" "}
+              <Link href="/register" className="font-bold text-primary hover:text-primary/80 transition-colors">
+                Create an account
+              </Link>
+            </p>
+          </div>
+        </motion.div>
+      </div>
+
+      <Link href="/" className="absolute top-8 left-8 p-3 rounded-full glass-card hover:bg-white/5 transition-all text-white hidden md:flex items-center gap-2 group">
+        <ArrowLeft className="h-5 w-5 group-hover:-translate-x-1 transition-transform" />
+        <span className="text-sm font-medium">Home</span>
+      </Link>
+
       <Dialog open={isForgotPasswordOpen} onOpenChange={setIsForgotPasswordOpen}>
-        <DialogContent className="sm:max-w-md bg-slate-900/80 backdrop-blur-sm border-slate-700 text-white">
-          <DialogHeader>
-            <DialogTitle>Forgot Password</DialogTitle>
-            <DialogDescription>
-              Enter your email address and we will send you a link to reset your password.
-            </DialogDescription>
-          </DialogHeader>
-          <form onSubmit={handlePasswordReset}>
-            <div className="grid gap-4 py-4">
-              <div className="relative">
-                <AtSign className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
-                <Input
-                  id="forgot-password-email"
-                  type="email"
-                  placeholder="pilot@example.com"
-                  required
-                  value={forgotPasswordEmail}
-                  onChange={(e) => setForgotPasswordEmail(e.target.value)}
-                  className="pl-10 bg-slate-800/60 border-slate-700 text-white placeholder:text-slate-500 rounded-lg"
-                />
-              </div>
-            </div>
-            <DialogFooter>
-              <DialogClose asChild>
-                <Button type="button" variant="secondary">
-                  Cancel
-                </Button>
-              </DialogClose>
-              <Button type="submit" disabled={isSubmitting} className="bg-blue-600 hover:bg-blue-700">
-                {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : "Send Reset Link"}
-              </Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
+         <DialogContent className="sm:max-w-md bg-slate-900/90 backdrop-blur-xl border-white/10 text-white rounded-3xl">
+           <DialogHeader>
+             <DialogTitle className="text-2xl font-bold">Reset Password</DialogTitle>
+             <DialogDescription className="text-slate-400">
+               We'll send you a secure link to reset your password.
+             </DialogDescription>
+           </DialogHeader>
+           <form onSubmit={handlePasswordReset} className="space-y-4 pt-4">
+             <div className="relative group">
+               <AtSign className="absolute left-3 top-3 h-5 w-5 text-muted-foreground group-focus-within:text-primary transition-colors" />
+               <Input
+                 id="forgot-password-email"
+                 type="email"
+                 placeholder="pilot@example.com"
+                 required
+                 value={forgotPasswordEmail}
+                 onChange={(e) => setForgotPasswordEmail(e.target.value)}
+                 className="pl-10 h-12 bg-white/5 border-white/10 rounded-xl text-white"
+               />
+             </div>
+             <DialogFooter className="flex-col sm:flex-row gap-3">
+               <DialogClose asChild>
+                 <Button type="button" variant="ghost" className="rounded-xl">Cancel</Button>
+               </DialogClose>
+               <Button type="submit" disabled={isSubmitting} className="rounded-xl flex-1 bg-primary">
+                 {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : "Send Link"}
+               </Button>
+             </DialogFooter>
+           </form>
+         </DialogContent>
       </Dialog>
     </div>
   );

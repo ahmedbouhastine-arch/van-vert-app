@@ -92,6 +92,7 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
     const unsubscribeAuth = onAuthStateChanged(
       auth,
       (authUser) => {
+        console.log("FirebaseProvider: onAuthStateChanged fired. authUser:", !!authUser);
         // Clean up any existing claims listener before creating a new one
         if (unsubscribeClaims) {
           try { unsubscribeClaims(); } catch (e) { /* ignore */ }
@@ -99,14 +100,17 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
         }
 
         if (authUser) {
+            console.log("FirebaseProvider: User authenticated, getting ID token");
             // User is authenticated on the client.
             // Create the server-side session cookie, then load claims.
             authUser.getIdToken().then(idToken => {
+                console.log("FirebaseProvider: ID token received, creating session");
                 fetch('/api/auth/session', {
                     method: 'POST',
                     headers: { 'Authorization': `Bearer ${idToken}` }
                 })
-                .then(() => {
+                .then(res => {
+                    console.log("FirebaseProvider: Session creation response:", res.status);
                     // Session cookie created. Now load user claims.
                     if (!firestore) {
                         setUserAuthState({ user: authUser, claims: null, isUserLoading: false, userError: new Error("Firestore not available") });
@@ -116,6 +120,7 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
                     unsubscribeClaims = onSnapshot(userDocRef, 
                         (snapshot) => {
                             const userClaims = snapshot.data() || null;
+                            console.log("FirebaseProvider: User claims loaded:", !!userClaims);
                             setUserAuthState({ user: authUser, claims: userClaims, isUserLoading: false, userError: null });
                         },
                         (error) => {
@@ -132,10 +137,15 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
                 });
             });
         } else {
+          console.log("FirebaseProvider: No user, clearing session");
           // User is signed out. Clear the server session cookie.
-          fetch('/api/auth/session/logout', { method: 'POST' }).finally(() => {
-             setUserAuthState({ user: null, claims: null, isUserLoading: false, userError: null });
-          });
+          fetch('/api/auth/session/logout', { method: 'POST' })
+            .then(res => console.log("FirebaseProvider: Logout session response:", res.status))
+            .catch(err => console.error("FirebaseProvider: Logout session error:", err))
+            .finally(() => {
+               console.log("FirebaseProvider: Setting loading to false");
+               setUserAuthState({ user: null, claims: null, isUserLoading: false, userError: null });
+            });
         }
       },
       (error) => {
