@@ -9,11 +9,10 @@ import {
 
 /**
  * DEFAULT SENDER:
- * While using the Resend free tier/test domain, you MUST use 'onboarding@resend.dev'.
- * IMPORTANT: In this mode, Resend ONLY allows sending to the email address associated 
- * with your Resend account. To send to any email, you must verify a custom domain in Resend.
+ * To send from a custom domain like 'vanvert.co', you must verify the domain in your Resend dashboard.
+ * If the domain is not verified, Resend will reject the request.
  */
-const FROM_EMAIL = 'Van-Vert <onboarding@resend.dev>';
+const FROM_EMAIL = 'Van-Vert <noreply@vanvert.co>';
 
 async function sendEmail(options: { to: string; subject: string; react: React.ReactElement }) {
   const apiKey = process.env.RESEND_API_KEY;
