@@ -14,6 +14,7 @@ import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 import { LoadingScreen } from "@/components/LoadingScreen";
 import { NotificationBell } from "@/components/NotificationBell";
+import { AuthTimeout } from "@/components/AuthTimeout";
 
 export function AuthenticatedLayout({
   children,
@@ -40,6 +41,7 @@ export function AuthenticatedLayout({
 
   return (
       <div className="flex min-h-screen w-full flex-col bg-transparent">
+        <AuthTimeout />
         <aside className="fixed inset-y-0 left-0 z-10 hidden w-14 flex-col border-r bg-background sm:flex">
           <nav className="flex flex-col items-center gap-4 px-2 sm:py-5">
             <Link
@@ -49,10 +51,10 @@ export function AuthenticatedLayout({
                   <Plane className="h-5 w-5 transition-all group-hover:scale-110" />
                   <span className="sr-only">Van-Vert</span>
               </Link>
-            <MainNavLinks claims={claims} />
+            <MainNavLinks claims={claims || undefined} />
           </nav>
           <nav className="mt-auto flex flex-col items-center gap-4 px-2 sm:py-5">
-            <SecondaryNavLinks claims={claims} />
+            <SecondaryNavLinks claims={claims || undefined} />
           </nav>
         </aside>
         <div className="flex flex-col sm:gap-4 sm:py-4 sm:pl-14">
@@ -73,7 +75,7 @@ export function AuthenticatedLayout({
                     <Plane className="h-6 w-6" />
                     <span>Van-Vert</span>
                   </Link>
-                  <MobileNavLinks claims={claims} />
+                  <MobileNavLinks claims={claims || undefined} />
                 </nav>
               </SheetContent>
             </Sheet>
