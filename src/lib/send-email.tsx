@@ -13,7 +13,7 @@ import {
  * IMPORTANT: In this mode, Resend ONLY allows sending to the email address associated 
  * with your Resend account. To send to any email, you must verify a custom domain in Resend.
  */
-const FROM_EMAIL = 'Van-Vert <onboarding@resend.dev>';
+const FROM_EMAIL = 'Vanvert No-reply <noreply@vanvert.co>';
 
 async function sendEmail(options: { to: string; subject: string; react: React.ReactElement }) {
   const apiKey = process.env.RESEND_API_KEY;
