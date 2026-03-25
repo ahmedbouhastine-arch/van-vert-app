@@ -5,14 +5,15 @@ import * as React from 'react';
  * DEFAULT SENDER:
  * To send from a custom domain like 'vanvert.co', you must verify the domain in your Resend dashboard.
  */
-const FROM_EMAIL = 'Van-Vert <noreply@vanvert.co>';
+const FROM_EMAIL = 'Vanvert No-Reply <noreply@vanvert.co>';
 
 /**
  * sendEmail Wrapper
- * This now uses Resend's hosted templates instead of local React components.
- * The 'template' parameter refers to the template slug/name in your Resend dashboard.
+ * This uses Resend's hosted templates.
+ * The 'template' parameter refers to the template ID or slug in your Resend dashboard.
+ * The 'params' parameter contains the dynamic data for the template.
  */
-async function sendEmail(options: { to: string; subject: string; template: string; data: Record<string, any> }) {
+async function sendEmail(options: { to: string; subject: string; template: string; params: Record<string, any> }) {
   const apiKey = process.env.RESEND_API_KEY;
   
   if (!apiKey || apiKey === 'MISSING_API_KEY') {
@@ -21,14 +22,13 @@ async function sendEmail(options: { to: string; subject: string; template: strin
   }
 
   try {
-    // We call the Resend API using the 'template' property for hosted templates.
-    // Ensure the template names/slugs match what you have in the Resend dashboard.
+    // Using the 'params' key as per recent Resend documentation for hosted templates.
     const { data, error } = await (resend.emails as any).send({
       from: FROM_EMAIL,
       to: options.to,
       subject: options.subject,
       template: options.template,
-      data: options.data,
+      params: options.params,
     });
 
     if (error) {
@@ -48,8 +48,8 @@ export async function sendVerificationEmail(toEmail: string, verificationUrl: st
   return sendEmail({
     to: toEmail,
     subject: 'Verify your email address — Van-Vert',
-    template: 'verification-email',
-    data: {
+    template: 'Yfc9fb7dc-b701-4c91-a741-9d265779373e',
+    params: {
       verificationUrl,
     },
   });
@@ -60,7 +60,7 @@ export async function sendPasswordResetEmail(toEmail: string, resetUrl: string) 
     to: toEmail,
     subject: 'Reset your password — Van-Vert',
     template: 'password-reset-email',
-    data: {
+    params: {
       resetUrl,
     },
   });
@@ -71,7 +71,7 @@ export async function sendApplicationReceivedEmail(toEmail: string, name: string
     to: toEmail,
     subject: "We've received your application — Van-Vert",
     template: 'application-status-email',
-    data: {
+    params: {
       name,
       status: 'Received',
       dashboardUrl: `https://van-vert-app--REDACTED_FIREBASE_PROJECT_ID.europe-west4.hosted.app/applications/${applicationId}`,
@@ -84,7 +84,7 @@ export async function sendApplicationApprovedEmail(toEmail: string, name: string
     to: toEmail,
     subject: 'Your application has been approved — Van-Vert',
     template: 'application-status-email',
-    data: {
+    params: {
       name,
       status: 'Approved',
       dashboardUrl,
@@ -97,7 +97,7 @@ export async function sendApplicationRejectedEmail(toEmail: string, name: string
     to: toEmail,
     subject: 'Update on your application — Van-Vert',
     template: 'application-status-email',
-    data: {
+    params: {
       name,
       status: 'Rejected',
       feedback: rejectionReason,
@@ -111,7 +111,7 @@ export async function sendApplicationNeedsMoreInfoEmail(toEmail: string, name: s
     to: toEmail,
     subject: 'Action required — additional documents needed — Van-Vert',
     template: 'application-status-email',
-    data: {
+    params: {
       name,
       status: 'Needs More Information',
       feedback: requiredInfo,
@@ -125,7 +125,7 @@ export async function sendWelcomeEmail(toEmail: string, name: string, dashboardU
     to: toEmail,
     subject: 'Welcome to Van-Vert ✈️',
     template: 'welcome-email',
-    data: {
+    params: {
       name,
       dashboardUrl,
     },
@@ -137,7 +137,7 @@ export async function sendPasswordChangedEmail(toEmail: string, name: string, ch
     to: toEmail,
     subject: 'Your password has been changed — Van-Vert',
     template: 'password-reset-email',
-    data: {
+    params: {
       name,
       changedAt,
       resetUrl,
