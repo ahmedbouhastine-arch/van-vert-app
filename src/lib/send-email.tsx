@@ -7,12 +7,21 @@ import {
   ApplicationStatusEmailTemplate 
 } from './emails/templates';
 
+/**
+ * DEFAULT SENDER:
+ * While using the Resend free tier/test domain, you MUST use 'onboarding@resend.dev'.
+ * IMPORTANT: In this mode, Resend ONLY allows sending to the email address associated 
+ * with your Resend account. To send to any email, you must verify a custom domain in Resend.
+ */
 const FROM_EMAIL = 'Van-Vert <onboarding@resend.dev>';
 
 async function sendEmail(options: { to: string; subject: string; react: React.ReactElement }) {
-  if (!process.env.RESEND_API_KEY) {
-    console.error('CRITICAL: RESEND_API_KEY is missing. Email skipped:', options.subject);
-    return { success: false, error: 'API key missing' };
+  const apiKey = process.env.RESEND_API_KEY;
+  
+  if (!apiKey || apiKey === 'MISSING_API_KEY') {
+    console.error('❌ EMAIL ERROR: RESEND_API_KEY is missing from environment variables.');
+    console.warn('To fix this: Add RESEND_API_KEY to your .env file or your hosting provider secrets.');
+    return { success: false, error: 'Resend API key is missing' };
   }
 
   try {
@@ -24,15 +33,21 @@ async function sendEmail(options: { to: string; subject: string; react: React.Re
     });
 
     if (error) {
-      console.error('Resend API Error:', JSON.stringify(error, null, 2));
+      console.error('❌ Resend API Error:', JSON.stringify(error, null, 2));
+      
+      // Provide a helpful hint for the most common testing error
+      if (error.message?.includes('onboarding@resend.dev')) {
+        console.warn('💡 HINT: You are likely trying to send to an email address that is not your Resend account email while using the test domain.');
+      }
+      
       return { success: false, error: error.message };
     }
 
-    console.log(`Email sent successfully: ${options.subject} to ${options.to}. ID: ${data?.id}`);
+    console.log(`✅ Email sent successfully: "${options.subject}" to ${options.to}. ID: ${data?.id}`);
     return { success: true, id: data?.id };
   } catch (err: any) {
-    console.error('Unexpected error in sendEmail:', err);
-    return { success: false, error: err.message };
+    console.error('❌ Unexpected error in sendEmail wrapper:', err);
+    return { success: false, error: err.message || 'Internal error in email sender' };
   }
 }
 
@@ -53,7 +68,6 @@ export async function sendPasswordResetEmail(toEmail: string, resetUrl: string) 
 }
 
 export async function sendApplicationReceivedEmail(toEmail: string, name: string, applicationId: string) {
-  // Use a generic status template for simpler logic
   return sendEmail({
     to: toEmail,
     subject: "We've received your application — Van-Vert",
@@ -111,6 +125,6 @@ export async function sendPasswordChangedEmail(toEmail: string, name: string, ch
   return sendEmail({
     to: toEmail,
     subject: 'Your password has been changed — Van-Vert',
-    react: <PasswordResetEmailTemplate resetUrl={resetUrl} />, // Reusing reset template for safety
+    react: <PasswordResetEmailTemplate resetUrl={resetUrl} />,
   });
 }
