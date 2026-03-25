@@ -1,19 +1,22 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { useUser } from '@/firebase';
+import { useUser, useAuth } from '@/firebase';
 import { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, MailCheck } from 'lucide-react';
+import { Loader2, MailCheck, LogOut } from 'lucide-react';
+import { signOut } from 'firebase/auth';
 import * as serverActions from '@/app/actions';
 
 export default function VerifyEmailPage() {
   const { user, loading } = useUser();
+  const auth = useAuth();
   const router = useRouter();
   const { toast } = useToast();
   const [isResending, setIsResending] = useState(false);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
 
   useEffect(() => {
     if (!loading && user?.emailVerified) {
@@ -44,6 +47,33 @@ export default function VerifyEmailPage() {
         });
     } finally {
         setIsResending(false);
+    }
+  };
+
+  const handleLogout = async () => {
+    setIsLoggingOut(true);
+    try {
+      // 1. Clear server-side session
+      await fetch('/api/auth/session/logout', { method: 'POST' });
+      
+      // 2. Sign out from Firebase Client SDK
+      await signOut(auth);
+      
+      // 3. Clear local storage for a fresh state
+      localStorage.clear();
+      sessionStorage.clear();
+      
+      // 4. Redirect to login
+      router.push('/login');
+      router.refresh();
+    } catch (error) {
+      console.error("Logout failed during verification:", error);
+      setIsLoggingOut(false);
+      toast({
+        variant: "destructive",
+        title: "Logout Failed",
+        description: "An error occurred while trying to log out. Please try again."
+      });
     }
   };
 
@@ -84,20 +114,33 @@ export default function VerifyEmailPage() {
                 <li>Wait a few minutes before resending.</li>
             </ul>
           </div>
-          <Button 
-            onClick={handleResendVerification} 
-            disabled={isResending}
-            className="w-full h-12 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl text-base transition-all duration-300 shadow-lg shadow-blue-600/20 disabled:opacity-50"
-          >
-            {isResending ? (
-                <>
-                    <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                    Resending...
-                </>
-            ) : (
-                "Resend Verification Email"
-            )}
-          </Button>
+          
+          <div className="space-y-3">
+            <Button 
+              onClick={handleResendVerification} 
+              disabled={isResending || isLoggingOut}
+              className="w-full h-12 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl text-base transition-all duration-300 shadow-lg shadow-blue-600/20 disabled:opacity-50"
+            >
+              {isResending ? (
+                  <>
+                      <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                      Resending...
+                  </>
+              ) : (
+                  "Resend Verification Email"
+              )}
+            </Button>
+
+            <Button 
+              variant="ghost" 
+              onClick={handleLogout}
+              disabled={isLoggingOut}
+              className="w-full text-slate-400 hover:text-white hover:bg-white/5 rounded-xl transition-all"
+            >
+              {isLoggingOut ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <LogOut className="mr-2 h-4 w-4" />}
+              Log Out and Start Over
+            </Button>
+          </div>
         </CardContent>
       </Card>
     </div>
