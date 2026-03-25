@@ -86,6 +86,16 @@ const LoginPage = () => {
         if (result.error) {
             toast({ variant: 'destructive', title: 'Login Failed', description: result.error });
             setIsSubmitting(false);
+        } else if (result.isNewUser) {
+             const { sendWelcomeEmailAction } = await import('@/app/actions');
+             await sendWelcomeEmailAction(
+                 auth.currentUser?.email || '', 
+                 auth.currentUser?.displayName || 'Pilot', 
+                 'https://van-vert-app--REDACTED_FIREBASE_PROJECT_ID.europe-west4.hosted.app/dashboard'
+             );
+             toast({ title: "Account Created" });
+             // No need to redirect manually as onAuthStateChanged handles it, but just in case:
+             router.push('/dashboard');
         }
     }
 

@@ -63,16 +63,30 @@ export default function RegisterPage() {
                 const user = userCredential.user;
                 
                 try {
-                    await Promise.all([
-                        updateProfile(user, { displayName: fullName }),
-                        firestore ? setDoc(doc(firestore, "users", user.uid), {
+                    // 1. First update the profile so the name is available on the backend
+                    await updateProfile(user, { displayName: fullName });
+                    
+                    // 2. Save the user to Firestore
+                    if (firestore) {
+                        await setDoc(doc(firestore, "users", user.uid), {
                             displayName: fullName,
                             email: user.email,
                             role: email === 'head-admin@test.va' ? 'head-admin' : 'user',
                             createdAt: serverTimestamp(),
-                        }) : Promise.reject("Firestore not available"),
-                        serverActions.sendVerificationEmailAction(email),
-                    ]);
+                        });
+                    }
+
+                    // 3. Now that the backend is fully synced, trigger the verification email
+                    const emailResult = await serverActions.sendVerificationEmailAction(email);
+                    
+                    if (!emailResult.success) {
+                        console.error('Email sending failed:', emailResult.error);
+                        toast({
+                             variant: 'destructive',
+                             title: 'Email Issue',
+                             description: 'Account created, but we couldn\'t send the verification email. Please contact support.',
+                        });
+                    }
                     
                     router.push('/verify-email');
 
@@ -113,6 +127,14 @@ export default function RegisterPage() {
             toast({ variant: 'destructive', title: 'Sign up Failed', description: result.error });
             setIsSubmitting(false);
         } else {
+             if (result.isNewUser) {
+                 await serverActions.sendWelcomeEmailAction(
+                     auth.currentUser?.email || '', 
+                     auth.currentUser?.displayName || 'Pilot', 
+                     'https://van-vert-app--REDACTED_FIREBASE_PROJECT_ID.europe-west4.hosted.app/dashboard'
+                 );
+                 toast({ title: "Account Created!" });
+             }
              router.push('/dashboard');
         }
     }

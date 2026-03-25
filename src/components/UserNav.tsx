@@ -1,5 +1,7 @@
 "use client";
 
+import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import {
@@ -21,12 +23,29 @@ export function UserNav() {
   const auth = useAuth();
   const { toast } = useToast();
 
-  const handleLogout = async () => {
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const router = useRouter();
+
+  const handleLogout = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    if (isLoggingOut) return;
+    setIsLoggingOut(true);
+
     try {
+      // 1. Explicitly clear the server session cookie first before client auth state changes
+      await fetch('/api/auth/session/logout', { method: 'POST' });
+      
+      // 2. Sign out of Firebase client
       await signOut(auth);
-      // Force a hard reload to the login page to ensure all state is cleared.
-      // This is more reliable than a client-side redirect for logout.
-      window.location.href = "/login";
+      
+      toast({
+        title: "Signed out successfully",
+        description: "You have been securely logged out.",
+      });
+      
+      // 3. Navigate smoothly
+      router.push('/login');
+      router.refresh(); // Clear any cached server components
     } catch (error: unknown) {
       const err = (error as { message?: unknown }) || {};
       toast({
@@ -34,6 +53,7 @@ export function UserNav() {
         title: "Logout Failed",
         description: typeof err.message === 'string' ? err.message : 'Failed to logout.',
       });
+      setIsLoggingOut(false);
     }
   };
 

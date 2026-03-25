@@ -205,7 +205,13 @@ export function ProfileClient({ user: initialUser, claims, applications }) {
         const idToken = await user.getIdToken();
         await deleteUserAccountAction(idToken);
         toast({ title: "Account Deleted", description: "Your account has been successfully deleted." });
-        signOut(getAuth());
+        
+        // Explicitly clear the server session
+        await fetch('/api/auth/session/logout', { method: 'POST' });
+        await signOut(getAuth());
+        
+        router.push('/login');
+        router.refresh();
       } catch (error) {
           toast({ variant: 'destructive', title: "Deletion Failed", description: "Could not delete your account." });
       } finally {
