@@ -1,6 +1,3 @@
-import { resend } from './resend';
-import * as React from 'react';
-
 /**
  * DEFAULT SENDER:
  * To send from a custom domain like 'vanvert.co', you must verify the domain in your Resend dashboard.
@@ -9,11 +6,14 @@ const FROM_EMAIL = 'Vanvert No-Reply <noreply@vanvert.co>';
 
 /**
  * sendEmail Wrapper
- * This uses Resend's hosted templates.
- * The 'template' parameter refers to the template ID or slug in your Resend dashboard.
- * The 'params' parameter contains the dynamic data for the template.
+ * This uses Resend's REST API directly to support hosted templates.
  */
-async function sendEmail(options: { to: string; subject: string; template: string; params: Record<string, any> }) {
+async function sendEmail(options: {
+  to: string;
+  subject: string;
+  template: string;
+  params: Record<string, any>;
+}) {
   const apiKey = process.env.RESEND_API_KEY;
   
   if (!apiKey || apiKey === 'MISSING_API_KEY') {
@@ -22,21 +22,28 @@ async function sendEmail(options: { to: string; subject: string; template: strin
   }
 
   try {
-    const { data, error } = await (resend.emails as any).send({
-      from: FROM_EMAIL,
-      to: options.to,
-      subject: options.subject,
-      template: options.template,
-      params: options.params,
+    const response = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        from: FROM_EMAIL,
+        to: [options.to],
+        subject: options.subject,
+        template_id: options.template,
+        variables: options.params,
+      }),
     });
 
-    if (error) {
-      console.error(`❌ Resend API Error (${options.template}):`, JSON.stringify(error, null, 2));
-      return { success: false, error: error.message };
+    const data = await response.json();
+    if (!response.ok) {
+      throw new Error(data.message || 'Resend API error');
     }
 
     console.log(`✅ Hosted template "${options.template}" sent successfully to ${options.to}`);
-    return { success: true, id: data?.id };
+    return { success: true, id: data.id };
   } catch (err: any) {
     console.error('❌ Unexpected error in sendEmail wrapper:', err);
     return { success: false, error: err.message || 'Internal error in email sender' };
