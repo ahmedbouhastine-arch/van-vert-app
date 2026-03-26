@@ -16,33 +16,7 @@ function getResendHeaders(): { Authorization: string; 'Content-Type': string; } 
   };
 }
 
-export async function sendVerificationEmail(toEmail: string, verificationUrl: string) {
-  const headers = getResendHeaders();
-  if (!headers) return { success: false, error: 'Resend API key is missing' };
-
-  try {
-    const response = await fetch('https://api.resend.com/emails', {
-      method: 'POST',
-      headers,
-      body: JSON.stringify({
-        from: FROM_EMAIL,
-        to: [toEmail],
-        subject: 'Verify your email address — Van-Vert',
-        template_id: 'fc9fb7dc-b701-4c91-a741-9d265779373e',
-        variables: { verificationUrl },
-      }),
-    });
-
-    const data = await response.json();
-    if (!response.ok) throw new Error(data.message || JSON.stringify(data));
-    
-    console.log(`✅ Verification email sent successfully to ${toEmail}`);
-    return { success: true, id: data.id };
-  } catch (err: any) {
-    console.error('❌ Error sending verification email:', err);
-    return { success: false, error: err.message || 'Internal error in email sender' };
-  }
-}
+export { sendVerificationEmail } from './emails/verification-email';
 
 export async function sendPasswordResetEmail(toEmail: string, resetUrl: string) {
   const headers = getResendHeaders();
