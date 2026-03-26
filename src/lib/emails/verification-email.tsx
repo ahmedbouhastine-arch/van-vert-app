@@ -7,7 +7,7 @@ export async function sendVerificationEmail(
   verificationUrl: string
 ) {
   await resend.emails.send({
-    from: 'No-Reply <noreply@vanvert.co>',
+    from: 'Vanvert No-Reply <noreply@vanvert.co>',
     to: email,
     subject: 'Verify your email address — Van-Vert',
     template: 'fc9fb7dc-b701-4c91-a741-9d265779373e',

@@ -22,7 +22,6 @@ async function sendEmail(options: { to: string; subject: string; template: strin
   }
 
   try {
-    // Using the 'params' key as per recent Resend documentation for hosted templates.
     const { data, error } = await (resend.emails as any).send({
       from: FROM_EMAIL,
       to: options.to,
@@ -48,7 +47,7 @@ export async function sendVerificationEmail(toEmail: string, verificationUrl: st
   return sendEmail({
     to: toEmail,
     subject: 'Verify your email address — Van-Vert',
-    template: 'Yfc9fb7dc-b701-4c91-a741-9d265779373e',
+    template: 'fc9fb7dc-b701-4c91-a741-9d265779373e',
     params: {
       verificationUrl,
     },
