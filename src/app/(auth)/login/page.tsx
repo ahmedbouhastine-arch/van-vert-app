@@ -15,6 +15,7 @@ import { Eye, EyeOff, Loader2, AtSign, Lock, ArrowLeft, Plane } from "lucide-rea
 import { signInWithGoogle } from "@/firebase/auth-actions";
 import { sendPasswordResetEmailAction } from '@/app/actions';
 import { motion, AnimatePresence } from "framer-motion";
+import { PageTransition } from "@/components/PageTransition";
 import {
   Dialog,
   DialogContent,
@@ -133,7 +134,7 @@ const LoginPage = () => {
     }
 
   return (
-    <div className="min-h-screen flex flex-col relative overflow-hidden bg-slate-950">
+    <PageTransition className="min-h-screen flex flex-col relative overflow-hidden bg-slate-950">
       {/* Background decoration */}
       <div className="absolute inset-0 z-0">
         <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-primary/20 rounded-full blur-[120px] animate-pulse" />
@@ -285,7 +286,7 @@ const LoginPage = () => {
            </form>
          </DialogContent>
       </Dialog>
-    </div>
+    </PageTransition>
   );
 };
 

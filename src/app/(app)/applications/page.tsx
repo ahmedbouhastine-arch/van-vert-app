@@ -54,6 +54,7 @@ import { collection, query, where, doc, deleteDoc, orderBy } from "firebase/fire
 import type { Application, FirebaseTimestamp } from "@/types";
 import { LoadingScreen } from "@/components/LoadingScreen";
 import { useToast } from "@/hooks/use-toast";
+import { PageTransition } from "@/components/PageTransition";
 
 // Helper function to safely format dates, whether they are Timestamps or strings
 const safeFormatDate = (date: FirebaseTimestamp | Date | string | undefined | null, formatString: string) => {
@@ -116,7 +117,7 @@ export default function MyApplicationsPage() {
   }
 
   return (
-    <div className="flex flex-col gap-4">
+    <PageTransition className="flex flex-col gap-4">
       <div className="flex items-center">
         <div className="flex flex-col gap-1">
             <h1 className="text-3xl font-bold font-headline tracking-tight">My Applications</h1>
@@ -260,6 +261,6 @@ export default function MyApplicationsPage() {
             </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </div>
+    </PageTransition>
   );
 }

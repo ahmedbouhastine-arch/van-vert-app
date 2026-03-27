@@ -8,6 +8,7 @@ import { doc, DocumentReference, DocumentData } from "firebase/firestore";
 import { LoadingScreen } from "@/components/LoadingScreen";
 import type { Application, UserProfile } from "@/types";
 import React from "react";
+import { PageTransition } from "@/components/PageTransition";
 
 
 function AuthorizedApplicationDetail({ id, claims, isAuthorized }: { id: string, claims?: { role?: string | null }, isAuthorized: boolean }) {
@@ -43,7 +44,7 @@ function AuthorizedApplicationDetail({ id, claims, isAuthorized }: { id: string,
   }
   
   return (
-      <div className="flex flex-col gap-4">
+      <PageTransition className="flex flex-col gap-4">
           <div className="flex flex-col gap-1">
               <h1 className="text-2xl font-bold font-headline tracking-tight">
                   Review Application
@@ -53,7 +54,7 @@ function AuthorizedApplicationDetail({ id, claims, isAuthorized }: { id: string,
               </p>
           </div>
           <AdminApplicationClient application={application} user={user ?? undefined} claims={claims} />
-      </div>
+      </PageTransition>
   )
 }
 

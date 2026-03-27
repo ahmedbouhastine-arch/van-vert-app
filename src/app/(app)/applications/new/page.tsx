@@ -18,6 +18,7 @@ import { useToast } from '@/hooks/use-toast';
 import { LoadingScreen } from "@/components/LoadingScreen";
 import { useRouter } from "next/navigation";
 import * as serverActions from "@/app/actions";
+import { PageTransition } from "@/components/PageTransition";
 
 export default function NewApplicationPage() {
   const { user, claims, loading: userLoading } = useUser();
@@ -77,7 +78,7 @@ export default function NewApplicationPage() {
   }
 
   return (
-    <div className="mx-auto grid w-full max-w-4xl gap-4">
+    <PageTransition className="mx-auto grid w-full max-w-4xl gap-4">
       <div className="flex flex-col gap-2">
         <h1 className="text-3xl font-bold font-headline tracking-tight">
           Start a New Application
@@ -110,6 +111,6 @@ export default function NewApplicationPage() {
           </Card>
         ))}
       </div>
-    </div>
+    </PageTransition>
   );
 }

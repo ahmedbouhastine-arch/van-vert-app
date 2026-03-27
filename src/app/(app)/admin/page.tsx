@@ -12,6 +12,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { FileText, UserCog, LineChart, History } from "lucide-react";
 import { useUser } from "@/firebase";
+import { PageTransition } from "@/components/PageTransition";
 
 export default function AdminDashboardPage() {
     const { claims } = useUser();
@@ -19,7 +20,7 @@ export default function AdminDashboardPage() {
     const isAdmin = claims?.role === 'admin' || isHeadAdmin;
 
   return (
-    <div className="flex flex-col gap-4">
+    <PageTransition className="flex flex-col gap-4">
       <div className="flex flex-col gap-1">
         <h1 className="text-3xl font-bold font-headline tracking-tight">Admin Dashboard</h1>
         <p className="text-muted-foreground">Quick access to admin functionalities.</p>
@@ -97,6 +98,6 @@ export default function AdminDashboardPage() {
             </Card>
         )}
       </div>
-    </div>
+    </PageTransition>
   );
 }

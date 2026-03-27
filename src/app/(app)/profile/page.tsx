@@ -4,6 +4,7 @@
 import { useUser, useFirestore } from "@/firebase";
 import { LoadingScreen } from "@/components/LoadingScreen";
 import { ProfileClient } from "./_components/ProfileClient";
+import { PageTransition } from "@/components/PageTransition";
 import { useCollection } from 'react-firebase-hooks/firestore';
 import { collection, query, where } from 'firebase/firestore';
 
@@ -27,5 +28,5 @@ export default function ProfilePage() {
   
   const applications = applicationsSnapshot?.docs.map(doc => doc.data()) || [];
 
-  return <ProfileClient user={user} claims={claims} applications={applications} />;
+  return <PageTransition><ProfileClient user={user} claims={claims} applications={applications} /></PageTransition>;
 }

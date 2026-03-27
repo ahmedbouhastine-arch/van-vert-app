@@ -9,6 +9,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Loader2, MailCheck, LogOut } from 'lucide-react';
 import { signOut } from 'firebase/auth';
 import * as serverActions from '@/app/actions';
+import { PageTransition } from "@/components/PageTransition";
 
 export default function VerifyEmailPage() {
   const { user, loading } = useUser();
@@ -86,7 +87,7 @@ export default function VerifyEmailPage() {
   }
 
   return (
-    <div className="flex items-center justify-center min-h-screen bg-slate-950">
+    <PageTransition className="flex items-center justify-center min-h-screen bg-slate-950">
       {/* Background decoration */}
       <div className="absolute inset-0 z-0 pointer-events-none overflow-hidden">
         <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-primary/20 rounded-full blur-[120px]" />
@@ -143,6 +144,6 @@ export default function VerifyEmailPage() {
           </div>
         </CardContent>
       </Card>
-    </div>
+    </PageTransition>
   );
 }

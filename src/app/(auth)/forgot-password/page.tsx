@@ -16,6 +16,7 @@ import { useAuth } from "@/firebase";
 import { sendPasswordResetEmail } from "firebase/auth";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, Mail } from "lucide-react";
+import { PageTransition } from "@/components/PageTransition";
 
 export default function ForgotPasswordPage() {
     const { toast } = useToast();
@@ -53,6 +54,7 @@ export default function ForgotPasswordPage() {
 
     if (emailSent) {
         return (
+            <PageTransition>
             <Card>
                 <CardHeader className="items-center text-center">
                     <Mail className="h-12 w-12 text-.primary mb-4" />
@@ -67,10 +69,12 @@ export default function ForgotPasswordPage() {
                     </Link>
                 </CardContent>
             </Card>
+            </PageTransition>
         )
     }
 
   return (
+    <PageTransition>
     <Card>
       <CardHeader>
         <CardTitle className="text-2xl font-headline">Forgot Password</CardTitle>
@@ -105,5 +109,6 @@ export default function ForgotPasswordPage() {
         </div>
       </CardContent>
     </Card>
+    </PageTransition>
   );
 }

@@ -16,6 +16,7 @@ import { LoadingScreen } from "@/components/LoadingScreen";
 import { signInWithGoogle } from "@/firebase/auth-actions";
 import * as serverActions from "@/app/actions";
 import { motion, AnimatePresence } from "framer-motion";
+import { PageTransition } from "@/components/PageTransition";
 
 const passwordRequirements = [
     { id: "length", text: "8+ chars", regex: /.{8,}/ },
@@ -144,7 +145,7 @@ export default function RegisterPage() {
     }
 
   return (
-    <div className="min-h-screen flex flex-col relative overflow-hidden bg-slate-950">
+    <PageTransition className="min-h-screen flex flex-col relative overflow-hidden bg-slate-950">
       <div className="absolute inset-0 z-0">
         <div className="absolute top-[-10%] right-[-10%] w-[40%] h-[40%] bg-primary/20 rounded-full blur-[120px] animate-pulse" />
         <div className="absolute bottom-[-10%] left-[-10%] w-[40%] h-[40%] bg-accent/10 rounded-full blur-[120px]" />
@@ -277,6 +278,6 @@ export default function RegisterPage() {
         <ArrowLeft className="h-5 w-5 group-hover:-translate-x-1 transition-transform" />
         <span className="text-sm font-medium">Home</span>
       </Link>
-    </div>
+    </PageTransition>
   );
 }

@@ -6,6 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { format } from "date-fns";
 import type { AuditLogEntry, FirebaseTimestamp } from "@/types";
+import { PageTransition } from "@/components/PageTransition";
 
 // Helper function to safely format dates, whether they are Timestamps or strings
 const safeFormatDate = (date: FirebaseTimestamp | Date | string | undefined | null, formatString: string) => {
@@ -34,7 +35,7 @@ export default function AuditLogPage() {
     const auditLogs: AuditLogEntry[] = [];
 
     return (
-        <div className="flex flex-col gap-4">
+        <PageTransition className="flex flex-col gap-4">
             <div className="flex flex-col gap-1">
                 <h1 className="text-3xl font-bold font-headline tracking-tight">Admin Audit Log</h1>
                 <p className="text-muted-foreground">A record of all significant actions performed by administrators.</p>
@@ -80,6 +81,6 @@ export default function AuditLogPage() {
                     </Table>
                 </CardContent>
             </Card>
-        </div>
+        </PageTransition>
     );
 }

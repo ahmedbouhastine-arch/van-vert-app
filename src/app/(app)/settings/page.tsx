@@ -27,6 +27,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useTheme } from "next-themes";
 import { useState, useTransition } from "react";
 import { Loader2, User, Palette, Bell } from "lucide-react";
+import { PageTransition } from "@/components/PageTransition";
 
 export default function SettingsPage() {
     const { user, claims, loading } = useUser();
@@ -103,7 +104,7 @@ export default function SettingsPage() {
     }
 
   return (
-    <div className="grid gap-6">
+    <PageTransition className="grid gap-6">
       <div className="flex flex-col gap-2">
         <h1 className="text-3xl font-bold font-headline tracking-tight">
           Settings
@@ -207,6 +208,6 @@ export default function SettingsPage() {
           </Button>
         </CardFooter>
       </Card>
-    </div>
+    </PageTransition>
   )
 }

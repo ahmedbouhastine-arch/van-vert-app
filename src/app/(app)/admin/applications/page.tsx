@@ -14,6 +14,7 @@ import { ChevronRight, FileText, Search } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
+import { PageTransition } from "@/components/PageTransition";
 
 // A new component for a single application card
 function ApplicationCard({ application, user }: { application: Application, user?: UserProfile }) {
@@ -136,7 +137,7 @@ function AdminApplicationsPage() {
   };
 
   return (
-    <div className="p-6 max-w-7xl mx-auto">
+    <PageTransition className="p-6 max-w-7xl mx-auto">
         <div className="mb-8">
             <h1 className="text-3xl font-bold tracking-tight mb-1">Applications</h1>
             <p className="text-muted-foreground">Review and manage all submitted pilot applications.</p>
@@ -168,7 +169,7 @@ function AdminApplicationsPage() {
                 {renderAppList(draftApps, loading || usersLoading, error || usersError)}
             </div>
         </div>
-    </div>
+    </PageTransition>
   );
 }
 

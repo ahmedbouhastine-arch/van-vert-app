@@ -14,6 +14,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { useToast } from "@/hooks/use-toast";
 import { type User } from "firebase/auth";
 import { Loader2 } from "lucide-react";
+import { PageTransition } from "@/components/PageTransition";
 
 
 type Role = 'user' | 'admin' | 'head-admin' | 'reviewer';
@@ -154,7 +155,7 @@ export default function UserManagementPage() {
     }
 
     return (
-        <div className="flex flex-col gap-4">
+        <PageTransition className="flex flex-col gap-4">
             <div className="flex flex-col gap-1">
                 <h1 className="text-3xl font-bold font-headline tracking-tight">User Management</h1>
                 <p className="text-muted-foreground">Promote or demote users to different roles.</p>
@@ -190,6 +191,6 @@ export default function UserManagementPage() {
                     </Table>
                 </CardContent>
             </Card>
-        </div>
+        </PageTransition>
     );
 }

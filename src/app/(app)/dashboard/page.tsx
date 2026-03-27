@@ -41,6 +41,7 @@ import { useUser, useFirestore, useCollection, useMemoFirebase } from "@/firebas
 import { collection, query, where, orderBy } from "firebase/firestore";
 import type { Application, FirebaseTimestamp } from "@/types";
 import { LoadingScreen } from "@/components/LoadingScreen";
+import { PageTransition } from "@/components/PageTransition";
 
 // Helper function to safely format dates
 const safeFormatDate = (date: FirebaseTimestamp | Date | string | undefined | null, formatString: string) => {
@@ -83,7 +84,7 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="flex flex-col gap-4">
+    <PageTransition className="flex flex-col gap-4">
       <div className="flex items-center">
         <div className="flex flex-col gap-1">
             <h1 className="text-3xl font-bold font-headline tracking-tight">Dashboard</h1>
@@ -171,6 +172,6 @@ export default function DashboardPage() {
             </DialogFooter>
         </DialogContent>
       </Dialog>
-    </div>
+    </PageTransition>
   );
 }

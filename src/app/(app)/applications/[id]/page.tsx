@@ -4,6 +4,7 @@ import { ApplicationClient } from "./_components/ApplicationClient";
 import { getAuthenticatedAppForUser } from "@/firebase/server-auth-actions";
 import type { Application } from "@/types";
 import { headers } from "next/headers";
+import { PageTransition } from "@/components/PageTransition";
 
 // Helper to serialize Firestore Timestamps
 function serializeTimestamps(obj: any): any {
@@ -60,7 +61,7 @@ export default async function ApplicationDetailPage({ params }: { params: Promis
     const serializedApplication = serializeTimestamps(applicationData);
 
     return (
-      <div className="flex flex-col gap-4">
+      <PageTransition className="flex flex-col gap-4">
           <div className="flex flex-col gap-1">
               <h1 className="text-2xl font-bold font-headline tracking-tight">
                   Application Details
@@ -70,7 +71,7 @@ export default async function ApplicationDetailPage({ params }: { params: Promis
               </p>
           </div>
         <ApplicationClient application={serializedApplication} />
-      </div>
+      </PageTransition>
     );
   } catch (error) {
     console.error("Failed to fetch application:", error);
