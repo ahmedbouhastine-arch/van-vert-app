@@ -85,15 +85,25 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
       return;
     }
   
-    setUserAuthState({ user: null, claims: null, isUserLoading: true, userError: null });
+    setUserAuthState(prev => ({ ...prev, isUserLoading: true, userError: null }));
 
     let unsubscribeClaims: (() => void) | null = null;
+    let isMounted = true;
+    let currentUid: string | null = null;
 
     const unsubscribeAuth = onAuthStateChanged(
       auth,
-      (authUser) => {
+      async (authUser) => {
         console.log("FirebaseProvider: onAuthStateChanged fired. authUser:", !!authUser);
-        // Clean up any existing claims listener before creating a new one
+        
+        // If the user hasn't changed, don't re-trigger session creation logic
+        if (authUser?.uid === currentUid && currentUid !== null) {
+          console.log("FirebaseProvider: User unchanged, skipping session refresh");
+          return;
+        }
+        currentUid = authUser?.uid || null;
+
+        // Clean up any existing claims listener
         if (unsubscribeClaims) {
           try { unsubscribeClaims(); } catch (e) { /* ignore */ }
           unsubscribeClaims = null;
@@ -101,61 +111,70 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
 
         if (authUser) {
             console.log("FirebaseProvider: User authenticated, getting ID token");
-            // User is authenticated on the client.
-            // Create the server-side session cookie, then load claims.
-            authUser.getIdToken().then(idToken => {
+            try {
+                const idToken = await authUser.getIdToken();
                 console.log("FirebaseProvider: ID token received, creating session");
-                fetch('/api/auth/session', {
+                
+                const res = await fetch('/api/auth/session', {
                     method: 'POST',
                     headers: { 'Authorization': `Bearer ${idToken}` }
-                })
-                .then(res => {
-                    console.log("FirebaseProvider: Session creation response:", res.status);
-                    // Session cookie created. Now load user claims.
-                    if (!firestore) {
-                        setUserAuthState({ user: authUser, claims: null, isUserLoading: false, userError: new Error("Firestore not available") });
-                        return;
-                    }
-                    const userDocRef = doc(firestore, `users/${authUser.uid}`);
-                    unsubscribeClaims = onSnapshot(userDocRef, 
-                        (snapshot) => {
-                            const userClaims = snapshot.data() || null;
-                            console.log("FirebaseProvider: User claims loaded:", !!userClaims);
-                            setUserAuthState({ user: authUser, claims: userClaims, isUserLoading: false, userError: null });
-                        },
-                        (error) => {
-                            console.error("FirebaseProvider: onSnapshot error:", error);
-                            setUserAuthState({ user: authUser, claims: null, isUserLoading: false, userError: error });
-                        }
-                    );
-                })
-                .catch(err => {
-                    // This is a critical failure. The server session could not be created.
-                    console.error("Fatal: Failed to set session cookie. Logging out.", err);
-                    signOut(auth); // Force logout for safety.
-                    setUserAuthState({ user: null, claims: null, isUserLoading: false, userError: err });
                 });
-            });
+
+                console.log("FirebaseProvider: Session creation response:", res.status);
+                
+                if (!isMounted) return;
+
+                if (!firestore) {
+                    setUserAuthState({ user: authUser, claims: null, isUserLoading: false, userError: new Error("Firestore not available") });
+                    return;
+                }
+
+                // Load user claims (Firestore document)
+                const userDocRef = doc(firestore, `users/${authUser.uid}`);
+                unsubscribeClaims = onSnapshot(userDocRef, 
+                    (snapshot) => {
+                        if (!isMounted) return;
+                        const userClaims = snapshot.data() || null;
+                        console.log("FirebaseProvider: User claims loaded:", !!userClaims);
+                        setUserAuthState({ user: authUser, claims: userClaims, isUserLoading: false, userError: null });
+                    },
+                    (error) => {
+                        if (!isMounted) return;
+                        console.error("FirebaseProvider: onSnapshot error:", error);
+                        setUserAuthState({ user: authUser, claims: null, isUserLoading: false, userError: error });
+                    }
+                );
+            } catch (err: any) {
+                if (!isMounted) return;
+                console.error("Fatal: Failed to set session cookie or load claims. Logging out.", err);
+                signOut(auth);
+                setUserAuthState({ user: null, claims: null, isUserLoading: false, userError: err });
+            }
         } else {
           console.log("FirebaseProvider: No user, clearing session");
-          // User is signed out. Clear the server session cookie.
-          fetch('/api/auth/session/logout', { method: 'POST' })
-            .then(res => console.log("FirebaseProvider: Logout session response:", res.status))
-            .catch(err => console.error("FirebaseProvider: Logout session error:", err))
-            .finally(() => {
-               console.log("FirebaseProvider: Setting loading to false");
-               setUserAuthState({ user: null, claims: null, isUserLoading: false, userError: null });
-            });
+          try {
+            await fetch('/api/auth/session/logout', { method: 'POST' });
+            console.log("FirebaseProvider: Logout session cleared");
+          } catch (err) {
+            console.error("FirebaseProvider: Logout session error:", err);
+          } finally {
+            if (isMounted) {
+                console.log("FirebaseProvider: Setting loading to false (logged out)");
+                setUserAuthState({ user: null, claims: null, isUserLoading: false, userError: null });
+            }
+          }
         }
       },
       (error) => {
         console.error("FirebaseProvider: onAuthStateChanged error:", error);
-        setUserAuthState({ user: null, claims: null, isUserLoading: false, userError: error });
+        if (isMounted) {
+            setUserAuthState({ user: null, claims: null, isUserLoading: false, userError: error });
+        }
       }
     );
   
-    // Return cleanup that unsubscribes both auth and claims listeners
     return () => {
+      isMounted = false;
       try { unsubscribeAuth(); } catch (e) { /* ignore */ }
       if (unsubscribeClaims) {
         try { unsubscribeClaims(); } catch (e) { /* ignore */ }

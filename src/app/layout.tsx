@@ -17,6 +17,8 @@ export const metadata: Metadata = {
   },
 };
 
+import { FirebaseClientProvider } from "@/firebase/client-provider";
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -31,7 +33,9 @@ export default function RootLayout({
             enableSystem
             disableTransitionOnChange
         >
-            {children}
+            <FirebaseClientProvider>
+                {children}
+            </FirebaseClientProvider>
             <Toaster />
         </ThemeProvider>
       </body>

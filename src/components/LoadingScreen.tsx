@@ -14,7 +14,7 @@ export function LoadingScreen({ text = "Loading..." }: { text?: string }) {
     // Show the "Force Sign Out" button if loading takes more than 45 seconds
     const timer = setTimeout(() => {
       setShowForceSignOut(true);
-    }, 45000);
+    }, 12000);
     
     return () => clearTimeout(timer);
   }, []);
