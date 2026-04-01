@@ -1,7 +1,7 @@
 import {Auth, GoogleAuthProvider, signInWithPopup, getAdditionalUserInfo} from "firebase/auth";
 import {Firestore, doc, getDoc, setDoc, serverTimestamp} from "firebase/firestore";
 
-export type SignInWithGoogleResult = { success: boolean; error?: string; isNewUser?: boolean };
+export type SignInWithGoogleResult = { success: boolean; error?: string; isNewUser?: boolean; mustLink?: boolean; email?: string };
 
 export const signInWithGoogle = async (auth: Auth, firestore: Firestore): Promise<SignInWithGoogleResult> => {
     const provider = new GoogleAuthProvider();
@@ -35,6 +35,9 @@ export const signInWithGoogle = async (auth: Auth, firestore: Firestore): Promis
 
         return { success: true, isNewUser: userInfo?.isNewUser };
     } catch (error: any) {
+        if (error.code === 'auth/account-exists-with-different-credential') {
+            return { success: false, mustLink: true, email: error.customData?.email || 'this email' };
+        }
         return { success: false, error: error.message };
     }
 };

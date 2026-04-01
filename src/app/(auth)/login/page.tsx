@@ -72,6 +72,8 @@ const LoginPage = () => {
         }
     }
 
+    const [mustLinkEmail, setMustLinkEmail] = useState<string | null>(null);
+
     const handleGoogleLogin = async () => {
         if (!firestore) {
             toast({
@@ -84,7 +86,10 @@ const LoginPage = () => {
         setIsSubmitting(true);
         const result = await signInWithGoogle(auth, firestore);
         
-        if (result.error) {
+        if (result.mustLink) {
+            setMustLinkEmail(result.email || null);
+            setIsSubmitting(false);
+        } else if (result.error) {
             toast({ variant: 'destructive', title: 'Login Failed', description: result.error });
             setIsSubmitting(false);
         } else if (result.isNewUser) {
@@ -284,6 +289,26 @@ const LoginPage = () => {
                </Button>
              </DialogFooter>
            </form>
+         </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!mustLinkEmail} onOpenChange={(open) => !open && setMustLinkEmail(null)}>
+         <DialogContent className="sm:max-w-md bg-slate-900/90 backdrop-blur-xl border-white/10 text-white rounded-3xl">
+           <DialogHeader>
+             <DialogTitle className="text-2xl font-bold flex items-center gap-2">
+               Account Exists
+             </DialogTitle>
+             <DialogDescription className="text-slate-400 pt-2">
+               The email <span className="text-white font-medium">{mustLinkEmail}</span> is already associated with an account using a different login method.
+               <br /><br />
+               Please log in with your email and password first, and then you can link your Google account in your profile settings.
+             </DialogDescription>
+           </DialogHeader>
+           <DialogFooter>
+             <DialogClose asChild>
+               <Button type="button" className="w-full rounded-xl bg-primary hover:bg-primary/90">Got it</Button>
+             </DialogClose>
+           </DialogFooter>
          </DialogContent>
       </Dialog>
     </PageTransition>
