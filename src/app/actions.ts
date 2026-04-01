@@ -32,7 +32,7 @@ async function getAuthenticatedUser(idToken?: string) {
     }
 }
 
-function handleServerAuthError(error: unknown, context: string) {
+function handleServerAuthError(error: unknown, context: string): never {
     const err = (error as { message?: unknown; code?: unknown }) || {};
     const errorMessage = typeof err.message === 'string' ? err.message.toLowerCase() : '';
     const errorCode = err.code;
@@ -135,6 +135,7 @@ export async function uploadFlightLogAction(formData: FormData, idToken?: string
         const extractedLogs: FlightLog[] = flights.map(log => ({
             ...log,
             id: uuidv4(),
+            flightType: 'PIC', // Defaulting to PIC during extraction if unknown
         }));
 
         await appRef.update({
@@ -216,7 +217,7 @@ export async function createApplicationAction(
         };
         
         await adminFirestore.collection('applications').doc(newAppId).set(appData);
-        await sendApplicationReceivedEmail(userRecord.email, userRecord.displayName || 'Pilot', newAppId);
+        await sendApplicationReceivedEmail(userRecord.email!, userRecord.displayName || 'Pilot', newAppId);
         return { applicationId: newAppId };
     } catch (e: unknown) {
         handleServerAuthError(e, 'createApplicationAction');
@@ -344,7 +345,7 @@ export async function sendVerificationEmailAction(email: string) {
         }
 
         const user = await adminAuth.getUserByEmail(email);
-        await sendWelcomeEmailAction(user.email, user.displayName || 'Pilot', 'https://van-vert-app--REDACTED_FIREBASE_PROJECT_ID.europe-west4.hosted.app/dashboard');
+        await sendWelcomeEmailAction(user.email!, user.displayName || 'Pilot', 'https://van-vert-app--REDACTED_FIREBASE_PROJECT_ID.europe-west4.hosted.app/dashboard');
         
         return { success: true };
     } catch (error: any) {
@@ -371,9 +372,9 @@ export async function approveApplicationAction(applicationId: string, idToken?: 
         const appRef = adminFirestore.collection('applications').doc(applicationId);
         await appRef.update({ status: 'approved', updatedAt: admin.firestore.FieldValue.serverTimestamp() });
         const appSnapshot = await appRef.get();
-        const appData = appSnapshot.data();
+        const appData = appSnapshot.data()!;
         const user = await adminAuth.getUser(appData.userId);
-        await sendApplicationApprovedEmail(user.email, user.displayName || 'Pilot', 'https://van-vert-app--REDACTED_FIREBASE_PROJECT_ID.europe-west4.hosted.app/dashboard');
+        await sendApplicationApprovedEmail(user.email!, user.displayName || 'Pilot', 'https://van-vert-app--REDACTED_FIREBASE_PROJECT_ID.europe-west4.hosted.app/dashboard');
         return { success: true };
     } catch (error: any) {
         console.error('Error approving application:', error);
@@ -387,9 +388,9 @@ export async function rejectApplicationAction(applicationId: string, reason: str
         const appRef = adminFirestore.collection('applications').doc(applicationId);
         await appRef.update({ status: 'rejected', feedback: reason, updatedAt: admin.firestore.FieldValue.serverTimestamp() });
         const appSnapshot = await appRef.get();
-        const appData = appSnapshot.data();
+        const appData = appSnapshot.data()!;
         const user = await adminAuth.getUser(appData.userId);
-        await sendApplicationRejectedEmail(user.email, user.displayName || 'Pilot', reason);
+        await sendApplicationRejectedEmail(user.email!, user.displayName || 'Pilot', reason);
         return { success: true };
     } catch (error: any) {
         console.error('Error rejecting application:', error);
@@ -402,9 +403,9 @@ export async function sendApplicationNeedsMoreInfoEmailAction(applicationId: str
         await getAuthenticatedUser(idToken);
         const appRef = adminFirestore.collection('applications').doc(applicationId);
         const appSnapshot = await appRef.get();
-        const appData = appSnapshot.data();
+        const appData = appSnapshot.data()!;
         const user = await adminAuth.getUser(appData.userId);
-        await sendApplicationNeedsMoreInfoEmail(user.email, user.displayName || 'Pilot', requiredInfo, 'https://van-vert-app--REDACTED_FIREBASE_PROJECT_ID.europe-west4.hosted.app/dashboard');
+        await sendApplicationNeedsMoreInfoEmail(user.email!, user.displayName || 'Pilot', requiredInfo, 'https://van-vert-app--REDACTED_FIREBASE_PROJECT_ID.europe-west4.hosted.app/dashboard');
         return { success: true };
     } catch (error: any) {
         console.error('Error sending needs more info email:', error);

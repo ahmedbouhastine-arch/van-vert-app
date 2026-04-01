@@ -1,5 +1,9 @@
-k3o
 'use client';
+
+import { LoadingScreen } from "@/components/LoadingScreen";
+import type { UserProfile, Application, FlightLog } from '@/types';
+import type { User as FirebaseUser } from 'firebase/auth';
+import type { DocumentData } from 'firebase/firestore';
 
 import { useState, useRef, useMemo } from 'react';
 import { useUser } from '@/firebase';
@@ -21,7 +25,7 @@ import { Badge } from '@/components/ui/badge';
 import { useRouter } from 'next/navigation';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
-const canvasPreview = (image, canvas, crop) => {
+const canvasPreview = (image: HTMLImageElement, canvas: HTMLCanvasElement, crop: Crop) => {
     const ctx = canvas.getContext('2d');
     if (!ctx) throw new Error('No 2d context');
 
@@ -44,8 +48,8 @@ const canvasPreview = (image, canvas, crop) => {
 };
 
 
-export function ProfileClient({ user: initialUser, claims, applications }) {
-  const { user, mutate } = useUser();
+export function ProfileClient({ user: initialUser, claims, applications }: { user: FirebaseUser | null, claims: UserProfile | null, applications: Application[] }) {
+  const { user, loading } = useUser();
   const { toast } = useToast();
   const router = useRouter();
   
@@ -55,8 +59,8 @@ export function ProfileClient({ user: initialUser, claims, applications }) {
   });
   
   const [formData, setFormData] = useState({
-    displayName: user?.displayName || '',
-    birthDate: user?.birthDate || '', 
+    displayName: claims?.displayName || '',
+    birthDate: claims?.birthDate || '', 
   });
 
   const [imgSrc, setImgSrc] = useState('');
@@ -72,8 +76,8 @@ export function ProfileClient({ user: initialUser, claims, applications }) {
   const imgRef = useRef<HTMLImageElement>(null);
   const previewCanvasRef = useRef<HTMLCanvasElement>(null);
 
-  const totalFlightHours = applications?.reduce((sum, app) => 
-    sum + (app.flightLogs?.reduce((logSum, log) => logSum + log.duration, 0) || 0), 0) || 0;
+  const totalFlightHours = applications?.reduce((sum: number, app: Application) => 
+    sum + (app.flightLogs?.reduce((logSum: number, log: FlightLog) => logSum + log.duration, 0) || 0), 0) || 0;
 
   // Date selection logic
   const days = Array.from({ length: 31 }, (_, i) => i + 1);
@@ -181,7 +185,7 @@ export function ProfileClient({ user: initialUser, claims, applications }) {
 
   const handleSaveSection = async (section: 'personal' | 'pilot') => {
       try {
-          const idToken = await user.getIdToken();
+          const idToken = await user!.getIdToken();
           const { success, updatedData } = await updateUserProfileAction({
               displayName: formData.displayName,
               birthDate: formData.birthDate,
@@ -202,7 +206,7 @@ export function ProfileClient({ user: initialUser, claims, applications }) {
   const handleDeleteAccount = async () => {
       setIsDeleting(true);
       try {
-        const idToken = await user.getIdToken();
+        const idToken = await user!.getIdToken();
         await deleteUserAccountAction(idToken);
         toast({ title: "Account Deleted", description: "Your account has been successfully deleted." });
         
@@ -218,7 +222,7 @@ export function ProfileClient({ user: initialUser, claims, applications }) {
       }
   };
 
-  if (!user) {
+  if (loading || !user) {
     return <LoadingScreen />;
   }
 
@@ -235,7 +239,7 @@ export function ProfileClient({ user: initialUser, claims, applications }) {
               <Card className="text-center flex flex-col items-center p-8">
                   <div className="relative group">
                       <Avatar className="h-32 w-32 border-4 border-background shadow-md">
-                          <AvatarImage src={photoURL} alt={user.displayName || ''} />
+                          <AvatarImage src={photoURL || undefined} alt={user.displayName || ''} />
                           <AvatarFallback className="text-4xl bg-primary/10 text-primary">{user.displayName?.charAt(0) || user.email?.charAt(0)}</AvatarFallback>
                       </Avatar>
                       <label className="absolute inset-0 flex items-center justify-center bg-black/50 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer">
@@ -258,11 +262,11 @@ export function ProfileClient({ user: initialUser, claims, applications }) {
                   <CardContent className="text-sm space-y-3">
                       <div className="flex justify-between">
                           <span className="text-muted-foreground">Last Login</span>
-                          <span className="font-medium">{new Date(user.metadata.lastSignInTime).toLocaleString()}</span>
+                          <span className="font-medium">{user.metadata.lastSignInTime ? new Date(user.metadata.lastSignInTime).toLocaleString() : 'N/A'}</span>
                       </div>
                       <div className="flex justify-between">
                           <span className="text-muted-foreground">Account Created</span>
-                          <span className="font-medium">{new Date(user.metadata.creationTime).toLocaleDateString()}</span>
+                          <span className="font-medium">{user.metadata.creationTime ? new Date(user.metadata.creationTime).toLocaleDateString() : 'N/A'}</span>
                       </div>
                   </CardContent>
                   <CardFooter>

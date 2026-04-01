@@ -11,6 +11,7 @@ export type UserProfile = {
   photoURL?: string;
   role: 'user' | 'reviewer' | 'admin' | 'head-admin';
   createdAt: FirebaseTimestamp;
+  birthDate?: string; // YYYY-MM-DD
 };
 
 export type AppUser = FirebaseUser & {
@@ -63,6 +64,7 @@ export type Application = {
   updatedAt: FirebaseTimestamp;
   createdAt?: FirebaseTimestamp;
   feedback?: string;
+  totalFlightHours?: number;
 };
 
 export type DocumentRequirement = {
