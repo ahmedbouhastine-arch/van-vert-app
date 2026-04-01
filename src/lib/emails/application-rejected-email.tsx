@@ -1,4 +1,5 @@
 import { resend } from '../resend';
+import { BASE_URL } from '../utils';
 
 const FROM_EMAIL = 'Vanvert No-Reply <noreply@vanvert.co>';
 
@@ -18,7 +19,7 @@ export async function sendApplicationRejectedEmail(
           name,
           status: 'Rejected',
           feedback: rejectionReason,
-          dashboard_url: 'https://van-vert-app--REDACTED_FIREBASE_PROJECT_ID.europe-west4.hosted.app/dashboard',
+          dashboard_url: `${BASE_URL}/dashboard`,
         },
       },
     });

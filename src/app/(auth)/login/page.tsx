@@ -16,6 +16,7 @@ import { signInWithGoogle } from "@/firebase/auth-actions";
 import { sendPasswordResetEmailAction } from '@/app/actions';
 import { motion, AnimatePresence } from "framer-motion";
 import { PageTransition } from "@/components/PageTransition";
+import { BASE_URL } from "@/lib/utils";
 import {
   Dialog,
   DialogContent,
@@ -97,7 +98,7 @@ const LoginPage = () => {
              await sendWelcomeEmailAction(
                  auth.currentUser?.email || '', 
                  auth.currentUser?.displayName || 'Pilot', 
-                 'https://van-vert-app--REDACTED_FIREBASE_PROJECT_ID.europe-west4.hosted.app/dashboard'
+                 `${BASE_URL}/dashboard`
              );
              toast({ title: "Account Created" });
              // No need to redirect manually as onAuthStateChanged handles it, but just in case:

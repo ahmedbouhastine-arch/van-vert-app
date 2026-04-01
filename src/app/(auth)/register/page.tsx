@@ -17,6 +17,7 @@ import { signInWithGoogle } from "@/firebase/auth-actions";
 import * as serverActions from "@/app/actions";
 import { motion, AnimatePresence } from "framer-motion";
 import { PageTransition } from "@/components/PageTransition";
+import { BASE_URL } from "@/lib/utils";
 
 const passwordRequirements = [
     { id: "length", text: "8+ chars", regex: /.{8,}/ },
@@ -132,7 +133,7 @@ export default function RegisterPage() {
                  await serverActions.sendWelcomeEmailAction(
                      auth.currentUser?.email || '', 
                      auth.currentUser?.displayName || 'Pilot', 
-                     'https://van-vert-app--REDACTED_FIREBASE_PROJECT_ID.europe-west4.hosted.app/dashboard'
+                     `${BASE_URL}/dashboard`
                  );
                  toast({ title: "Account Created!" });
              }

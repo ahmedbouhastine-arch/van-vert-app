@@ -1,4 +1,5 @@
 import { resend } from '../resend';
+import { BASE_URL } from '../utils';
 
 const FROM_EMAIL = 'Vanvert No-Reply <noreply@vanvert.co>';
 
@@ -17,7 +18,7 @@ export async function sendApplicationReceivedEmail(
         variables: {
           name,
           status: 'Received',
-          dashboard_url: `https://van-vert-app--REDACTED_FIREBASE_PROJECT_ID.europe-west4.hosted.app/applications/${applicationId}`,
+          dashboard_url: `${BASE_URL}/applications/${applicationId}`,
         },
       },
     });

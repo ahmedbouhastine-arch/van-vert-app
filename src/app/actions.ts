@@ -7,6 +7,7 @@ import { extractFlightLogs } from '@/ai/flows/extract-flight-logs';
 import type { FlightLog, Application, LogbookFormat, UserProfile } from '@/types';
 import { v4 as uuidv4 } from 'uuid';
 import { licenseTypes } from '@/lib/licensing';
+import { BASE_URL } from '@/lib/utils';
 import admin from 'firebase-admin';
 import {
     sendVerificationEmail,
@@ -345,7 +346,7 @@ export async function sendVerificationEmailAction(email: string) {
         }
 
         const user = await adminAuth.getUserByEmail(email);
-        await sendWelcomeEmailAction(user.email!, user.displayName || 'Pilot', 'https://van-vert-app--REDACTED_FIREBASE_PROJECT_ID.europe-west4.hosted.app/dashboard');
+        await sendWelcomeEmailAction(user.email!, user.displayName || 'Pilot', `${BASE_URL}/dashboard`);
         
         return { success: true };
     } catch (error: any) {
@@ -374,7 +375,7 @@ export async function approveApplicationAction(applicationId: string, idToken?: 
         const appSnapshot = await appRef.get();
         const appData = appSnapshot.data()!;
         const user = await adminAuth.getUser(appData.userId);
-        await sendApplicationApprovedEmail(user.email!, user.displayName || 'Pilot', 'https://van-vert-app--REDACTED_FIREBASE_PROJECT_ID.europe-west4.hosted.app/dashboard');
+        await sendApplicationApprovedEmail(user.email!, user.displayName || 'Pilot', `${BASE_URL}/dashboard`);
         return { success: true };
     } catch (error: any) {
         console.error('Error approving application:', error);
@@ -405,7 +406,7 @@ export async function sendApplicationNeedsMoreInfoEmailAction(applicationId: str
         const appSnapshot = await appRef.get();
         const appData = appSnapshot.data()!;
         const user = await adminAuth.getUser(appData.userId);
-        await sendApplicationNeedsMoreInfoEmail(user.email!, user.displayName || 'Pilot', requiredInfo, 'https://van-vert-app--REDACTED_FIREBASE_PROJECT_ID.europe-west4.hosted.app/dashboard');
+        await sendApplicationNeedsMoreInfoEmail(user.email!, user.displayName || 'Pilot', requiredInfo, `${BASE_URL}/dashboard`);
         return { success: true };
     } catch (error: any) {
         console.error('Error sending needs more info email:', error);
