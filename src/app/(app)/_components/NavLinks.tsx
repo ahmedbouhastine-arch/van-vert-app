@@ -3,7 +3,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, FileText, Settings, User, UserCog, LayoutDashboard, LineChart, History } from "lucide-react";
+import { Home, FileText, Settings, User, UserCog, LayoutDashboard, LineChart, History, Users } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 type NavLinkItem = {
@@ -24,6 +24,7 @@ const mainLinks: NavLinkItem[] = [
 ];
 
 const secondaryLinks: NavLinkItem[] = [
+  { href: "/community", icon: Users, label: "Community", for: "all" },
   { href: "/profile", icon: User, label: "Profile", for: "all" },
   { href: "/settings", icon: Settings, label: "Settings", for: "all" },
 ];

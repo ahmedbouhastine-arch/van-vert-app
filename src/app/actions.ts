@@ -519,3 +519,35 @@ export async function detectAndLinkDuplicateAccountsAction(idToken: string) {
         return { success: false, error: error.message };
     }
 }
+
+export async function getCommunityStatsAction() {
+    try {
+        // Fetch real counts from collections
+        const appsSnapshot = await adminFirestore.collection('applications').count().get();
+        const underReviewSnapshot = await adminFirestore.collection('applications').where('status', 'in', ['submitted', 'in_review', 'under_review']).count().get();
+        const usersSnapshot = await adminFirestore.collection('users').count().get();
+
+        const offset = 125; // Requested offset
+        
+        return {
+            success: true,
+            stats: {
+                totalApplications: appsSnapshot.data().count + offset,
+                underReview: underReviewSnapshot.data().count + Math.floor(offset / 3),
+                totalPilots: usersSnapshot.data().count + offset,
+            }
+        };
+    } catch (error: any) {
+        console.error('Failed to get community stats:', error);
+        // Fallback stats in case of failure
+        return {
+            success: false,
+            stats: {
+                totalApplications: 125,
+                underReview: 42,
+                totalPilots: 154,
+            }
+        };
+    }
+}
+
