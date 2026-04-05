@@ -138,7 +138,7 @@ export async function uploadFlightLogAction(formData: FormData, idToken?: string
         const storagePath = `applications/${applicationId}/flight-log-${uuidv4()}.pdf`;
         const publicUrl = await uploadStreamToStorage(bucket, storagePath, file.stream(), file.type);
 
-        const { flights, logbookFormat } = await withTimeout(extractFlightLogs({ storagePath: publicUrl }));
+        const { flights, logbookFormat } = await withTimeout(extractFlightLogs({ storagePath: publicUrl }), 300000);
 
         const extractedLogs: FlightLog[] = flights.map(log => ({
             ...log,

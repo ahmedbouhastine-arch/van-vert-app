@@ -1,10 +1,12 @@
 'use server';
 import 'server-only';
 import { DocumentProcessorServiceClient } from '@google-cloud/documentai';
+import { PDFDocument } from 'pdf-lib';
 import { z } from 'zod';
 
 const client = new DocumentProcessorServiceClient();
 const PROCESSOR_NAME = 'projects/REDACTED_FIREBASE_SENDER_ID/locations/us/processors/47422f02bcaec722/processorVersions/1e5684bc4378fc3e';
+const DOC_AI_PAGE_LIMIT = 15;
 
 const ExtractFlightLogsInputSchema = z.object({
   flightLogPdf: z.string().optional(),
@@ -27,6 +29,73 @@ const ExtractFlightLogsOutputSchema = z.object({
   logbookFormat: z.enum(['typeA', 'typeB', 'simple']),
 });
 export type ExtractFlightLogsOutput = z.infer<typeof ExtractFlightLogsOutputSchema>;
+
+/**
+ * Splits a PDF into chunks of at most `maxPages` pages.
+ * Returns an array of base64-encoded PDF chunks and the total page count.
+ */
+async function splitPdfIntoChunks(pdfBytes: Uint8Array, maxPages: number): Promise<{ chunks: string[]; totalPages: number }> {
+  const srcDoc = await PDFDocument.load(pdfBytes);
+  const totalPages = srcDoc.getPageCount();
+
+  if (totalPages <= maxPages) {
+    return {
+      chunks: [Buffer.from(pdfBytes).toString('base64')],
+      totalPages,
+    };
+  }
+
+  const chunks: string[] = [];
+  for (let start = 0; start < totalPages; start += maxPages) {
+    const end = Math.min(start + maxPages, totalPages);
+    const chunkDoc = await PDFDocument.create();
+    const copiedPages = await chunkDoc.copyPages(srcDoc, Array.from({ length: end - start }, (_, i) => start + i));
+    copiedPages.forEach(page => chunkDoc.addPage(page));
+    const chunkBytes = await chunkDoc.save();
+    chunks.push(Buffer.from(chunkBytes).toString('base64'));
+  }
+
+  console.log(`Split ${totalPages}-page PDF into ${chunks.length} chunks of up to ${maxPages} pages each.`);
+  return { chunks, totalPages };
+}
+
+/**
+ * Processes a PDF through Document AI, automatically chunking if it exceeds the page limit.
+ * Returns merged entities with corrected page indexes.
+ */
+async function processDocumentChunked(pdfBytes: Uint8Array) {
+  const { chunks, totalPages } = await splitPdfIntoChunks(pdfBytes, DOC_AI_PAGE_LIMIT);
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const allEntities: any[] = [];
+
+  for (let i = 0; i < chunks.length; i++) {
+    const pageOffset = i * DOC_AI_PAGE_LIMIT;
+    console.log(`Processing chunk ${i + 1}/${chunks.length} (pages ${pageOffset + 1}-${Math.min(pageOffset + DOC_AI_PAGE_LIMIT, totalPages)})...`);
+
+    const [result] = await client.processDocument({
+      name: PROCESSOR_NAME,
+      rawDocument: {
+        content: chunks[i],
+        mimeType: 'application/pdf',
+      },
+    });
+
+    const entities = result.document?.entities ?? [];
+
+    // Offset page indexes so they reference the original PDF's page numbers
+    for (const entity of entities) {
+      if (pageOffset > 0 && entity.pageAnchor?.pageRefs) {
+        for (const ref of entity.pageAnchor.pageRefs) {
+          ref.page = String(Number(ref.page ?? 0) + pageOffset) as any;
+        }
+      }
+      allEntities.push(entity);
+    }
+  }
+
+  return allEntities;
+}
 
 function parseDocumentAIDate(rawDate: string, year?: string): string {
   if (!rawDate) return '';
@@ -155,17 +224,9 @@ export async function extractFlightLogs(input: ExtractFlightLogsInput): Promise<
 
   const response = await fetch(mediaUrl);
   const arrayBuffer = await response.arrayBuffer();
-  const encodedContent = Buffer.from(arrayBuffer).toString('base64');
+  const pdfBytes = new Uint8Array(arrayBuffer);
 
-  const [result] = await client.processDocument({
-    name: PROCESSOR_NAME,
-    rawDocument: {
-      content: encodedContent,
-      mimeType: 'application/pdf',
-    },
-  });
-
-  const entities = result.document?.entities ?? [];
+  const entities = await processDocumentChunked(pdfBytes);
   if (entities.length === 0) return { flights: [], logbookFormat: 'simple' };
 
   console.log('Total entities from Document AI:', entities.length);
