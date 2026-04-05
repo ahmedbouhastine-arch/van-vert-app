@@ -15,12 +15,16 @@ type NavLinkItem = {
 
 const mainLinks: NavLinkItem[] = [
   { href: "/dashboard", icon: Home, label: "Dashboard", for: "user" },
+  { href: "/applications", icon: FileText, label: "Applications", for: "user" },
   { href: "/admin", icon: LayoutDashboard, label: "Dashboard", for: "reviewer" },
+  { href: "/admin/applications", icon: FileText, label: "Applications", for: "reviewer" },
+  { href: "/admin/analytics", icon: LineChart, label: "Analytics", for: "admin" },
   { href: "/admin/users", icon: UserCog, label: "User Management", for: "head-admin" },
   { href: "/admin/audit-log", icon: History, label: "Audit Log", for: "head-admin" },
 ];
 
 const secondaryLinks: NavLinkItem[] = [
+  { href: "/community", icon: Users, label: "Community", for: "all" },
   { href: "/profile", icon: User, label: "Profile", for: "all" },
   { href: "/settings", icon: Settings, label: "Settings", for: "all" },
 ];
