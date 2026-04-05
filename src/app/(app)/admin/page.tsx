@@ -1,102 +1,49 @@
-
 'use client';
-
-import Link from "next/link";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { FileText, UserCog, LineChart, History } from "lucide-react";
 import { useUser } from "@/firebase";
 import { PageTransition } from "@/components/PageTransition";
+import { AdminApplicationsClient } from "./_components/AdminApplicationsClient";
+import { AnalyticsClient } from "./analytics/_components/AnalyticsClient";
+import type { AnalyticsDataPoint } from "@/types";
+import { LoadingScreen } from "@/components/LoadingScreen";
 
 export default function AdminDashboardPage() {
-    const { claims } = useUser();
-    const isHeadAdmin = claims?.role === 'head-admin';
-    const isAdmin = claims?.role === 'admin' || isHeadAdmin;
+    const { claims, loading } = useUser();
+    const isAdmin = claims?.role === 'admin' || claims?.role === 'head-admin';
+
+    // Placeholder data until live analytics logic is complete
+    const kpiData = {
+        totalApplications: 0,
+        avgProcessingTime: 0, 
+        approvalRate: 0,
+        pendingReview: 0,
+    };
+    const chartData: AnalyticsDataPoint[] = [];
+
+    if (loading) return <LoadingScreen text="Loading admin dashboard..." />;
 
   return (
-    <PageTransition className="flex flex-col gap-4">
+    <PageTransition className="flex flex-col gap-6">
       <div className="flex flex-col gap-1">
         <h1 className="text-3xl font-bold font-headline tracking-tight">Admin Dashboard</h1>
-        <p className="text-muted-foreground">Quick access to admin functionalities.</p>
+        <p className="text-muted-foreground">Manage ongoing applications and review system analytics globally.</p>
       </div>
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        <Card>
-            <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                    <FileText className="h-6 w-6" />
-                    <span>Application Management</span>
-                </CardTitle>
-                <CardDescription>
-                    Review, approve, or reject all user applications.
-                </CardDescription>
-            </CardHeader>
-            <CardContent>
-                <Link href="/admin/applications">
-                    <Button>View All Applications</Button>
-                </Link>
-            </CardContent>
-        </Card>
 
-        {isAdmin && (
-            <Card>
-                <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                        <LineChart className="h-6 w-6" />
-                        <span>Analytics</span>
-                    </CardTitle>
-                    <CardDescription>
-                        View application trends and statistics.
-                    </CardDescription>
-                </CardHeader>
-                <CardContent>
-                    <Link href="/admin/analytics">
-                        <Button>View Analytics</Button>
-                    </Link>
-                </CardContent>
-            </Card>
-        )}
-        {isHeadAdmin && (
-             <Card>
-                <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                        <UserCog className="h-6 w-6" />
-                        <span>User Management</span>
-                    </CardTitle>
-                    <CardDescription>
-                        Manage user roles and permissions.
-                    </CardDescription>
-                </CardHeader>
-                <CardContent>
-                    <Link href="/admin/users">
-                        <Button>Manage Users</Button>
-                    </Link>
-                </CardContent>
-            </Card>
-        )}
-        {isHeadAdmin && (
-             <Card>
-                <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                        <History className="h-6 w-6" />
-                        <span>Audit Log</span>
-                    </CardTitle>
-                    <CardDescription>
-                        Track all administrative actions.
-                    </CardDescription>
-                </CardHeader>
-                <CardContent>
-                    <Link href="/admin/audit-log">
-                        <Button>View Logs</Button>
-                    </Link>
-                </CardContent>
-            </Card>
-        )}
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 w-full items-start">
+          {/* Left Column: Applications List */}
+          <div className="w-full min-w-0">
+             <AdminApplicationsClient />
+          </div>
+
+          {/* Right Column: Analytics overview (only for admin/head-admin roles) */}
+          <div className="w-full flex flex-col gap-6">
+             {isAdmin ? (
+                 <AnalyticsClient kpiData={kpiData} chartData={chartData} />
+             ) : (
+                 <div className="border border-dashed rounded-lg flex flex-col items-center justify-center p-12 text-center text-muted-foreground h-full min-h-[300px]">
+                    <p className="text-sm">You do not have permission to view advanced analytics.</p>
+                 </div>
+             )}
+          </div>
       </div>
     </PageTransition>
   );

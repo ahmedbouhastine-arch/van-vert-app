@@ -42,6 +42,7 @@ import { collection, query, where, orderBy } from "firebase/firestore";
 import type { Application, FirebaseTimestamp } from "@/types";
 import { LoadingScreen } from "@/components/LoadingScreen";
 import { PageTransition } from "@/components/PageTransition";
+import { CommunityClient } from "../community/_components/CommunityClient";
 
 // Helper function to safely format dates
 const safeFormatDate = (date: FirebaseTimestamp | Date | string | undefined | null, formatString: string) => {
@@ -101,66 +102,80 @@ export default function DashboardPage() {
           </Link>
         </div>
       </div>
-      <Card>
-        <CardHeader>
-          <CardTitle>Recent Applications</CardTitle>
-          <CardDescription>
-            A summary of your recent pilot license applications.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>License Type</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead className="hidden md:table-cell">Last Updated</TableHead>
-                <TableHead><span className="sr-only">Actions</span></TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {isLoading ? (
-                <TableRow><TableCell colSpan={4} className="h-24 text-center">Loading your applications...</TableCell></TableRow>
-              ) : userApplications && userApplications.length > 0 ? (
-                userApplications.map((app) => (
-                  <TableRow key={app.id}>
-                    <TableCell className="font-medium">
-                      <Link href={`/applications/${app.id}`} className="hover:underline">{app.licenseType}</Link>
-                    </TableCell>
-                    <TableCell><StatusBadge status={app.status} /></TableCell>
-                    <TableCell className="hidden md:table-cell">{safeFormatDate(app.updatedAt, "MMMM d, yyyy")}</TableCell>
-                    <TableCell>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild><Button aria-haspopup="true" size="icon" variant="ghost"><MoreHorizontal className="h-4 w-4" /><span className="sr-only">Toggle menu</span></Button></DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                          <DropdownMenuItem asChild><Link href={`/applications/${app.id}`}>View Details</Link></DropdownMenuItem>
-                          {app.feedback && <DropdownMenuItem onSelect={() => setSelectedFeedback(app.feedback || null)}>View Feedback</DropdownMenuItem>}
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </TableCell>
-                  </TableRow>
-                ))
-              ) : (
-                <TableRow>
-                  <TableCell colSpan={4} className="h-24 text-center">
-                    <h3 className="font-semibold">No applications found.</h3>
-                    <p className="text-sm text-muted-foreground">Get started by creating a new application.</p>
-                    <Button asChild size="sm" className="mt-4"><Link href="/applications/new">New Application</Link></Button>
-                  </TableCell>
-                </TableRow>
-              )}
-            </TableBody>
-          </Table>
-        </CardContent>
-        {!isLoading && userApplications && (
-            <CardFooter>
-                <div className="text-xs text-muted-foreground">
-                    Showing <strong>{userApplications.length}</strong> of <strong>{userApplications.length}</strong> applications
+      
+      <div className="grid grid-cols-1 xl:grid-cols-[1fr_400px] 2xl:grid-cols-[1fr_450px] gap-6">
+          {/* Left Column: Applications */}
+          <div className="flex flex-col gap-4 min-w-0">
+            <Card>
+                <CardHeader>
+                <CardTitle>Recent Applications</CardTitle>
+                <CardDescription>
+                    A summary of your recent pilot license applications.
+                </CardDescription>
+                </CardHeader>
+                <CardContent>
+                <div className="overflow-x-auto">
+                    <Table>
+                        <TableHeader>
+                        <TableRow>
+                            <TableHead>License Type</TableHead>
+                            <TableHead>Status</TableHead>
+                            <TableHead className="hidden md:table-cell">Last Updated</TableHead>
+                            <TableHead><span className="sr-only">Actions</span></TableHead>
+                        </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                        {isLoading ? (
+                            <TableRow><TableCell colSpan={4} className="h-24 text-center">Loading your applications...</TableCell></TableRow>
+                        ) : userApplications && userApplications.length > 0 ? (
+                            userApplications.map((app) => (
+                            <TableRow key={app.id}>
+                                <TableCell className="font-medium whitespace-nowrap">
+                                <Link href={`/applications/${app.id}`} className="hover:underline">{app.licenseType}</Link>
+                                </TableCell>
+                                <TableCell><StatusBadge status={app.status} /></TableCell>
+                                <TableCell className="hidden md:table-cell">{safeFormatDate(app.updatedAt, "MMMM d, yyyy")}</TableCell>
+                                <TableCell>
+                                <DropdownMenu>
+                                    <DropdownMenuTrigger asChild><Button aria-haspopup="true" size="icon" variant="ghost"><MoreHorizontal className="h-4 w-4" /><span className="sr-only">Toggle menu</span></Button></DropdownMenuTrigger>
+                                    <DropdownMenuContent align="end">
+                                    <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                                    <DropdownMenuItem asChild><Link href={`/applications/${app.id}`}>View Details</Link></DropdownMenuItem>
+                                    {app.feedback && <DropdownMenuItem onSelect={() => setSelectedFeedback(app.feedback || null)}>View Feedback</DropdownMenuItem>}
+                                    </DropdownMenuContent>
+                                </DropdownMenu>
+                                </TableCell>
+                            </TableRow>
+                            ))
+                        ) : (
+                            <TableRow>
+                            <TableCell colSpan={4} className="h-24 text-center">
+                                <h3 className="font-semibold">No applications found.</h3>
+                                <p className="text-sm text-muted-foreground">Get started by creating a new application.</p>
+                                <Button asChild size="sm" className="mt-4"><Link href="/applications/new">New Application</Link></Button>
+                            </TableCell>
+                            </TableRow>
+                        )}
+                        </TableBody>
+                    </Table>
                 </div>
-            </CardFooter>
-        )}
-      </Card>
+                </CardContent>
+                {!isLoading && userApplications && (
+                    <CardFooter>
+                        <div className="text-xs text-muted-foreground">
+                            Showing <strong>{userApplications.length}</strong> of <strong>{userApplications.length}</strong> applications
+                        </div>
+                    </CardFooter>
+                )}
+            </Card>
+          </div>
+
+          {/* Right Column: Community UI */}
+          <div className="flex flex-col gap-4">
+              <CommunityClient />
+          </div>
+      </div>
+
       <Dialog open={!!selectedFeedback} onOpenChange={(isOpen) => !isOpen && setSelectedFeedback(null)}>
         <DialogContent className="sm:max-w-md">
             <DialogHeader>
