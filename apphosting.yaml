@@ -38,6 +38,12 @@ env:
       - BUILD
       - RUNTIME
 
+  - variable: NEXT_PUBLIC_BASE_URL
+    value: "https://vanvert.co"
+    availability:
+      - BUILD
+      - RUNTIME
+
   - variable: RESEND_API_KEY
     secret: RESEND_API_KEY
     availability:

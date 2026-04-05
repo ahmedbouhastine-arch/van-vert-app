@@ -42,6 +42,25 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { v4 as uuidv4 } from 'uuid';
 
+// Upload limits
+const MAX_FILE_SIZE_MB = 50;
+const MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024;
+const MAX_PDF_PAGES = 64;
+
+/** Lightweight PDF page counter — counts /Type /Page (not /Pages) occurrences. */
+async function countPdfPages(file: File): Promise<number> {
+  try {
+    const buffer = await file.arrayBuffer();
+    const bytes = new Uint8Array(buffer);
+    const text = new TextDecoder('latin1').decode(bytes);
+    // Match "/Type /Page" but NOT "/Type /Pages" to count individual pages
+    const matches = text.match(/\/Type\s*\/Page(?!s)/g);
+    return matches ? matches.length : 0;
+  } catch {
+    return 0; // If we can't parse it, let the server handle validation
+  }
+}
+
 // Helper function to safely format dates, whether they are Timestamps or strings
 const safeFormatDate = (date: FirebaseTimestamp | Date | string | undefined | null, formatString: string) => {
   if (!date) return 'N/A';
@@ -291,6 +310,33 @@ export function ApplicationClient({
     const file = event.target.files?.[0];
     if (!file || !activeUploadDocId) return;
 
+    // File size validation
+    if (file.size > MAX_FILE_SIZE_BYTES) {
+      toast({
+        variant: 'destructive',
+        title: 'File Too Large',
+        description: `Maximum file size is ${MAX_FILE_SIZE_MB}MB. Your file is ${(file.size / (1024 * 1024)).toFixed(1)}MB.`,
+      });
+      if (fileInputRef.current) fileInputRef.current.value = '';
+      setActiveUploadDocId(null);
+      return;
+    }
+
+    // PDF page count validation
+    if (file.type === 'application/pdf') {
+      const pageCount = await countPdfPages(file);
+      if (pageCount > MAX_PDF_PAGES) {
+        toast({
+          variant: 'destructive',
+          title: 'Too Many Pages',
+          description: `Maximum is ${MAX_PDF_PAGES} pages. Your PDF has ${pageCount} pages.`,
+        });
+        if (fileInputRef.current) fileInputRef.current.value = '';
+        setActiveUploadDocId(null);
+        return;
+      }
+    }
+
     const docDefinition = appState.documents.find(d => d.id === activeUploadDocId);
     if (!docDefinition) return;
 
@@ -468,6 +514,29 @@ export function ApplicationClient({
   const handleFlightLogUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
+
+    // File size validation
+    if (file.size > MAX_FILE_SIZE_BYTES) {
+      toast({
+        variant: 'destructive',
+        title: 'File Too Large',
+        description: `Maximum file size is ${MAX_FILE_SIZE_MB}MB. Your file is ${(file.size / (1024 * 1024)).toFixed(1)}MB.`,
+      });
+      if (logPdfInputRef.current) logPdfInputRef.current.value = '';
+      return;
+    }
+
+    // PDF page count validation
+    const pageCount = await countPdfPages(file);
+    if (pageCount > MAX_PDF_PAGES) {
+      toast({
+        variant: 'destructive',
+        title: 'Too Many Pages',
+        description: `Maximum is ${MAX_PDF_PAGES} pages. Your PDF has ${pageCount} pages.`,
+      });
+      if (logPdfInputRef.current) logPdfInputRef.current.value = '';
+      return;
+    }
 
     setIsUploadingLog(true);
     toast({ title: 'AI Processing Started', description: 'Your flight log is being analyzed. This may take a moment.' });

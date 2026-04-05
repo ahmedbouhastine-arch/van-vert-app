@@ -176,7 +176,7 @@ const LoginPage = () => {
                     id="email"
                     name="email"
                     type="email"
-                    placeholder="pilot@example.com"
+                    placeholder="pilot@vanvert.co"
                     required
                     disabled={isSubmitting}
                     className="pl-10 h-12 bg-white/5 border-white/10 rounded-xl focus:ring-primary/50 transition-all text-white"
@@ -255,7 +255,7 @@ const LoginPage = () => {
         </motion.div>
       </div>
 
-      <Link href="/" className="absolute top-8 left-8 p-3 rounded-full glass-card hover:bg-white/5 transition-all text-white hidden md:flex items-center gap-2 group">
+      <Link href="/" className="absolute top-6 left-6 md:top-8 md:left-8 p-3 rounded-full glass-card hover:bg-white/5 transition-all text-white flex items-center gap-2 group z-20">
         <ArrowLeft className="h-5 w-5 group-hover:-translate-x-1 transition-transform" />
         <span className="text-sm font-medium">Home</span>
       </Link>
@@ -274,7 +274,7 @@ const LoginPage = () => {
                <Input
                  id="forgot-password-email"
                  type="email"
-                 placeholder="pilot@example.com"
+                 placeholder="pilot@vanvert.co"
                  required
                  value={forgotPasswordEmail}
                  onChange={(e) => setForgotPasswordEmail(e.target.value)}

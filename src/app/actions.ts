@@ -39,7 +39,7 @@ function handleServerAuthError(error: unknown, context: string): never {
     const errorCode = err.code;
 
     const isAuthError =
-        errorCode === 7 || 
+        errorCode === 7 ||
         errorCode === 'PERMISSION_DENIED' ||
         errorMessage.includes('credential') ||
         errorMessage.includes('access token') ||
@@ -55,6 +55,9 @@ function handleServerAuthError(error: unknown, context: string): never {
     }
     throw error;
 }
+
+// Upload limits (server-side enforcement)
+const MAX_FILE_SIZE_BYTES = 50 * 1024 * 1024; // 50MB
 
 async function withTimeout<T>(promise: Promise<T>, timeoutMs: number = 120000): Promise<T> {
     return Promise.race([
@@ -117,6 +120,10 @@ export async function uploadFlightLogAction(formData: FormData, idToken?: string
         const applicationId = formData.get('applicationId') as string;
         if (!file || !applicationId) throw new Error("Missing file or application ID.");
 
+        if (file.size > MAX_FILE_SIZE_BYTES) {
+            throw new Error(`File too large. Maximum size is 50MB, your file is ${(file.size / (1024 * 1024)).toFixed(1)}MB.`);
+        }
+
         const appRef = adminFirestore.collection('applications').doc(applicationId);
         const appSnapshot = await appRef.get();
         if (!appSnapshot.exists) {
@@ -130,7 +137,7 @@ export async function uploadFlightLogAction(formData: FormData, idToken?: string
         const bucket = adminStorage.bucket();
         const storagePath = `applications/${applicationId}/flight-log-${uuidv4()}.pdf`;
         const publicUrl = await uploadStreamToStorage(bucket, storagePath, file.stream(), file.type);
-        
+
         const { flights, logbookFormat } = await withTimeout(extractFlightLogs({ storagePath: publicUrl }));
 
         const extractedLogs: FlightLog[] = flights.map(log => ({
@@ -216,7 +223,7 @@ export async function createApplicationAction(
             flightLogPdfUrl: "",
             logbookFormat: 'simple' as LogbookFormat
         };
-        
+
         await adminFirestore.collection('applications').doc(newAppId).set(appData);
         await sendApplicationReceivedEmail(userRecord.email!, userRecord.displayName || 'Pilot', newAppId);
         return { applicationId: newAppId };
@@ -225,25 +232,25 @@ export async function createApplicationAction(
     }
 }
 
-export async function extractExpiryDateAction(args: {applicationId: string, documentUrl: string, idToken?: string}): Promise<{ expiryDate: string | null}> {
-  try {
-    const user = await getAuthenticatedUser(args.idToken);
-    const appRef = adminFirestore.collection('applications').doc(args.applicationId);
-    const appSnapshot = await appRef.get();
-    if (!appSnapshot.exists) {
-        throw new Error("Application not found.");
-    }
-    const applicationData = appSnapshot.data() as Application;
-    if (applicationData.userId !== user.uid) {
-        throw new Error("User does not have permission to access this application.");
-    }
-    
-    const { expiryDate } = await withTimeout(extractExpiryDate({ documentDataUri: args.documentUrl }));
-    return { expiryDate: expiryDate || null };
+export async function extractExpiryDateAction(args: { applicationId: string, documentUrl: string, idToken?: string }): Promise<{ expiryDate: string | null }> {
+    try {
+        const user = await getAuthenticatedUser(args.idToken);
+        const appRef = adminFirestore.collection('applications').doc(args.applicationId);
+        const appSnapshot = await appRef.get();
+        if (!appSnapshot.exists) {
+            throw new Error("Application not found.");
+        }
+        const applicationData = appSnapshot.data() as Application;
+        if (applicationData.userId !== user.uid) {
+            throw new Error("User does not have permission to access this application.");
+        }
 
-  } catch (e: unknown) {
-      handleServerAuthError(e, 'extractExpiryDateAction');
-  }
+        const { expiryDate } = await withTimeout(extractExpiryDate({ documentDataUri: args.documentUrl }));
+        return { expiryDate: expiryDate || null };
+
+    } catch (e: unknown) {
+        handleServerAuthError(e, 'extractExpiryDateAction');
+    }
 }
 
 export async function uploadProfilePictureAction(formData: FormData, idToken?: string): Promise<{ photoURL: string }> {
@@ -251,9 +258,13 @@ export async function uploadProfilePictureAction(formData: FormData, idToken?: s
         const token = idToken ?? (formData.get('idToken') as string | undefined);
         const user = await getAuthenticatedUser(token);
         const file = formData.get('file') as File;
-        
+
         if (!file) {
             throw new Error("No file provided for profile picture.");
+        }
+
+        if (file.size > MAX_FILE_SIZE_BYTES) {
+            throw new Error(`File too large. Maximum size is 50MB, your file is ${(file.size / (1024 * 1024)).toFixed(1)}MB.`);
         }
 
         const bucket = adminStorage.bucket();
@@ -262,7 +273,7 @@ export async function uploadProfilePictureAction(formData: FormData, idToken?: s
 
         await adminAuth.updateUser(user.uid, { photoURL });
         await adminFirestore.collection('users').doc(user.uid).set({ photoURL }, { merge: true });
-        
+
         return { photoURL };
     } catch (e: unknown) {
         handleServerAuthError(e, 'uploadProfilePictureAction');
@@ -285,7 +296,7 @@ export async function getExpiryDateForSingleDocumentAction(
         }
         const docToProcess = application.documents.find(d => d.id === docId);
         if (!docToProcess || !docToProcess.fileUrl) throw new Error("Invalid document for AI check.");
-        
+
         const { expiryDate } = await withTimeout(extractExpiryDate({ documentDataUri: docToProcess.fileUrl }));
         return { expiryDate: expiryDate || null };
     } catch (e: unknown) {
@@ -300,12 +311,12 @@ export async function updateUserProfileAction(
     try {
         const user = await getAuthenticatedUser(idToken);
         const { uid } = user;
-        
+
         const authUpdates: { displayName?: string; phoneNumber?: string } = {};
         if (data.displayName) {
             authUpdates.displayName = data.displayName;
         }
-        
+
         const firestoreUpdates: Partial<UserProfile> = { ...data };
         delete (firestoreUpdates as any).nationality;
 
@@ -340,14 +351,14 @@ export async function sendVerificationEmailAction(email: string) {
         console.log(`Starting verification email action for: ${email}`);
         const verificationLink = await adminAuth.generateEmailVerificationLink(email);
         const result = await sendVerificationEmail(email, verificationLink);
-        
+
         if (!result.success) {
             throw new Error(result.error);
         }
 
         const user = await adminAuth.getUserByEmail(email);
         await sendWelcomeEmailAction(user.email!, user.displayName || 'Pilot', `${BASE_URL}/dashboard`);
-        
+
         return { success: true };
     } catch (error: any) {
         console.error('Error in sendVerificationEmailAction:', error);
@@ -483,7 +494,7 @@ export async function detectAndLinkDuplicateAccountsAction(idToken: string) {
             const userNotifications = await notificationsRef.get();
             // Move subcollection (requires more than just a batch update, but we'll focus on apps for now)
             // For notifications, we can just delete the old ones or move them if critical.
-            
+
             // C. Merge Profile Data if new profile is sparse
             const oldUserDoc = await usersRef.doc(oldUid).get();
             const oldData = oldUserDoc.data();

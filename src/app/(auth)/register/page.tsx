@@ -192,7 +192,7 @@ export default function RegisterPage() {
                                 id="email"
                                 name="email"
                                 type="email"
-                                placeholder="pilot@example.com"
+                                placeholder="pilot@vanvert.co"
                                 required
                                 disabled={isSubmitting}
                                 className="pl-10 h-12 bg-white/5 border-white/10 rounded-xl text-white"
