@@ -82,10 +82,10 @@ export function CommunityClient() {
             <HelpCircle className="w-4 h-4 mr-2" /> 
             <span>FAQs</span>
           </TabsTrigger>
-          <TabsTrigger value="sop">
+          <TabsTrigger value="sop" className="flex-1 overflow-hidden">
             <BookOpen className="w-4 h-4 mr-2 shrink-0" /> 
-            <span className="hidden sm:inline">Standard Operating Procedures</span>
-            <span className="sm:hidden">SOPs</span>
+            <span className="hidden lg:inline truncate">Standard Operating Procedures</span>
+            <span className="lg:hidden">SOPs</span>
           </TabsTrigger>
         </TabsList>
         
