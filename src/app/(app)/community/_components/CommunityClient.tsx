@@ -78,8 +78,15 @@ export function CommunityClient() {
 
       <Tabs defaultValue="faq" className="mt-2 text-sm w-full">
         <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger value="faq"><HelpCircle className="w-4 h-4 mr-2" /> FAQs</TabsTrigger>
-          <TabsTrigger value="sop"><BookOpen className="w-4 h-4 mr-2" /> SOPs</TabsTrigger>
+          <TabsTrigger value="faq">
+            <HelpCircle className="w-4 h-4 mr-2" /> 
+            <span>FAQs</span>
+          </TabsTrigger>
+          <TabsTrigger value="sop">
+            <BookOpen className="w-4 h-4 mr-2 shrink-0" /> 
+            <span className="hidden sm:inline">Standard Operating Procedures</span>
+            <span className="sm:hidden">SOPs</span>
+          </TabsTrigger>
         </TabsList>
         
         <TabsContent value="faq" className="mt-4">
