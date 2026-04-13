@@ -21,7 +21,6 @@ export const documentRequirements: Record<string, DocumentRequirement> = {
     
     // CPL
     cplLicense: { id: 'doc11', name: 'Existing CPL License', description: 'A copy of your current Commercial Pilot License.', requiresExpiry: true },
-    logbookCPL: { id: 'doc12', name: 'Detailed Logbook Summary', description: 'Logbook copies showing PIC, cross-country, night, and instrument hours.', requiresExpiry: false },
     medicalCertClass1: { id: 'doc13', name: 'Class 1 Medical Certificate', description: 'A valid Class 1 medical certificate.', requiresExpiry: true },
     instrumentRating: { id: 'doc14', name: 'Instrument Rating Certificate', description: 'Your current Instrument Rating certificate, if held.', requiresExpiry: true },
     multiEngineRating: { id: 'doc15', name: 'Multi-Engine Rating Certificate', description: 'Your current Multi-Engine rating certificate, if held.', requiresExpiry: true },
@@ -62,7 +61,6 @@ export const licenseTypes: LicenseType[] = [
         documentRequirements.photoId,
         documentRequirements.cplLicense,
         documentRequirements.licenseVerification,
-        documentRequirements.logbookCPL,
         documentRequirements.medicalCertClass1,
         documentRequirements.instrumentRating,
         documentRequirements.multiEngineRating,

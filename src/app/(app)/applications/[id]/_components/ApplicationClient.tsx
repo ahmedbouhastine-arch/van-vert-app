@@ -704,7 +704,7 @@ export function ApplicationClient({
 
       <div className="grid gap-4">
         <h2 className="font-semibold text-lg">Required Documents</h2>
-        {appState.documents.map((doc) => (
+        {appState.documents.filter(doc => doc.name !== "Detailed Logbook Summary").map((doc) => (
           <DocumentCard
             key={doc.id}
             doc={doc}

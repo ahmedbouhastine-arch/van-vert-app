@@ -559,7 +559,7 @@ export function AdminApplicationClient({
                         </div>
                         
                         <div className="grid sm:grid-cols-2 gap-4">
-                            {appState.documents.map((doc) => (
+                            {appState.documents.filter(doc => doc.name !== "Detailed Logbook Summary").map((doc) => (
                                 <DocumentReviewCard 
                                     key={doc.id} 
                                     doc={doc} 
