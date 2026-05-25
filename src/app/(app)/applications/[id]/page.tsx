@@ -7,7 +7,7 @@ import { headers } from "next/headers";
 import { PageTransition } from "@/components/PageTransition";
 
 // Helper to serialize Firestore Timestamps
-function serializeTimestamps(obj: any): any {
+function serializeTimestamps(obj: unknown): unknown {
   if (!obj) return obj;
   if (typeof obj !== 'object') return obj;
 
@@ -15,15 +15,15 @@ function serializeTimestamps(obj: any): any {
     return obj.map(serializeTimestamps);
   }
 
-  // Handle Firestore Timestamp
-  if (obj.toDate && typeof obj.toDate === 'function') {
-    return obj.toDate().toISOString();
+  const record = obj as Record<string, unknown>;
+  if (typeof record.toDate === 'function') {
+    return (record as { toDate: () => Date }).toDate().toISOString();
   }
 
-  const newObj: { [key: string]: any } = {};
-  for (const key in obj) {
-    if (Object.prototype.hasOwnProperty.call(obj, key)) {
-      newObj[key] = serializeTimestamps(obj[key]);
+  const newObj: Record<string, unknown> = {};
+  for (const key in record) {
+    if (Object.prototype.hasOwnProperty.call(record, key)) {
+      newObj[key] = serializeTimestamps(record[key]);
     }
   }
   return newObj;
@@ -58,7 +58,7 @@ export default async function ApplicationDetailPage({ params }: { params: Promis
         return;
     }
     
-    const serializedApplication = serializeTimestamps(applicationData);
+    const serializedApplication = serializeTimestamps(applicationData) as Application;
 
     return (
       <PageTransition className="flex flex-col gap-4">

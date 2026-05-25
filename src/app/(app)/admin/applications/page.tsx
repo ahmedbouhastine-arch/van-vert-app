@@ -1,7 +1,7 @@
 
 'use client';
 
-import { collection, query, where, orderBy } from 'firebase/firestore';
+import { collection, query, orderBy } from 'firebase/firestore';
 import { useCollection } from 'react-firebase-hooks/firestore';
 import { useFirestore } from "@/firebase";
 import Link from 'next/link';
@@ -75,7 +75,6 @@ function ApplicationCard({ application, user }: { application: Application, user
 function AdminApplicationsPage() {
   const firestore = useFirestore();
   const applicationsRef = collection(firestore, 'applications');
-  const usersRef = collection(firestore, 'users');
   
   const [searchTerm, setSearchTerm] = useState('');
 

@@ -9,16 +9,12 @@ import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { StatusBadge } from '@/components/StatusBadge';
 import { ChevronRight, FileText, Search } from 'lucide-react';
-import { formatDistanceToNow } from 'date-fns';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 
 function ApplicationCard({ application, user }: { application: Application, user?: UserProfile }) {
   const isDraft = application.status === 'draft';
-  const lastUpdated = application.updatedAt?.toDate() 
-    ? formatDistanceToNow(application.updatedAt.toDate(), { addSuffix: true })
-    : 'N/A';
   const totalHours = application.flightLogs?.reduce((sum, log) => sum + log.duration, 0) || 0;
   
   return (

@@ -97,7 +97,7 @@ export default function MyApplicationsPage() {
             title: 'Draft Deleted',
             description: `Application for '${appToDelete.licenseType}' has been deleted.`
         });
-    } catch (error) {
+    } catch {
         toast({
             variant: 'destructive',
             title: 'Delete Failed',

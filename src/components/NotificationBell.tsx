@@ -4,11 +4,10 @@ import { Bell, BellDot, Check, Mailbox } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
 import { useUser, useFirestore, useCollection, useMemoFirebase } from "@/firebase";
-import { collection, doc, orderBy, query, writeBatch, where, updateDoc } from "firebase/firestore";
+import { collection, doc, orderBy, query, writeBatch, updateDoc } from "firebase/firestore";
 import type { Notification } from "@/types";
 import { formatDistanceToNow, isToday, isYesterday } from "date-fns";
 import Link from "next/link";
-import { cn } from "@/lib/utils";
 
 function NotificationItem({ item }: { item: Notification }) {
   const firestore = useFirestore();

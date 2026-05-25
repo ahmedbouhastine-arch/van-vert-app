@@ -8,7 +8,7 @@ const client = new DocumentProcessorServiceClient();
 const PROCESSOR_NAME = 'projects/REDACTED_FIREBASE_SENDER_ID/locations/us/processors/47422f02bcaec722/processorVersions/1e5684bc4378fc3e';
 const DOC_AI_PAGE_LIMIT = 15;
 
-const ExtractFlightLogsInputSchema = z.object({
+export const ExtractFlightLogsInputSchema = z.object({
   flightLogPdf: z.string().optional(),
   storagePath: z.string().optional(),
 });
@@ -24,7 +24,7 @@ const FlightLogEntrySchema = z.object({
   instrumentSimulatedHours: z.number().optional().default(0),
 });
 
-const ExtractFlightLogsOutputSchema = z.object({
+export const ExtractFlightLogsOutputSchema = z.object({
   flights: z.array(FlightLogEntrySchema),
   logbookFormat: z.enum(['typeA', 'typeB', 'simple']),
 });
@@ -87,7 +87,7 @@ async function processDocumentChunked(pdfBytes: Uint8Array) {
     for (const entity of entities) {
       if (pageOffset > 0 && entity.pageAnchor?.pageRefs) {
         for (const ref of entity.pageAnchor.pageRefs) {
-          ref.page = String(Number(ref.page ?? 0) + pageOffset) as any;
+          ref.page = Number(ref.page ?? 0) + pageOffset;
         }
       }
       allEntities.push(entity);

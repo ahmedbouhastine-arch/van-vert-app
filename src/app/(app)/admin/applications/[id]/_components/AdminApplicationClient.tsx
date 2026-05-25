@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useTransition, useEffect, useMemo } from "react";
+import { useState, useTransition, useEffect, useMemo, useCallback } from "react";
 import type { Application, ApplicationDocument, ApplicationStatus, UserProfile, DocumentStatus, FirebaseTimestamp, LogbookFormat, FlightLog } from "@/types";
 import {
   Card,
@@ -9,12 +9,10 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
-  CardFooter
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { StatusBadge, statusConfig } from "@/components/StatusBadge";
 import {
-  AlertCircle,
   Bot,
   Download,
   File as FileIcon,
@@ -22,13 +20,11 @@ import {
   Check,
   X,
   Loader2,
-  RefreshCw,
   Info,
   Clock,
   Calendar,
   AlertTriangle
 } from "lucide-react";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { format } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
 import { Textarea } from "@/components/ui/textarea";
@@ -101,9 +97,6 @@ function DocumentReviewCard({
     "approved",
     "rejected",
   ];
-
-  const currentStatusConfig = statusConfig[doc.status];
-  const Icon = currentStatusConfig.icon;
 
   return (
     <Card className="overflow-hidden h-full flex flex-col">
@@ -205,19 +198,18 @@ export function AdminApplicationClient({
   const isDraft = appState.status === 'draft';
 
   // Flight Hours Calculation
-  const flightLogs = appState.flightLogs || [];
+  const flightLogs = useMemo(() => appState.flightLogs || [], [appState.flightLogs]);
   const logbookFormat = appState.logbookFormat || 'simple';
 
-  const calculateHours = (logs: FlightLog[], type: 'total' | 'PIC' | 'Solo' | 'Dual') => {
+  const calculateHours = useCallback((logs: FlightLog[], type: 'total' | 'PIC' | 'Solo' | 'Dual') => {
     return logs.reduce((sum, log) => {
-        // Helper to determine type of a log for Type A/B
         const getLogType = (l: FlightLog) => {
              if (logbookFormat === 'typeA') {
                 if ((l.pilotInCommand || 0) > 0) return 'PIC';
                 if ((l.solo || 0) > 0) return 'Solo';
                 if ((l.dualReceived || 0) > 0) return 'Dual';
             } else if (logbookFormat === 'typeB') {
-                if ((l.pilotInCommand || 0) > 0) return 'PIC'; 
+                if ((l.pilotInCommand || 0) > 0) return 'PIC';
                 if ((l.dualReceived || 0) > 0) return 'Dual';
             }
             return l.flightType || 'Unknown';
@@ -230,12 +222,12 @@ export function AdminApplicationClient({
         if (type === 'Dual' && logType === 'Dual') return sum + (log.duration || 0);
         return sum;
     }, 0);
-  };
+  }, [logbookFormat]);
 
-  const totalFlightHours = useMemo(() => calculateHours(flightLogs, 'total'), [flightLogs, logbookFormat]);
-  const picHours = useMemo(() => calculateHours(flightLogs, 'PIC'), [flightLogs, logbookFormat]);
-  const soloHours = useMemo(() => calculateHours(flightLogs, 'Solo'), [flightLogs, logbookFormat]);
-  const dualHours = useMemo(() => calculateHours(flightLogs, 'Dual'), [flightLogs, logbookFormat]);
+  const totalFlightHours = useMemo(() => calculateHours(flightLogs, 'total'), [flightLogs, calculateHours]);
+  const picHours = useMemo(() => calculateHours(flightLogs, 'PIC'), [flightLogs, calculateHours]);
+  const soloHours = useMemo(() => calculateHours(flightLogs, 'Solo'), [flightLogs, calculateHours]);
+  const dualHours = useMemo(() => calculateHours(flightLogs, 'Dual'), [flightLogs, calculateHours]);
 
   useEffect(() => {
     const initialRecencyCheck = async () => {

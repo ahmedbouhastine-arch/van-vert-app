@@ -1,7 +1,7 @@
 'use client';
 import React, { useEffect, useState } from "react";
 import { PageTransition } from "@/components/PageTransition";
-import { Users, FileText, Activity, ShieldCheck, HelpCircle, BookOpen, ChevronDown } from "lucide-react";
+import { Users, FileText, Activity, ShieldCheck, HelpCircle, BookOpen } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { getCommunityStatsAction } from "@/app/actions";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
@@ -148,7 +148,7 @@ export default function CommunityPage() {
                   </h3>
                   <div className="text-sm text-muted-foreground pl-7 space-y-2">
                       <p>• Pilots are expected to monitor their dashboard periodically after submission.</p>
-                      <p>• Any feedback provided by a reviewer (e.g., "Missing signature on page 2") must be addressed within 14 days, or the application may revert to "Draft" status.</p>
+                      <p>• Any feedback provided by a reviewer (e.g., &ldquo;Missing signature on page 2&rdquo;) must be addressed within 14 days, or the application may revert to &ldquo;Draft&rdquo; status.</p>
                   </div>
               </div>
 

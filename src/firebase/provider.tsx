@@ -105,7 +105,7 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
 
         // Clean up any existing claims listener
         if (unsubscribeClaims) {
-          try { unsubscribeClaims(); } catch (e) { /* ignore */ }
+          try { unsubscribeClaims(); } catch { /* ignore */ }
           unsubscribeClaims = null;
         }
 
@@ -144,11 +144,11 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
                         setUserAuthState({ user: authUser, claims: null, isUserLoading: false, userError: error });
                     }
                 );
-            } catch (err: any) {
+            } catch (err) {
                 if (!isMounted) return;
                 console.error("Fatal: Failed to set session cookie or load claims. Logging out.", err);
                 signOut(auth);
-                setUserAuthState({ user: null, claims: null, isUserLoading: false, userError: err });
+                setUserAuthState({ user: null, claims: null, isUserLoading: false, userError: err instanceof Error ? err : new Error(String(err)) });
             }
         } else {
           console.log("FirebaseProvider: No user, clearing session");
@@ -175,9 +175,9 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
   
     return () => {
       isMounted = false;
-      try { unsubscribeAuth(); } catch (e) { /* ignore */ }
+      try { unsubscribeAuth(); } catch { /* ignore */ }
       if (unsubscribeClaims) {
-        try { unsubscribeClaims(); } catch (e) { /* ignore */ }
+        try { unsubscribeClaims(); } catch { /* ignore */ }
       }
     };
   }, [auth, firestore]);
@@ -260,6 +260,7 @@ export const useFirebaseApp = (): FirebaseApp => {
 type MemoFirebase <T> = T & {__memo?: boolean};
 
 export function useMemoFirebase<T>(factory: () => T, deps: DependencyList): T | (MemoFirebase<T>) {
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   const memoized = useMemo(factory, deps);
   
   if(typeof memoized !== 'object' || memoized === null) return memoized;

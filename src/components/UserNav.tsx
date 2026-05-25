@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import {
@@ -24,7 +23,6 @@ export function UserNav() {
   const { toast } = useToast();
 
   const [isLoggingOut, setIsLoggingOut] = useState(false);
-  const router = useRouter();
 
   const handleLogout = async (e: React.MouseEvent) => {
     e.preventDefault();

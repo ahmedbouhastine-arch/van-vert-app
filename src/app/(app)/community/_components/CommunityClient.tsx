@@ -1,7 +1,7 @@
 'use client';
 import React, { useEffect, useState } from "react";
 import { Users, FileText, Activity, ShieldCheck, HelpCircle, BookOpen } from "lucide-react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getCommunityStatsAction } from "@/app/actions";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";

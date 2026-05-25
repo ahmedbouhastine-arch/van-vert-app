@@ -62,7 +62,7 @@ export default function SettingsPage() {
 
                 // Firestore update uses the non-blocking pattern.
                 updateDoc(userRef, { displayName })
-                    .catch((error) => {
+                    .catch(() => {
                         const permissionError = new FirestorePermissionError({
                             path: userRef.path,
                             operation: 'update',

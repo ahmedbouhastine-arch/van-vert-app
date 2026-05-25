@@ -3,7 +3,7 @@
 
 import { useState, useTransition, useRef, useEffect, useMemo } from "react";
 import { getStorage, ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import type { Application, ApplicationDocument, FirebaseTimestamp, FlightLog, LogbookFormat } from "@/types";
+import type { Application, ApplicationDocument, FirebaseTimestamp, FlightLog } from "@/types";
 import {
   Card,
   CardContent,
@@ -25,7 +25,7 @@ import {
   Download,
   X,
   RefreshCw,
-  ChevronLeft, ChevronRight, Edit2, Check as CheckIcon,
+  ChevronLeft, ChevronRight, Edit2,
   Plus, Trash2
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
@@ -38,7 +38,6 @@ import * as serverActions from '@/app/actions';
 import { useFirestore, errorEmitter, FirestorePermissionError, useAuth, useFirebaseApp } from "@/firebase";
 import { doc, serverTimestamp, updateDoc, collection, addDoc } from "firebase/firestore";
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { v4 as uuidv4 } from 'uuid';
 
@@ -225,7 +224,7 @@ export function ApplicationClient({
   const [editableFlights, setEditableFlights] = useState<FlightLog[]>([]);
   const [isSavingLogs, setIsSavingLogs] = useState(false);
 
-  const flightLogs = appState.flightLogs || [];
+  const flightLogs = useMemo(() => appState.flightLogs || [], [appState.flightLogs]);
   const logbookFormat = appState.logbookFormat || 'simple';
 
   const calculateHours = (logs: FlightLog[], type: 'total' | 'PIC' | 'Solo' | 'Dual' | 'Instrument') => {
@@ -481,7 +480,7 @@ export function ApplicationClient({
         
         updateDoc(appRef, finalState)
         .then(() => {
-            setAppState(prev => ({...prev, ...finalState}));
+            setAppState(prev => ({...prev, ...finalState} as Application));
 
             const notificationsRef = collection(firestore, 'users', appState.userId, 'notifications');
             addDoc(notificationsRef, {
@@ -626,7 +625,7 @@ export function ApplicationClient({
     setIsReviewMode(!isReviewMode);
   };
 
-  const handleEditableFlightChange = (id: string, field: keyof FlightLog, value: any) => {
+  const handleEditableFlightChange = (id: string, field: keyof FlightLog, value: FlightLog[keyof FlightLog]) => {
     setEditableFlights(prev => prev.map(log => {
       if (log.id === id) {
         const updatedLog = { ...log, [field]: value };

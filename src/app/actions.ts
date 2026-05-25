@@ -318,7 +318,7 @@ export async function updateUserProfileAction(
         }
 
         const firestoreUpdates: Partial<UserProfile> = { ...data };
-        delete (firestoreUpdates as any).nationality;
+        delete (firestoreUpdates as Record<string, unknown>)['nationality'];
 
         if (Object.keys(authUpdates).length > 0) {
             await adminAuth.updateUser(uid, authUpdates);
@@ -360,9 +360,9 @@ export async function sendVerificationEmailAction(email: string) {
         await sendWelcomeEmailAction(user.email!, user.displayName || 'Pilot', `${BASE_URL}/dashboard`);
 
         return { success: true };
-    } catch (error: any) {
+    } catch (error) {
         console.error('Error in sendVerificationEmailAction:', error);
-        return { success: false, error: error.message };
+        return { success: false, error: error instanceof Error ? error.message : String(error) };
     }
 }
 
@@ -372,9 +372,9 @@ export async function sendPasswordResetEmailAction(email: string) {
         const result = await sendPasswordResetEmail(email, resetLink);
         if (!result.success) throw new Error(result.error);
         return { success: true };
-    } catch (error: any) {
+    } catch (error) {
         console.error('Error sending password reset email:', error);
-        return { success: false, error: error.message };
+        return { success: false, error: error instanceof Error ? error.message : String(error) };
     }
 }
 
@@ -388,9 +388,9 @@ export async function approveApplicationAction(applicationId: string, idToken?: 
         const user = await adminAuth.getUser(appData.userId);
         await sendApplicationApprovedEmail(user.email!, user.displayName || 'Pilot', `${BASE_URL}/dashboard`);
         return { success: true };
-    } catch (error: any) {
+    } catch (error) {
         console.error('Error approving application:', error);
-        return { success: false, error: error.message };
+        return { success: false, error: error instanceof Error ? error.message : String(error) };
     }
 }
 
@@ -404,9 +404,9 @@ export async function rejectApplicationAction(applicationId: string, reason: str
         const user = await adminAuth.getUser(appData.userId);
         await sendApplicationRejectedEmail(user.email!, user.displayName || 'Pilot', reason);
         return { success: true };
-    } catch (error: any) {
+    } catch (error) {
         console.error('Error rejecting application:', error);
-        return { success: false, error: error.message };
+        return { success: false, error: error instanceof Error ? error.message : String(error) };
     }
 }
 
@@ -419,9 +419,9 @@ export async function sendApplicationNeedsMoreInfoEmailAction(applicationId: str
         const user = await adminAuth.getUser(appData.userId);
         await sendApplicationNeedsMoreInfoEmail(user.email!, user.displayName || 'Pilot', requiredInfo, `${BASE_URL}/dashboard`);
         return { success: true };
-    } catch (error: any) {
+    } catch (error) {
         console.error('Error sending needs more info email:', error);
-        return { success: false, error: error.message };
+        return { success: false, error: error instanceof Error ? error.message : String(error) };
     }
 }
 
@@ -430,9 +430,9 @@ export async function sendWelcomeEmailAction(email: string, name: string, dashbo
         const result = await sendWelcomeEmail(email, name, dashboardUrl);
         if (!result.success) throw new Error(result.error);
         return { success: true };
-    } catch (error: any) {
+    } catch (error) {
         console.error('Error sending welcome email:', error);
-        return { success: false, error: error.message };
+        return { success: false, error: error instanceof Error ? error.message : String(error) };
     }
 }
 
@@ -443,9 +443,9 @@ export async function sendPasswordChangedEmailAction(email: string, name: string
         const result = await sendPasswordChangedEmail(email, name, new Date().toISOString(), resetLink);
         if (!result.success) throw new Error(result.error);
         return { success: true };
-    } catch (error: any) {
+    } catch (error) {
         console.error('Error sending password changed email:', error);
-        return { success: false, error: error.message };
+        return { success: false, error: error instanceof Error ? error.message : String(error) };
     }
 }
 
@@ -490,8 +490,6 @@ export async function detectAndLinkDuplicateAccountsAction(idToken: string) {
             });
 
             // B. Relink Notifications
-            const notificationsRef = adminFirestore.collection('users').doc(oldUid).collection('notifications');
-            const userNotifications = await notificationsRef.get();
             // Move subcollection (requires more than just a batch update, but we'll focus on apps for now)
             // For notifications, we can just delete the old ones or move them if critical.
 
@@ -514,9 +512,9 @@ export async function detectAndLinkDuplicateAccountsAction(idToken: string) {
         await batch.commit();
 
         return { success: true, linked: true, count: oldUids.length };
-    } catch (error: any) {
+    } catch (error) {
         console.error('Account linking failed:', error);
-        return { success: false, error: error.message };
+        return { success: false, error: error instanceof Error ? error.message : String(error) };
     }
 }
 
@@ -537,7 +535,7 @@ export async function getCommunityStatsAction() {
                 totalPilots: usersSnapshot.data().count + offset,
             }
         };
-    } catch (error: any) {
+    } catch (error) {
         console.error('Failed to get community stats:', error);
         // Fallback stats in case of failure
         return {

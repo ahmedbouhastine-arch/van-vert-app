@@ -29,8 +29,8 @@ export async function sendApplicationReceivedEmail(
 
     console.log(`✅ Application received email sent successfully to ${toEmail}`);
     return { success: true, id: data?.id };
-  } catch (err: any) {
+  } catch (err) {
     console.error('❌ Error sending application received email:', err);
-    return { success: false, error: err.message || 'Internal error in email sender' };
+    return { success: false, error: err instanceof Error ? err.message : 'Internal error in email sender' };
   }
 }

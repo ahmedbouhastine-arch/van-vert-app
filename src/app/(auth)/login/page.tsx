@@ -14,7 +14,7 @@ import { LoadingScreen } from "@/components/LoadingScreen";
 import { Eye, EyeOff, Loader2, AtSign, Lock, ArrowLeft, Plane } from "lucide-react";
 import { signInWithGoogle } from "@/firebase/auth-actions";
 import { sendPasswordResetEmailAction } from '@/app/actions';
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import { PageTransition } from "@/components/PageTransition";
 import { BASE_URL } from "@/lib/utils";
 import {
@@ -59,9 +59,10 @@ const LoginPage = () => {
         
         try {
             await signInWithEmailAndPassword(auth, email, password);
-        } catch (error: any) {
+        } catch (error) {
           let description = "An unexpected error occurred. Please try again.";
-          if (['auth/invalid-credential', 'auth/user-not-found', 'auth/wrong-password'].includes(error.code)) {
+          if (error && typeof error === 'object' && 'code' in error &&
+              ['auth/invalid-credential', 'auth/user-not-found', 'auth/wrong-password'].includes(error.code as string)) {
             description = "Invalid email or password. Please try again.";
           }
           toast({
@@ -123,7 +124,8 @@ const LoginPage = () => {
                     description: result.error || 'Failed to send password reset email. Please try again.',
                 });
             }
-        } catch (error: any) {
+        } catch (error) {
+            console.error('Password reset error:', error);
             toast({
                 variant: 'destructive',
                 title: 'Error',
@@ -265,7 +267,7 @@ const LoginPage = () => {
            <DialogHeader>
              <DialogTitle className="text-2xl font-bold">Reset Password</DialogTitle>
              <DialogDescription className="text-slate-400">
-               We'll send you a secure link to reset your password.
+               We&apos;ll send you a secure link to reset your password.
              </DialogDescription>
            </DialogHeader>
            <form onSubmit={handlePasswordReset} className="space-y-4 pt-4">

@@ -29,7 +29,7 @@ export async function POST(request: Request) {
             const duplicateUsersQuery = await usersRef.where('email', '==', email).get();
 
             const oldUids: string[] = [];
-            duplicateUsersQuery.forEach((docSnapshot: any) => {
+            duplicateUsersQuery.forEach((docSnapshot) => {
                 if (docSnapshot.id !== newUid) {
                     oldUids.push(docSnapshot.id);
                 }
@@ -42,7 +42,7 @@ export async function POST(request: Request) {
                 for (const oldUid of oldUids) {
                     // Update applications to new UID
                     const userAppsQuery = await adminFirestore.collection('applications').where('userId', '==', oldUid).get();
-                    userAppsQuery.forEach((docSnapshot: any) => {
+                    userAppsQuery.forEach((docSnapshot) => {
                         batch.update(docSnapshot.ref, { userId: newUid, _migratedFrom: oldUid });
                     });
 

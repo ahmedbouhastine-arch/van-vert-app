@@ -88,7 +88,7 @@ export function useDoc<T = unknown>(
                         }
                         setError(null);
                     },
-                    (listenerError: FirestoreError) => {
+                    (_listenerError: FirestoreError) => {
                         // Handle errors on the real-time listener
                         const contextualError = new FirestorePermissionError({
                             operation: 'get', // Listening is a 'get' operation
@@ -101,7 +101,7 @@ export function useDoc<T = unknown>(
             } else {
                 setData(null); // Document does not exist.
             }
-        } catch (e) {
+        } catch {
             // Handle errors from the initial getDoc call
             const contextualError = new FirestorePermissionError({
                 operation: 'get',

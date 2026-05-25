@@ -23,8 +23,8 @@ export async function sendVerificationEmail(
 
     console.log(`✅ Verification email sent successfully to ${toEmail}`);
     return { success: true, id: data?.id };
-  } catch (err: any) {
+  } catch (err) {
     console.error('❌ Error sending verification email:', err);
-    return { success: false, error: err.message || 'Internal error in email sender' };
+    return { success: false, error: err instanceof Error ? err.message : 'Internal error in email sender' };
   }
 }

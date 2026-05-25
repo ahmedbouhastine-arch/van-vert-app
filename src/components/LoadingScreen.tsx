@@ -34,7 +34,7 @@ export function LoadingScreen({ text = "Loading..." }: { text?: string }) {
       
       // 4. Hard reload the window to the login page to guarantee a fresh state
       window.location.href = "/login";
-    } catch (error) {
+    } catch {
       window.location.href = "/login";
     }
   };

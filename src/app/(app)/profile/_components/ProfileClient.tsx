@@ -1,23 +1,21 @@
 'use client';
 
 import { LoadingScreen } from "@/components/LoadingScreen";
-import type { UserProfile, Application, FlightLog } from '@/types';
+import type { UserProfile, Application } from '@/types';
 import type { User as FirebaseUser } from 'firebase/auth';
-import type { DocumentData } from 'firebase/firestore';
 
 import { useState, useRef, useMemo } from 'react';
 import { useUser } from '@/firebase';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Separator } from '@/components/ui/separator';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Slider } from '@/components/ui/slider';
 import ReactCrop, { type Crop } from 'react-image-crop';
 import 'react-image-crop/dist/ReactCrop.css';
-import { Camera, RotateCcw, RotateCw, ZoomIn, ZoomOut, Save, Edit, Trash2, ShieldCheck, User as UserIcon, Plane, Lock, Loader2 } from 'lucide-react';
+import { Camera, RotateCcw, RotateCw, ZoomIn, ZoomOut, Save, Edit, Trash2, User as UserIcon, Lock, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { updateUserProfileAction, deleteUserAccountAction, uploadProfilePictureAction } from '@/app/actions';
 import { getAuth, signOut } from 'firebase/auth';
@@ -25,30 +23,8 @@ import { Badge } from '@/components/ui/badge';
 import { useRouter } from 'next/navigation';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
-const canvasPreview = (image: HTMLImageElement, canvas: HTMLCanvasElement, crop: Crop) => {
-    const ctx = canvas.getContext('2d');
-    if (!ctx) throw new Error('No 2d context');
 
-    const scaleX = image.naturalWidth / image.width;
-    const scaleY = image.naturalHeight / image.height;
-    
-    canvas.width = crop.width;
-    canvas.height = crop.height;
-
-    ctx.drawImage(
-        image,
-        crop.x * scaleX,
-        crop.y * scaleY,
-        crop.width * scaleX,
-        crop.height * scaleY,
-        0, 0,
-        crop.width,
-        crop.height
-    );
-};
-
-
-export function ProfileClient({ user: initialUser, claims, applications }: { user: FirebaseUser | null, claims: UserProfile | null, applications: Application[] }) {
+export function ProfileClient({ claims }: { user: FirebaseUser | null, claims: UserProfile | null, applications: Application[] }) {
   const { user, loading } = useUser();
   const { toast } = useToast();
   const router = useRouter();
@@ -75,9 +51,6 @@ export function ProfileClient({ user: initialUser, claims, applications }: { use
 
   const imgRef = useRef<HTMLImageElement>(null);
   const previewCanvasRef = useRef<HTMLCanvasElement>(null);
-
-  const totalFlightHours = applications?.reduce((sum: number, app: Application) => 
-    sum + (app.flightLogs?.reduce((logSum: number, log: FlightLog) => logSum + log.duration, 0) || 0), 0) || 0;
 
   // Date selection logic
   const days = Array.from({ length: 31 }, (_, i) => i + 1);
@@ -167,6 +140,8 @@ export function ProfileClient({ user: initialUser, claims, applications }: { use
     const formData = new FormData();
     formData.append('file', blob, 'profile-picture.png');
 
+    if (!user) { setIsUploading(false); return; }
+
     try {
         const idToken = await user.getIdToken();
         const { photoURL: newPhotoURL } = await uploadProfilePictureAction(formData, idToken);
@@ -186,7 +161,7 @@ export function ProfileClient({ user: initialUser, claims, applications }: { use
   const handleSaveSection = async (section: 'personal' | 'pilot') => {
       try {
           const idToken = await user!.getIdToken();
-          const { success, updatedData } = await updateUserProfileAction({
+          const { success } = await updateUserProfileAction({
               displayName: formData.displayName,
               birthDate: formData.birthDate,
           }, idToken);
@@ -198,7 +173,7 @@ export function ProfileClient({ user: initialUser, claims, applications }: { use
           } else {
               throw new Error("Update failed");
           }
-      } catch (error) {
+      } catch {
           toast({ variant: 'destructive', title: "Save Failed", description: "Could not update your profile." });
       }
   };
@@ -215,7 +190,7 @@ export function ProfileClient({ user: initialUser, claims, applications }: { use
         await signOut(getAuth());
         
         window.location.href = '/login';
-      } catch (error) {
+      } catch {
           toast({ variant: 'destructive', title: "Deletion Failed", description: "Could not delete your account." });
       } finally {
           setIsDeleting(false);
@@ -355,7 +330,8 @@ export function ProfileClient({ user: initialUser, claims, applications }: { use
                       aspect={1}
                       circularCrop
                   >
-                      {imgSrc && <img ref={imgRef} src={imgSrc} style={{ transform: `scale(${scale}) rotate(${rotate}deg)` }} alt="Crop me" />}
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      {imgSrc && <img ref={imgRef} src={imgSrc} style={{ transform: `scale(${scale}) rotate(${rotate}deg)` }} alt="Profile picture crop preview" />}
                   </ReactCrop>
                   <div className="grid grid-cols-2 gap-4 mt-4">
                       <div className="flex items-center gap-2"><ZoomOut className="h-5 w-5" /><Slider value={[scale]} onValueChange={([val]) => setScale(val)} min={0.5} max={2} step={0.1} /><ZoomIn className="h-5 w-5" /></div>

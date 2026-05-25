@@ -39,12 +39,12 @@ export default function VerifyEmailPage() {
         } else {
             throw new Error(result.error);
         }
-    } catch (error: any) {
+    } catch (error) {
         console.error("Resend failed:", error);
-        toast({ 
-            variant: "destructive", 
-            title: "Resend Failed", 
-            description: error.message || "Failed to resend verification email. Please try again later." 
+        toast({
+            variant: "destructive",
+            title: "Resend Failed",
+            description: error instanceof Error ? error.message : "Failed to resend verification email. Please try again later."
         });
     } finally {
         setIsResending(false);
@@ -105,10 +105,10 @@ export default function VerifyEmailPage() {
         </CardHeader>
         <CardContent className="text-center px-8 pb-10">
           <p className="mb-6 text-slate-300 leading-relaxed">
-            We've sent a verification email to <span className="font-bold text-blue-400">{user?.email}</span>. Please check your inbox and click the link to activate your account.
+            We&apos;ve sent a verification email to <span className="font-bold text-blue-400">{user?.email}</span>. Please check your inbox and click the link to activate your account.
           </p>
           <div className="p-4 rounded-2xl bg-white/5 border border-white/10 mb-8 text-sm text-slate-400 text-left">
-            <p className="font-medium text-slate-200 mb-1">Didn't get the email?</p>
+            <p className="font-medium text-slate-200 mb-1">Didn&apos;t get the email?</p>
             <ul className="list-disc pl-4 space-y-1">
                 <li>Check your spam or junk folder.</li>
                 <li>Verify your email address is correct.</li>

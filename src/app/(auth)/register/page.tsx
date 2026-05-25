@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { CheckCircle2, XCircle, Eye, EyeOff, Loader2, User as UserIcon, Plane, AtSign, Lock, ArrowLeft } from "lucide-react";
+import { CheckCircle2, Eye, EyeOff, Loader2, User as UserIcon, Plane, AtSign, Lock, ArrowLeft } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { getAuth, createUserWithEmailAndPassword, updateProfile, deleteUser } from "firebase/auth";
 import { useFirebaseApp, useFirestore, useUser } from "@/firebase";
@@ -15,7 +15,7 @@ import { GoogleIcon } from "@/components/GoogleIcon";
 import { LoadingScreen } from "@/components/LoadingScreen";
 import { signInWithGoogle } from "@/firebase/auth-actions";
 import * as serverActions from "@/app/actions";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import { PageTransition } from "@/components/PageTransition";
 import { BASE_URL } from "@/lib/utils";
 
@@ -99,9 +99,9 @@ export default function RegisterPage() {
                     throw dbError;
                 }
             })
-            .catch((error: any) => {
+            .catch((error) => {
               let description = 'An unexpected error occurred. Please try again.';
-              if (error.code === 'auth/email-already-in-use') {
+              if (error && typeof error === 'object' && 'code' in error && error.code === 'auth/email-already-in-use') {
                 description = 'Account already exists. Please log in.';
               }
               toast({
