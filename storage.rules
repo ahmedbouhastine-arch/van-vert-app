@@ -3,12 +3,12 @@ service firebase.storage {
   match /b/{bucket}/o {
     
     function getUserRole(userId) {
-      return get(/databases/$(database)/documents/users/$(userId)).data.role;
+      return get(/databases/(default)/documents/users/$(userId)).data.role;
     }
-    
+
     function isOwner(applicationId) {
       // Check that the requesting user's ID matches the userId field in the corresponding application document.
-      let appUserId = get(/databases/$(database)/documents/applications/$(applicationId)).data.userId;
+      let appUserId = get(/databases/(default)/documents/applications/$(applicationId)).data.userId;
       return request.auth.uid == appUserId;
     }
     
