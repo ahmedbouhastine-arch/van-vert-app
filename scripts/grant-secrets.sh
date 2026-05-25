@@ -14,7 +14,7 @@ secrets=(
 
 for secret in "${secrets[@]}"; do
   echo "Granting access to $secret..."
-  firebase apphosting:secrets:grantaccess "$secret" --backend "$BACKEND" --project "$PROJECT"
+  npx -y firebase-tools@latest apphosting:secrets:grantaccess "$secret" --backend "$BACKEND" --project "$PROJECT"
 done
 
 echo "All secrets granted successfully!"

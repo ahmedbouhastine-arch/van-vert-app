@@ -14,7 +14,7 @@ service cloud.firestore {
     // Users can create and update their own profile.
     // Head Admins can update any profile to change roles.
     match /users/{userId} {
-      allow read: if request.auth != null;
+      allow read: if request.auth != null && (request.auth.token.firebase.sign_in_provider != 'anonymous' || request.auth.uid == userId);
       allow create: if request.auth.uid == userId;
       allow update: if request.auth.uid == userId || getUserRole(request.auth.uid) == 'head-admin';
       allow delete: if false; // Deleting user profiles is disallowed.
@@ -69,36 +69,3 @@ service cloud.firestore {
   }
 }
 
-service firebase.storage {
-  match /b/{bucket}/o {
-    
-    function getUserRole(userId) {
-      return get(/databases/$(database)/documents/users/$(userId)).data.role;
-    }
-    
-    function isOwner(applicationId) {
-      // Check that the requesting user's ID matches the userId field in the corresponding application document.
-      let appUserId = get(/databases/$(database)/documents/applications/$(applicationId)).data.userId;
-      return request.auth.uid == appUserId;
-    }
-    
-    function isPrivileged() {
-      let userRole = getUserRole(request.auth.uid);
-      return userRole in ['reviewer', 'admin', 'head-admin'];
-    }
-
-    // Rule for profile pictures: users can write to their own picture path, anyone can read.
-    match /profile-pictures/{userId}/{allPaths=**} {
-      allow read: if request.auth != null;
-      allow write: if request.auth != null && request.auth.uid == userId;
-    }
-    
-    // Rule for application documents.
-    match /applications/{applicationId}/{allPaths=**} {
-      allow read: if request.auth != null && (isOwner(applicationId) || isPrivileged());
-      // Writes are handled by server-side actions which use service account credentials 
-      // and bypass these rules. Client-side writes are allowed if the user is the owner.
-      allow write: if request.auth != null && isOwner(applicationId);
-    }
-  }
-}

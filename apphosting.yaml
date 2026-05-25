@@ -3,7 +3,7 @@ runConfig:
 
 env:
   - variable: NEXT_PUBLIC_FIREBASE_API_KEY
-    value: "AIzaSyAYHlWqc5lF5dvxlNYs6k3Q3c_ukk4EyAQ"
+    secret: NEXT_PUBLIC_FIREBASE_API_KEY
     availability:
       - BUILD
       - RUNTIME
