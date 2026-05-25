@@ -1,0 +1,13 @@
+{
+  "recommendations": [
+    "dbaeumer.vscode-eslint",
+    "esbenp.prettier-vscode",
+    "bradlc.vscode-tailwindcss",
+    "toba.vsfire",
+    "csstools.postcss",
+    "formulahendry.auto-rename-tag",
+    "christian-kohler.path-intellisense",
+    "burkeholland.simple-react-snippets",
+    "usernamehw.errorlens"
+  ]
+}
