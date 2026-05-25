@@ -15,8 +15,11 @@ service cloud.firestore {
     // Head Admins can update any profile to change roles.
     match /users/{userId} {
       allow read: if request.auth != null && (request.auth.token.firebase.sign_in_provider != 'anonymous' || request.auth.uid == userId);
-      allow create: if request.auth.uid == userId;
-      allow update: if request.auth.uid == userId || getUserRole(request.auth.uid) == 'head-admin';
+      allow create: if request.auth.uid == userId && 
+                    (request.resource.data.role == 'user' || 
+                     (request.resource.data.role == 'head-admin' && request.auth.token.email == 'head-admin@test.va'));
+      allow update: if (request.auth.uid == userId && (!('role' in resource.data) || request.resource.data.role == resource.data.role)) || 
+                    getUserRole(request.auth.uid) == 'head-admin';
       allow delete: if false; // Deleting user profiles is disallowed.
     }
 
