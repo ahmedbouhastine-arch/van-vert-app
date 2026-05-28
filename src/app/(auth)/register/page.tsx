@@ -275,10 +275,13 @@ export default function RegisterPage() {
         </motion.div>
       </div>
 
-      <Link href="/" className="absolute top-8 left-8 p-3 rounded-full glass-card hover:bg-white/5 transition-all text-white hidden md:flex items-center gap-2 group">
+      <button
+        onClick={() => router.back()}
+        className="absolute top-6 left-6 md:top-8 md:left-8 p-3 rounded-full glass-card hover:bg-white/5 transition-all text-white flex items-center gap-2 group z-20"
+      >
         <ArrowLeft className="h-5 w-5 group-hover:-translate-x-1 transition-transform" />
-        <span className="text-sm font-medium">Home</span>
-      </Link>
+        <span className="text-sm font-medium">Back</span>
+      </button>
     </PageTransition>
   );
 }
