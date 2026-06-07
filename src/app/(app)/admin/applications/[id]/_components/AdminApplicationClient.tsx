@@ -4,15 +4,6 @@
 import { useState, useTransition, useEffect, useMemo, useCallback } from "react";
 import type { Application, ApplicationDocument, ApplicationStatus, UserProfile, DocumentStatus, FirebaseTimestamp, LogbookFormat, FlightLog } from "@/types";
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { StatusBadge, statusConfig } from "@/components/StatusBadge";
-import {
   Bot,
   Download,
   File as FileIcon,
@@ -37,10 +28,53 @@ import { cn } from "@/lib/utils";
 import { useFirestore, errorEmitter, FirestorePermissionError } from "@/firebase";
 import { doc, serverTimestamp, updateDoc, addDoc, collection } from "firebase/firestore";
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Badge } from "@/components/ui/badge";
-import { Progress } from "@/components/ui/progress";
+import { VvButton } from "@/components/vv/VvButton";
+import { VvStatusBadge, type VvStatusBadgeProps } from "@/components/vv/VvStatusBadge";
+import { VvTabs, type VvTabItem } from "@/components/vv/VvTabs";
+
+type VvBadgeStatus = NonNullable<VvStatusBadgeProps["status"]>;
+const APP_STATUS_TO_BADGE: Record<Application["status"], VvBadgeStatus> = {
+  draft: "draft",
+  submitted: "submitted",
+  in_review: "in-review",
+  needs_attention: "needs-attention",
+  approved: "ready",
+  rejected: "missing",
+};
+const APP_STATUS_LABEL: Record<Application["status"], string> = {
+  draft: "Draft",
+  submitted: "Submitted",
+  in_review: "In review",
+  needs_attention: "Needs attention",
+  approved: "Approved",
+  rejected: "Rejected",
+};
+const DOC_STATUS_TO_BADGE: Record<ApplicationDocument["status"], VvBadgeStatus> = {
+  missing: "missing",
+  uploaded: "submitted",
+  needs_attention: "needs-attention",
+  approved: "ready",
+  rejected: "missing",
+};
+const DOC_STATUS_LABEL: Record<ApplicationDocument["status"], string> = {
+  missing: "Missing",
+  uploaded: "Uploaded",
+  needs_attention: "Needs attention",
+  approved: "Approved",
+  rejected: "Rejected",
+};
+const DETAIL_TABS: VvTabItem[] = [
+  { id: "overview", label: "Overview" },
+  { id: "documents", label: "Documents" },
+  { id: "flightlogs", label: "Flight logs" },
+];
+const TYPE_PILL_CLASS: Record<string, string> = {
+  PIC: "border-[var(--sky)]/30 bg-[var(--sky-pale)] text-[var(--sky)]",
+  Solo: "border-[var(--status-ready)]/30 bg-[var(--status-ready)]/10 text-[var(--status-ready)]",
+  Dual: "border-[var(--status-attention)]/30 bg-[var(--status-attention)]/10 text-[var(--status-attention)]",
+  Unknown: "border-[var(--vv-border)] bg-[var(--surface)] text-[var(--text-secondary)]",
+};
 
 
 // Helper function to safely format dates, whether they are Timestamps or strings
@@ -99,37 +133,37 @@ function DocumentReviewCard({
   ];
 
   return (
-    <Card className="overflow-hidden h-full flex flex-col">
-      <CardHeader className="flex flex-row items-center justify-between gap-4 bg-muted/30 p-4 pb-2 border-b">
-        <div className="flex-1 min-w-0">
-          <CardTitle className="text-sm font-semibold truncate" title={doc.name}>{doc.name}</CardTitle>
+    <div className="flex h-full flex-col overflow-hidden rounded-xl border border-[var(--vv-border)] bg-white">
+      <div className="flex items-center justify-between gap-4 border-b border-[var(--vv-border-soft)] bg-[var(--surface)] p-4">
+        <div className="min-w-0 flex-1">
+          <p className="truncate font-outfit text-sm font-semibold text-[var(--navy)]" title={doc.name}>{doc.name}</p>
         </div>
-        <div className="flex-shrink-0">
-            {doc.status !== "missing" ? (
-                <StatusBadge status={doc.status} className="text-[10px] px-2 py-0.5 h-auto" />
-            ) : (
-                <Badge variant="outline" className="text-[10px] bg-red-50 text-red-700 border-red-200">Missing</Badge>
-            )}
+        <div className="shrink-0">
+            <VvStatusBadge status={DOC_STATUS_TO_BADGE[doc.status]} className="text-[10px]">{DOC_STATUS_LABEL[doc.status]}</VvStatusBadge>
         </div>
-      </CardHeader>
-      <CardContent className="p-4 pt-3 flex-1 flex flex-col gap-3">
-        <p className="text-xs text-muted-foreground line-clamp-2" title={doc.description}>{doc.description}</p>
-        
+      </div>
+      <div className="flex flex-1 flex-col gap-3 p-4">
+        <p className="line-clamp-2 text-xs text-[var(--text-muted)]" title={doc.description}>{doc.description}</p>
+
         {doc.status !== "missing" ? (
           <div className="mt-auto space-y-3">
-            <div className="flex items-center justify-between text-xs bg-muted/50 p-2 rounded-md">
-                <span className="flex items-center gap-1.5 text-muted-foreground truncate max-w-[120px]" title={doc.fileName}>
-                    <FileIcon className="h-3 w-3 flex-shrink-0" />
+            <div className="flex items-center justify-between rounded-md bg-[var(--surface)] p-2 text-xs">
+                <span className="flex max-w-[120px] items-center gap-1.5 truncate text-[var(--text-muted)]" title={doc.fileName}>
+                    <FileIcon className="h-3 w-3 shrink-0" />
                     <span className="truncate">{doc.fileName}</span>
                 </span>
-                <Button variant="ghost" size="icon" className="h-6 w-6 ml-2" onClick={() => doc.fileUrl && onDownload(doc.fileUrl)}>
+                <button
+                  type="button"
+                  className="ml-2 flex h-6 w-6 items-center justify-center rounded text-[var(--text-muted)] transition-colors hover:bg-white hover:text-[var(--sky)]"
+                  onClick={() => doc.fileUrl && onDownload(doc.fileUrl)}
+                >
                     <Download className="h-3 w-3" />
-                </Button>
+                </button>
             </div>
 
             {doc.requiresExpiry && (
-                <div className={cn("text-xs flex items-center justify-between p-2 rounded-md", 
-                    doc.isExpiringSoon ? "bg-orange-50 text-orange-800" : "bg-muted/50 text-muted-foreground")}>
+                <div className={cn("flex items-center justify-between rounded-md p-2 text-xs",
+                    doc.isExpiringSoon ? "bg-[var(--status-attention)]/10 text-[var(--status-attention)]" : "bg-[var(--surface)] text-[var(--text-muted)]")}>
                     <span className="flex items-center gap-1.5">
                         <Calendar className="h-3 w-3" />
                         <span>Expiry:</span>
@@ -138,19 +172,19 @@ function DocumentReviewCard({
                 </div>
             )}
 
-            <div className="pt-2 border-t">
-                <Label className="text-[10px] uppercase text-muted-foreground mb-1.5 block">Review Status</Label>
+            <div className="border-t border-[var(--vv-border-soft)] pt-2">
+                <Label className="mb-1.5 block text-[10px] uppercase tracking-wider text-[var(--text-muted)]">Review status</Label>
                 <Select
                     value={doc.status}
                     onValueChange={(val) => onStatusChange(doc.id, val as DocumentStatus)}
                 >
-                    <SelectTrigger className="h-8 text-xs">
+                    <SelectTrigger className="h-8 rounded-lg border-[var(--vv-border)] text-xs">
                         <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
                         {documentStatuses.map((s) => (
                             <SelectItem key={s} value={s} className="text-xs capitalize">
-                                {statusConfig[s].label}
+                                {DOC_STATUS_LABEL[s]}
                             </SelectItem>
                         ))}
                     </SelectContent>
@@ -158,12 +192,12 @@ function DocumentReviewCard({
             </div>
           </div>
         ) : (
-            <div className="mt-auto flex items-center justify-center h-24 bg-muted/20 rounded-md border border-dashed">
-                <p className="text-xs text-muted-foreground italic">No file uploaded</p>
+            <div className="mt-auto flex h-24 items-center justify-center rounded-md border border-dashed border-[var(--vv-border)] bg-[var(--surface)]">
+                <p className="text-xs italic text-[var(--text-muted)]">No file uploaded</p>
             </div>
         )}
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   );
 }
 
@@ -190,6 +224,7 @@ export function AdminApplicationClient({
   const [isPending, startTransition] = useTransition();
   const [recencyResult, setRecencyResult] = useState<CheckRecencyOutput | null>(null);
   const [isRecencyChecking, setIsRecencyChecking] = useState(true);
+  const [tab, setTab] = useState<"overview" | "documents" | "flightlogs">("overview");
   const { toast } = useToast();
   
   const firestore = useFirestore();
@@ -365,333 +400,324 @@ export function AdminApplicationClient({
   ];
 
   return (
-    <div className="min-h-screen bg-background pb-12">
+    <div className="pb-12">
         {/* Draft Banner */}
         {isDraft && (
-            <div className="bg-amber-100 border-b border-amber-200 text-amber-900 px-6 py-3 flex items-center justify-center gap-2 sticky top-0 z-10">
+            <div className="sticky top-0 z-10 flex items-center justify-center gap-2 border-b border-[var(--status-attention)]/30 bg-[var(--status-attention)]/10 px-6 py-3 text-[var(--status-attention)]">
                 <AlertTriangle className="h-5 w-5" />
                 <span className="font-medium">This application is currently a DRAFT and has not been submitted for review.</span>
             </div>
         )}
 
         {/* Hero Section */}
-        <div className="bg-muted/30 border-b px-6 py-8">
-            <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
+        <div className="overflow-hidden rounded-xl bg-[var(--navy)] p-7 text-white">
+            <div className="flex flex-col items-start justify-between gap-6 md:flex-row md:items-center">
                 <div className="flex items-center gap-4">
-                    <Avatar className="h-16 w-16 border-2 border-background shadow-sm">
+                    <Avatar className="h-16 w-16 border-2 border-white/20 shadow-sm">
                         <AvatarImage src={user?.photoURL} />
-                        <AvatarFallback className="text-lg bg-primary/10 text-primary">{user?.displayName?.charAt(0) || 'U'}</AvatarFallback>
+                        <AvatarFallback className="bg-white/10 text-lg text-white">{user?.displayName?.charAt(0) || 'U'}</AvatarFallback>
                     </Avatar>
                     <div>
-                        <h1 className="text-3xl font-bold tracking-tight text-foreground">{user?.displayName || 'Unknown Applicant'}</h1>
-                        <div className="flex items-center gap-2 text-muted-foreground mt-1 text-sm">
+                        <h1 className="font-outfit text-2xl font-bold tracking-tight text-white">{user?.displayName || 'Unknown Applicant'}</h1>
+                        <div className="mt-1 flex items-center gap-2 text-sm text-white/70">
                             <span>{user?.email}</span>
                             <span>•</span>
                             <span>Applied on {safeFormatDate(appState.createdAt, "PPP")}</span>
                         </div>
-                        <div className="flex items-center gap-2 mt-3">
-                            <Badge variant="outline" className="font-mono text-xs">{appState.licenseType}</Badge>
-                            <StatusBadge status={appState.status} className="px-2.5 py-0.5 text-xs" />
+                        <div className="mt-3 flex items-center gap-2">
+                            <span className="rounded-full border border-white/20 bg-white/10 px-2.5 py-1 font-mono text-xs text-white/90">{appState.licenseType}</span>
+                            <VvStatusBadge status={APP_STATUS_TO_BADGE[appState.status]} className="border border-white/20 bg-white/10 text-white [&>span]:bg-white">
+                                {APP_STATUS_LABEL[appState.status]}
+                            </VvStatusBadge>
                         </div>
                     </div>
                 </div>
-                
+
                 {!isDraft && (
-                    <div className="flex items-center gap-3 w-full md:w-auto">
-                        <div className="flex gap-2 w-full md:w-auto">
-                            <Button 
-                                variant="outline" 
-                                className="border-red-200 hover:bg-red-50 hover:text-red-700 text-red-600 flex-1 md:flex-none"
+                    <div className="flex w-full items-center gap-3 md:w-auto">
+                        <div className="flex w-full gap-2 md:w-auto">
+                            <VvButton
+                                variant="outline"
+                                className="flex-1 border-white/30 bg-transparent text-white hover:bg-white/10 md:flex-none"
                                 onClick={() => { setStatus('rejected'); handleSaveChanges(); }}
                                 disabled={isPending || !isAdminOrHigher}
                             >
-                                <X className="mr-2 h-4 w-4" /> Reject
-                            </Button>
-                            <Button 
-                                className="bg-green-600 hover:bg-green-700 text-white flex-1 md:flex-none"
+                                <X className="h-4 w-4" /> Reject
+                            </VvButton>
+                            <VvButton
+                                variant="sky"
+                                className="flex-1 md:flex-none"
                                 onClick={() => { setStatus('approved'); handleSaveChanges(); }}
                                 disabled={isPending || !isAdminOrHigher}
                             >
-                                <Check className="mr-2 h-4 w-4" /> Approve
-                            </Button>
+                                <Check className="h-4 w-4" /> Approve
+                            </VvButton>
                         </div>
                     </div>
                 )}
             </div>
         </div>
 
-        <div className="max-w-7xl mx-auto px-6 py-8 grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <div className="mt-8 grid grid-cols-1 gap-8 lg:grid-cols-3">
             {/* Main Content - Left Column */}
-            <div className="lg:col-span-2 space-y-8">
-                <Tabs defaultValue="overview" className="w-full">
-                    <TabsList className="grid w-full grid-cols-3 mb-6 bg-muted/50 p-1">
-                        <TabsTrigger value="overview">Overview</TabsTrigger>
-                        <TabsTrigger value="documents">Documents</TabsTrigger>
-                        <TabsTrigger value="flightlogs">Flight Logs</TabsTrigger>
-                    </TabsList>
+            <div className="space-y-6 lg:col-span-2">
+                <VvTabs tabs={DETAIL_TABS} value={tab} onChange={(id) => setTab(id as typeof tab)} />
 
-                    {/* Overview Tab */}
-                    <TabsContent value="overview" className="space-y-6 animate-in fade-in-50 duration-300">
+                {/* Overview Tab */}
+                {tab === "overview" && (
+                  <div className="space-y-6">
                         {/* Status & Feedback Card */}
-                        <Card>
-                            <CardHeader>
-                                <CardTitle className="text-lg">Application Status</CardTitle>
-                            </CardHeader>
-                            <CardContent className="space-y-4">
-                                <div className="grid sm:grid-cols-2 gap-4">
-                                    <div className="space-y-2">
-                                        <Label>Current Status</Label>
-                                        <Select value={status} onValueChange={(val) => setStatus(val as ApplicationStatus)} disabled={isDraft || !isAdminOrHigher}>
-                                            <SelectTrigger>
-                                                <SelectValue />
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                                <SelectItem value="draft" disabled>Draft</SelectItem>
-                                                <SelectItem value="submitted">Submitted</SelectItem>
-                                                <SelectItem value="in_review">In Review</SelectItem>
-                                                <SelectItem value="needs_attention">Needs Attention</SelectItem>
-                                                <SelectItem value="approved">Approved</SelectItem>
-                                                <SelectItem value="rejected">Rejected</SelectItem>
-                                            </SelectContent>
-                                        </Select>
-                                    </div>
-                                    <div className="space-y-2">
-                                        <Label>Last Updated</Label>
-                                        <div className="h-10 px-3 py-2 border rounded-md bg-muted/20 text-sm flex items-center text-muted-foreground">
-                                            {safeFormatDate(appState.updatedAt, "PPP p")}
-                                        </div>
+                        <div className="rounded-xl border border-[var(--vv-border)] bg-white p-6">
+                            <h3 className="font-outfit text-base font-semibold text-[var(--navy)]">Application status</h3>
+                            <div className="mt-4 grid gap-4 sm:grid-cols-2">
+                                <div className="space-y-1.5">
+                                    <Label className="text-[11px] font-semibold uppercase tracking-wider text-[var(--text-muted)]">Current status</Label>
+                                    <Select value={status} onValueChange={(val) => setStatus(val as ApplicationStatus)} disabled={isDraft || !isAdminOrHigher}>
+                                        <SelectTrigger className="rounded-lg border-[var(--vv-border)]">
+                                            <SelectValue />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="draft" disabled>Draft</SelectItem>
+                                            <SelectItem value="submitted">Submitted</SelectItem>
+                                            <SelectItem value="in_review">In Review</SelectItem>
+                                            <SelectItem value="needs_attention">Needs Attention</SelectItem>
+                                            <SelectItem value="approved">Approved</SelectItem>
+                                            <SelectItem value="rejected">Rejected</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                                <div className="space-y-1.5">
+                                    <Label className="text-[11px] font-semibold uppercase tracking-wider text-[var(--text-muted)]">Last updated</Label>
+                                    <div className="flex h-10 items-center rounded-lg border border-[var(--vv-border)] bg-[var(--surface)] px-3 text-sm text-[var(--text-secondary)]">
+                                        {safeFormatDate(appState.updatedAt, "PPP p")}
                                     </div>
                                 </div>
-                                <div className="space-y-2">
-                                    <Label>Internal Notes / Feedback</Label>
-                                    <Textarea 
-                                        placeholder="Add notes for other admins or feedback for the applicant..." 
-                                        className="min-h-[120px] resize-y"
-                                        value={feedback}
-                                        onChange={(e) => setFeedback(e.target.value)}
-                                        readOnly={!isAdminOrHigher}
-                                    />
-                                </div>
-                                <div className="flex justify-end pt-2">
-                                    <Button onClick={handleSaveChanges} disabled={isPending || !isAdminOrHigher} size="sm">
-                                        {isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-                                        Save Updates
-                                    </Button>
-                                </div>
-                            </CardContent>
-                        </Card>
+                            </div>
+                            <div className="mt-4 space-y-1.5">
+                                <Label className="text-[11px] font-semibold uppercase tracking-wider text-[var(--text-muted)]">Internal notes / feedback</Label>
+                                <Textarea
+                                    placeholder="Add notes for other admins or feedback for the applicant..."
+                                    className="min-h-[120px] resize-y rounded-lg border-[var(--vv-border)] focus-visible:ring-[var(--sky)]"
+                                    value={feedback}
+                                    onChange={(e) => setFeedback(e.target.value)}
+                                    readOnly={!isAdminOrHigher}
+                                />
+                            </div>
+                            <div className="mt-4 flex justify-end">
+                                <VvButton onClick={handleSaveChanges} disabled={isPending || !isAdminOrHigher} loading={isPending} size="sm">
+                                    <Save className="h-4 w-4" />
+                                    Save updates
+                                </VvButton>
+                            </div>
+                        </div>
 
                         {/* Requirements Checker */}
-                        <Card>
-                            <CardHeader>
-                                <CardTitle className="text-lg">Hour Requirements Check</CardTitle>
-                                <CardDescription>Quick verification of minimum flight hour requirements.</CardDescription>
-                            </CardHeader>
-                            <CardContent className="space-y-6">
+                        <div className="rounded-xl border border-[var(--vv-border)] bg-white p-6">
+                            <h3 className="font-outfit text-base font-semibold text-[var(--navy)]">Hour requirements check</h3>
+                            <p className="mt-1 text-[13px] text-[var(--text-muted)]">Quick verification of minimum flight hour requirements.</p>
+                            <div className="mt-5 space-y-5">
                                 {requirements.map((req, i) => {
                                     const percentage = Math.min(100, Math.round((req.current / req.target) * 100));
                                     const isMet = req.current >= req.target;
                                     return (
                                         <div key={i} className="space-y-2">
                                             <div className="flex justify-between text-sm">
-                                                <span className="font-medium">{req.label}</span>
-                                                <span className={cn(isMet ? "text-green-600 font-bold" : "text-muted-foreground")}>
+                                                <span className="font-medium text-[var(--navy)]">{req.label}</span>
+                                                <span className={cn(isMet ? "font-bold text-[var(--status-ready)]" : "text-[var(--text-muted)]")}>
                                                     {req.current.toFixed(1)} / {req.target} {req.unit}
                                                 </span>
                                             </div>
-                                            <Progress value={percentage} className={cn("h-2", isMet ? "[&>div]:bg-green-600" : "")} />
+                                            <div className="h-2 w-full overflow-hidden rounded-full bg-[var(--vv-border-soft)]">
+                                                <div
+                                                  className={cn("h-full rounded-full transition-[width]", isMet ? "bg-[var(--status-ready)]" : "bg-[var(--sky)]")}
+                                                  style={{ width: `${percentage}%` }}
+                                                />
+                                            </div>
                                         </div>
                                     )
                                 })}
-                            </CardContent>
-                        </Card>
-                        
+                            </div>
+                        </div>
+
                         {/* Recency Check */}
-                        <Card>
-                            <CardHeader>
-                                <CardTitle className="text-lg flex items-center justify-between">
-                                    AI Recency Verification
-                                    {recencyResult?.hasRecency && <Badge className="bg-green-100 text-green-800 hover:bg-green-100 border-green-200">Verified</Badge>}
-                                </CardTitle>
-                            </CardHeader>
-                            <CardContent>
+                        <div className="rounded-xl border border-[var(--vv-border)] bg-white p-6">
+                            <div className="flex items-center justify-between">
+                                <h3 className="font-outfit text-base font-semibold text-[var(--navy)]">AI recency verification</h3>
+                                {recencyResult?.hasRecency && (
+                                  <span className="rounded-full border border-[var(--status-ready)]/30 bg-[var(--status-ready)]/10 px-2.5 py-0.5 text-xs font-semibold text-[var(--status-ready)]">Verified</span>
+                                )}
+                            </div>
+                            <div className="mt-3">
                                 {isRecencyChecking ? (
-                                    <div className="flex items-center gap-2 text-sm text-muted-foreground py-2">
+                                    <div className="flex items-center gap-2 py-2 text-sm text-[var(--text-muted)]">
                                         <Loader2 className="h-4 w-4 animate-spin" /> Analyzing recent flights...
                                     </div>
                                 ) : recencyResult ? (
                                     <div className="space-y-2">
                                         <div className="flex items-center gap-2">
-                                            <Clock className={cn("h-5 w-5", recencyResult.hasRecency ? "text-green-600" : "text-amber-500")} />
-                                            <p className="text-sm font-medium">
-                                                {recencyResult.hasRecency 
-                                                    ? "Pilot meets the 6-month recency requirement." 
+                                            <Clock className={cn("h-5 w-5", recencyResult.hasRecency ? "text-[var(--status-ready)]" : "text-[var(--status-attention)]")} />
+                                            <p className="text-sm font-medium text-[var(--navy)]">
+                                                {recencyResult.hasRecency
+                                                    ? "Pilot meets the 6-month recency requirement."
                                                     : "Pilot does NOT meet the 6-month recency requirement."}
                                             </p>
                                         </div>
-                                        <p className="text-sm text-muted-foreground pl-7">
-                                            Total hours in last 6 months: <span className="font-semibold text-foreground">{recencyResult.totalHours.toFixed(1)}</span> (Min required: 15)
+                                        <p className="pl-7 text-sm text-[var(--text-muted)]">
+                                            Total hours in last 6 months: <span className="font-semibold text-[var(--navy)]">{recencyResult.totalHours.toFixed(1)}</span> (Min required: 15)
                                         </p>
                                     </div>
                                 ) : (
-                                    <p className="text-sm text-muted-foreground">No flight logs available to check.</p>
+                                    <p className="text-sm text-[var(--text-muted)]">No flight logs available to check.</p>
                                 )}
-                            </CardContent>
-                        </Card>
-                    </TabsContent>
+                            </div>
+                        </div>
+                    </div>
+                )}
 
                     {/* Documents Tab */}
-                    <TabsContent value="documents" className="space-y-6 animate-in fade-in-50 duration-300">
+                    {tab === "documents" && (
+                    <div className="space-y-6">
                         <div className="flex items-center justify-between">
-                            <h3 className="text-lg font-semibold">Submitted Documents ({appState.documents.filter(d => d.status !== 'missing').length}/{appState.documents.length})</h3>
-                            <Button variant="outline" size="sm" onClick={handleCheckExpiry} disabled={isPending}>
-                                <Bot className="mr-2 h-4 w-4 text-primary" />
-                                Run AI Expiry Check
-                            </Button>
+                            <h3 className="font-outfit text-base font-semibold text-[var(--navy)]">Submitted documents ({appState.documents.filter(d => d.status !== 'missing').length}/{appState.documents.length})</h3>
+                            <VvButton variant="outline" size="sm" onClick={handleCheckExpiry} disabled={isPending}>
+                                <Bot className="h-4 w-4 text-[var(--sky)]" />
+                                Run AI expiry check
+                            </VvButton>
                         </div>
                         
-                        <div className="grid sm:grid-cols-2 gap-4">
+                        <div className="grid gap-4 sm:grid-cols-2">
                             {appState.documents.filter(doc => doc.name !== "Detailed Logbook Summary").map((doc) => (
-                                <DocumentReviewCard 
-                                    key={doc.id} 
-                                    doc={doc} 
-                                    onStatusChange={handleDocumentStatusChange} 
-                                    onDownload={handleDownload} 
+                                <DocumentReviewCard
+                                    key={doc.id}
+                                    doc={doc}
+                                    onStatusChange={handleDocumentStatusChange}
+                                    onDownload={handleDownload}
                                 />
                             ))}
                         </div>
-                    </TabsContent>
+                    </div>
+                    )}
 
                     {/* Flight Logs Tab */}
-                    <TabsContent value="flightlogs" className="space-y-6 animate-in fade-in-50 duration-300">
-                        <Card>
-                            <CardHeader>
-                                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                                    <div>
-                                        <CardTitle className="text-lg">Digital Logbook</CardTitle>
-                                        <CardDescription className="mt-1">
-                                            Format Detected: <span className="font-medium text-foreground capitalize">{logbookFormatDescriptions[logbookFormat] || logbookFormat}</span>
-                                        </CardDescription>
-                                    </div>
-                                    <div className="flex items-center gap-4 bg-muted/40 p-2 rounded-lg border">
-                                        <div className="text-right">
-                                            <p className="text-xs text-muted-foreground uppercase font-semibold">Total Time</p>
-                                            <p className="text-xl font-bold">{totalFlightHours.toFixed(1)}h</p>
-                                        </div>
+                    {tab === "flightlogs" && (
+                    <div className="overflow-hidden rounded-xl border border-[var(--vv-border)] bg-white">
+                            <div className="flex flex-col gap-4 border-b border-[var(--vv-border-soft)] p-6 sm:flex-row sm:items-center sm:justify-between">
+                                <div>
+                                    <h3 className="font-outfit text-base font-semibold text-[var(--navy)]">Digital logbook</h3>
+                                    <p className="mt-1 text-[13px] text-[var(--text-muted)]">
+                                        Format detected: <span className="font-medium capitalize text-[var(--text-secondary)]">{logbookFormatDescriptions[logbookFormat] || logbookFormat}</span>
+                                    </p>
+                                </div>
+                                <div className="flex items-center gap-4 rounded-lg border border-[var(--vv-border)] bg-[var(--surface)] p-2.5">
+                                    <div className="text-right">
+                                        <p className="text-[10px] font-semibold uppercase tracking-wider text-[var(--text-muted)]">Total time</p>
+                                        <p className="font-outfit text-xl font-bold text-[var(--navy)]">{totalFlightHours.toFixed(1)}h</p>
                                     </div>
                                 </div>
-                            </CardHeader>
-                            <CardContent className="p-0">
-                                <div className="border-t">
-                                    <Table>
-                                        <TableHeader className="bg-muted/40">
+                            </div>
+                            <div>
+                                <Table>
+                                    <TableHeader className="bg-[var(--surface)]">
+                                        <TableRow className="border-[var(--vv-border-soft)] hover:bg-transparent">
+                                            <TableHead className="w-[120px] text-[var(--text-muted)]">Date</TableHead>
+                                            <TableHead className="text-[var(--text-muted)]">Aircraft</TableHead>
+                                            <TableHead className="text-[var(--text-muted)]">Type</TableHead>
+                                            <TableHead className="text-right text-[var(--text-muted)]">Duration</TableHead>
+                                        </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
+                                        {appState.flightLogs && appState.flightLogs.length > 0 ? (
+                                            appState.flightLogs.map(log => {
+                                                let logType = 'Unknown';
+                                                if (logbookFormat === 'typeA') {
+                                                    if ((log.pilotInCommand || 0) > 0) logType = 'PIC';
+                                                    else if ((log.solo || 0) > 0) logType = 'Solo';
+                                                    else if ((log.dualReceived || 0) > 0) logType = 'Dual';
+                                                } else if (logbookFormat === 'typeB') {
+                                                    if ((log.pilotInCommand || 0) > 0) logType = 'PIC';
+                                                    else if ((log.dualReceived || 0) > 0) logType = 'Dual';
+                                                } else {
+                                                    logType = log.flightType || 'Unknown';
+                                                }
+                                                const typeLabel = logType === 'PIC' ? `PIC${logbookFormat === 'typeB' ? ' (Incl. Solo)' : ''}` : logType;
+
+                                                return (
+                                                    <TableRow key={log.id} className="border-[var(--vv-border-soft)]">
+                                                        <TableCell className="font-medium text-[var(--navy)]">{safeFormatDate(log.date, 'MMM d, yyyy')}</TableCell>
+                                                        <TableCell className="text-[var(--text-secondary)]">{log.aircraft}</TableCell>
+                                                        <TableCell>
+                                                            <span className={cn("inline-flex rounded-full border px-2.5 py-0.5 text-xs font-medium", TYPE_PILL_CLASS[logType] ?? TYPE_PILL_CLASS.Unknown)}>
+                                                                {typeLabel}
+                                                            </span>
+                                                        </TableCell>
+                                                        <TableCell className="text-right font-mono text-[var(--navy)]">{log.duration.toFixed(1)}</TableCell>
+                                                    </TableRow>
+                                                )
+                                            })
+                                        ) : (
                                             <TableRow>
-                                                <TableHead className="w-[120px]">Date</TableHead>
-                                                <TableHead>Aircraft</TableHead>
-                                                <TableHead>Type</TableHead>
-                                                <TableHead className="text-right">Duration</TableHead>
+                                                <TableCell colSpan={4} className="h-32 text-center text-[var(--text-muted)]">
+                                                    No flight logs have been extracted or uploaded yet.
+                                                </TableCell>
                                             </TableRow>
-                                        </TableHeader>
-                                        <TableBody>
-                                            {appState.flightLogs && appState.flightLogs.length > 0 ? (
-                                                appState.flightLogs.map(log => {
-                                                    // Simple helper to determine badge
-                                                    let typeBadge = <Badge variant="outline" className="bg-gray-100">Unknown</Badge>;
-                                                    let logType = 'Unknown';
-                                                    if (logbookFormat === 'typeA') {
-                                                        if ((log.pilotInCommand || 0) > 0) logType = 'PIC';
-                                                        else if ((log.solo || 0) > 0) logType = 'Solo';
-                                                        else if ((log.dualReceived || 0) > 0) logType = 'Dual';
-                                                    } else if (logbookFormat === 'typeB') {
-                                                        if ((log.pilotInCommand || 0) > 0) logType = 'PIC';
-                                                        else if ((log.dualReceived || 0) > 0) logType = 'Dual';
-                                                    } else {
-                                                        logType = log.flightType || 'Unknown';
-                                                    }
-
-                                                    if (logType === 'PIC') typeBadge = <Badge className="bg-blue-100 text-blue-700 hover:bg-blue-100 border-blue-200">PIC {logbookFormat === 'typeB' ? '(Incl. Solo)' : ''}</Badge>;
-                                                    if (logType === 'Solo') typeBadge = <Badge className="bg-green-100 text-green-700 hover:bg-green-100 border-green-200">Solo</Badge>;
-                                                    if (logType === 'Dual') typeBadge = <Badge className="bg-orange-100 text-orange-700 hover:bg-orange-100 border-orange-200">Dual</Badge>;
-
-                                                    return (
-                                                        <TableRow key={log.id}>
-                                                            <TableCell className="font-medium">{safeFormatDate(log.date, 'MMM d, yyyy')}</TableCell>
-                                                            <TableCell>{log.aircraft}</TableCell>
-                                                            <TableCell>{typeBadge}</TableCell>
-                                                            <TableCell className="text-right font-mono">{log.duration.toFixed(1)}</TableCell>
-                                                        </TableRow>
-                                                    )
-                                                })
-                                            ) : (
-                                                <TableRow>
-                                                    <TableCell colSpan={4} className="h-32 text-center text-muted-foreground">
-                                                        No flight logs have been extracted or uploaded yet.
-                                                    </TableCell>
-                                                </TableRow>
-                                            )}
-                                        </TableBody>
-                                    </Table>
-                                </div>
-                            </CardContent>
-                        </Card>
-                    </TabsContent>
-                </Tabs>
+                                        )}
+                                    </TableBody>
+                                </Table>
+                            </div>
+                    </div>
+                    )}
             </div>
 
             {/* Sidebar - Right Column */}
             <div className="space-y-6">
                 {/* Activity Feed / Timeline placeholder */}
-                <Card>
-                    <CardHeader>
-                        <CardTitle className="text-sm uppercase text-muted-foreground">Application Activity</CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
+                <div className="rounded-xl border border-[var(--vv-border)] bg-white p-6">
+                    <h3 className="font-inter text-[11px] font-semibold uppercase tracking-[2.5px] text-[var(--text-muted)]">Application activity</h3>
+                    <div className="mt-4 space-y-4">
                         <div className="flex gap-3 text-sm">
-                            <div className="mt-1 bg-primary/20 p-1.5 rounded-full h-fit"><Info className="h-3 w-3 text-primary" /></div>
+                            <div className="mt-1 h-fit rounded-full bg-[var(--sky-pale)] p-1.5"><Info className="h-3 w-3 text-[var(--sky)]" /></div>
                             <div>
-                                <p className="font-medium">Application Updated</p>
-                                <p className="text-xs text-muted-foreground">{safeFormatDate(appState.updatedAt, "MMM d, h:mm a")}</p>
+                                <p className="font-medium text-[var(--navy)]">Application updated</p>
+                                <p className="text-xs text-[var(--text-muted)]">{safeFormatDate(appState.updatedAt, "MMM d, h:mm a")}</p>
                             </div>
                         </div>
                         {appState.submittedAt && (
                             <div className="flex gap-3 text-sm">
-                                <div className="mt-1 bg-green-100 p-1.5 rounded-full h-fit"><Check className="h-3 w-3 text-green-600" /></div>
+                                <div className="mt-1 h-fit rounded-full bg-[var(--status-ready)]/15 p-1.5"><Check className="h-3 w-3 text-[var(--status-ready)]" /></div>
                                 <div>
-                                    <p className="font-medium">Application Submitted</p>
-                                    <p className="text-xs text-muted-foreground">{safeFormatDate(appState.submittedAt, "MMM d, h:mm a")}</p>
+                                    <p className="font-medium text-[var(--navy)]">Application submitted</p>
+                                    <p className="text-xs text-[var(--text-muted)]">{safeFormatDate(appState.submittedAt, "MMM d, h:mm a")}</p>
                                 </div>
                             </div>
                         )}
                         <div className="flex gap-3 text-sm">
-                            <div className="mt-1 bg-muted p-1.5 rounded-full h-fit"><FileIcon className="h-3 w-3 text-muted-foreground" /></div>
+                            <div className="mt-1 h-fit rounded-full bg-[var(--surface)] p-1.5"><FileIcon className="h-3 w-3 text-[var(--text-muted)]" /></div>
                             <div>
-                                <p className="font-medium">Draft Created</p>
-                                <p className="text-xs text-muted-foreground">{safeFormatDate(appState.createdAt, "MMM d, h:mm a")}</p>
+                                <p className="font-medium text-[var(--navy)]">Draft created</p>
+                                <p className="text-xs text-[var(--text-muted)]">{safeFormatDate(appState.createdAt, "MMM d, h:mm a")}</p>
                             </div>
                         </div>
-                    </CardContent>
-                </Card>
+                    </div>
+                </div>
 
                 {/* Quick Info */}
-                <Card>
-                    <CardHeader>
-                        <CardTitle className="text-sm uppercase text-muted-foreground">Quick Info</CardTitle>
-                    </CardHeader>
-                    <CardContent className="text-sm space-y-3">
-                        <div className="flex justify-between py-1 border-b">
-                            <span className="text-muted-foreground">License Type</span>
-                            <span className="font-medium">{appState.licenseType}</span>
+                <div className="rounded-xl border border-[var(--vv-border)] bg-white p-6">
+                    <h3 className="font-inter text-[11px] font-semibold uppercase tracking-[2.5px] text-[var(--text-muted)]">Quick info</h3>
+                    <div className="mt-4 space-y-1 text-sm">
+                        <div className="flex justify-between border-b border-[var(--vv-border-soft)] py-2">
+                            <span className="text-[var(--text-muted)]">License type</span>
+                            <span className="font-medium text-[var(--navy)]">{appState.licenseType}</span>
                         </div>
-                        <div className="flex justify-between py-1 border-b">
-                            <span className="text-muted-foreground">Total Docs</span>
-                            <span className="font-medium">{appState.documents.length}</span>
+                        <div className="flex justify-between border-b border-[var(--vv-border-soft)] py-2">
+                            <span className="text-[var(--text-muted)]">Total docs</span>
+                            <span className="font-medium text-[var(--navy)]">{appState.documents.length}</span>
                         </div>
-                        <div className="flex justify-between py-1 border-b">
-                            <span className="text-muted-foreground">Flight Rows</span>
-                            <span className="font-medium">{appState.flightLogs?.length || 0}</span>
+                        <div className="flex justify-between py-2">
+                            <span className="text-[var(--text-muted)]">Flight rows</span>
+                            <span className="font-medium text-[var(--navy)]">{appState.flightLogs?.length || 0}</span>
                         </div>
-                    </CardContent>
-                </Card>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
