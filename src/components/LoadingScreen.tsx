@@ -4,7 +4,7 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Plane, LogOut } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { VvButton } from "@/components/vv/VvButton";
 import { getAuth, signOut } from "firebase/auth";
 
 export function LoadingScreen({ text = "Loading..." }: { text?: string }) {
@@ -40,24 +40,24 @@ export function LoadingScreen({ text = "Loading..." }: { text?: string }) {
   };
 
   return (
-    <div className="min-h-screen w-full flex flex-col items-center justify-center relative overflow-hidden bg-slate-950">
+    <div className="min-h-screen w-full flex flex-col items-center justify-center relative overflow-hidden bg-[var(--sky-mist)]">
       {/* Background Orbs */}
       <div className="absolute inset-0 z-0 flex items-center justify-center pointer-events-none">
-        <motion.div 
+        <motion.div
           animate={{
             scale: [1, 1.2, 1],
             opacity: [0.3, 0.5, 0.3],
           }}
           transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
-          className="absolute w-64 h-64 bg-primary/30 rounded-full blur-[80px]" 
+          className="absolute w-64 h-64 bg-[var(--sky)]/20 rounded-full blur-[80px]"
         />
-        <motion.div 
+        <motion.div
           animate={{
             scale: [1, 1.5, 1],
             opacity: [0.2, 0.4, 0.2],
           }}
           transition={{ duration: 4, repeat: Infinity, ease: "easeInOut", delay: 1 }}
-          className="absolute w-96 h-96 bg-blue-500/20 rounded-full blur-[100px]" 
+          className="absolute w-96 h-96 bg-[var(--navy)]/10 rounded-full blur-[100px]"
         />
       </div>
 
@@ -65,48 +65,48 @@ export function LoadingScreen({ text = "Loading..." }: { text?: string }) {
       <div className="z-10 flex flex-col items-center justify-center gap-8">
         <div className="relative flex h-28 w-28 items-center justify-center">
           {/* Outer Rotating Ring */}
-          <motion.div 
+          <motion.div
             animate={{ rotate: 360 }}
             transition={{ duration: 3, repeat: Infinity, ease: "linear" }}
-            className="absolute inset-0 rounded-full border border-white/10 border-t-primary border-r-primary shadow-[0_0_15px_rgba(59,130,246,0.5)]"
+            className="absolute inset-0 rounded-full border border-[var(--vv-border)] border-t-[var(--sky)] border-r-[var(--sky)] shadow-[0_0_15px_rgba(0,120,165,0.35)]"
           />
-          
+
           {/* Inner Pulsing Ring */}
-          <motion.div 
+          <motion.div
             animate={{ scale: [0.8, 1, 0.8], opacity: [0.5, 1, 0.5] }}
             transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
-            className="absolute inset-2 rounded-full border border-primary/30 bg-primary/5"
+            className="absolute inset-2 rounded-full border border-[var(--sky)]/30 bg-[var(--sky)]/5"
           />
 
           {/* Plane Icon */}
           <motion.div
-            animate={{ 
+            animate={{
               y: [-5, 5, -5],
               rotate: [-2, 2, -2]
             }}
             transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
           >
-            <Plane className="h-10 w-10 text-white drop-shadow-[0_0_8px_rgba(255,255,255,0.8)]" />
+            <Plane className="h-10 w-10 text-[var(--navy)] drop-shadow-[0_0_8px_rgba(0,45,120,0.25)]" />
           </motion.div>
         </div>
 
         {/* Loading Text */}
         <div className="flex flex-col items-center gap-4">
-          <motion.div 
+          <motion.div
              initial={{ opacity: 0, y: 10 }}
              animate={{ opacity: 1, y: 0 }}
              transition={{ duration: 0.5 }}
-             className="glass-card px-8 py-3 rounded-full border border-white/10"
+             className="rounded-full border border-[var(--vv-border)] bg-white px-8 py-3 shadow-sm"
           >
-            <motion.p 
+            <motion.p
               animate={{ opacity: [0.5, 1, 0.5] }}
               transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
-              className="text-sm font-semibold tracking-widest uppercase text-white"
+              className="text-sm font-semibold tracking-widest uppercase text-[var(--navy)]"
             >
               {text}
             </motion.p>
           </motion.div>
-          
+
           <AnimatePresence>
             {showForceSignOut && (
               <motion.div
@@ -115,14 +115,15 @@ export function LoadingScreen({ text = "Loading..." }: { text?: string }) {
                 exit={{ opacity: 0, scale: 0.95 }}
                 transition={{ duration: 0.4 }}
               >
-                <Button 
+                <VvButton
                   onClick={handleForceReset}
-                  variant="outline" 
-                  className="mt-4 bg-red-500/10 border-red-500/20 text-red-100 hover:bg-red-500/20 hover:text-white transition-all rounded-xl"
+                  variant="danger"
+                  size="sm"
+                  className="mt-4"
                 >
                   <LogOut className="h-4 w-4 mr-2" />
                   Taking too long? Force Sign Out
-                </Button>
+                </VvButton>
               </motion.div>
             )}
           </AnimatePresence>
