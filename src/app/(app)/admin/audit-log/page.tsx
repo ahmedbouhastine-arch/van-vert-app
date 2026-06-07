@@ -2,11 +2,11 @@
 'use client';
 
 import React from "react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { format } from "date-fns";
 import type { AuditLogEntry, FirebaseTimestamp } from "@/types";
 import { PageTransition } from "@/components/PageTransition";
+import { VvPageHeader } from "@/components/vv/VvPageHeader";
 
 // Helper function to safely format dates, whether they are Timestamps or strings
 const safeFormatDate = (date: FirebaseTimestamp | Date | string | undefined | null, formatString: string) => {
@@ -35,52 +35,51 @@ export default function AuditLogPage() {
     const auditLogs: AuditLogEntry[] = [];
 
     return (
-        <PageTransition className="flex flex-col gap-4">
-            <div className="flex flex-col gap-1">
-                <h1 className="text-3xl font-bold font-headline tracking-tight">Admin Audit Log</h1>
-                <p className="text-muted-foreground">A record of all significant actions performed by administrators.</p>
-            </div>
-            <Card>
-                <CardHeader>
-                    <CardTitle>Activity Log</CardTitle>
-                    <CardDescription>Actions are logged with the administrator&apos;s details and timestamp.</CardDescription>
-                </CardHeader>
-                <CardContent>
-                    <Table>
-                        <TableHeader>
-                            <TableRow>
-                                <TableHead>Admin</TableHead>
-                                <TableHead>Action</TableHead>
-                                <TableHead>Details</TableHead>
-                                <TableHead className="text-right">Timestamp</TableHead>
+        <PageTransition>
+            <VvPageHeader
+              kicker="Operations"
+              title="Admin Audit Log"
+              sub="A record of all significant actions performed by administrators."
+            />
+            <div className="rounded-xl border border-[var(--vv-border)] bg-white">
+                <div className="border-b border-[var(--vv-border-soft)] p-6">
+                    <h3 className="font-outfit text-base font-semibold text-[var(--navy)]">Activity log</h3>
+                    <p className="mt-0.5 text-[13px] text-[var(--text-muted)]">Actions are logged with the administrator&apos;s details and timestamp.</p>
+                </div>
+                <Table>
+                    <TableHeader className="bg-[var(--surface)]">
+                        <TableRow className="border-[var(--vv-border-soft)] hover:bg-transparent">
+                            <TableHead className="text-[var(--text-muted)]">Admin</TableHead>
+                            <TableHead className="text-[var(--text-muted)]">Action</TableHead>
+                            <TableHead className="text-[var(--text-muted)]">Details</TableHead>
+                            <TableHead className="text-right text-[var(--text-muted)]">Timestamp</TableHead>
+                        </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                        {auditLogs.length === 0 ? (
+                            <TableRow className="border-[var(--vv-border-soft)]">
+                                <TableCell colSpan={4} className="h-24 text-center text-[var(--text-muted)]">
+                                    No audit logs found.
+                                </TableCell>
                             </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                            {auditLogs.length === 0 ? (
-                                <TableRow>
-                                    <TableCell colSpan={4} className="h-24 text-center">
-                                        No audit logs found.
+                        ) : (
+                            auditLogs.map((log: AuditLogEntry) => (
+                                <TableRow key={log.id} className="border-[var(--vv-border-soft)]">
+                                    <TableCell>
+                                        <div className="font-outfit text-sm font-semibold text-[var(--navy)]">{log.adminName}</div>
+                                        <div className="text-xs text-[var(--text-muted)]">{log.adminEmail}</div>
+                                    </TableCell>
+                                    <TableCell className="text-[var(--text-secondary)]">{log.action}</TableCell>
+                                    <TableCell className="text-[var(--text-muted)]">{log.details || 'N/A'}</TableCell>
+                                    <TableCell className="text-right text-[var(--text-muted)]">
+                                        {safeFormatDate(log.timestamp, 'PPpp')}
                                     </TableCell>
                                 </TableRow>
-                            ) : (
-                                auditLogs.map((log: AuditLogEntry) => (
-                                    <TableRow key={log.id}>
-                                        <TableCell>
-                                            <div className="font-medium">{log.adminName}</div>
-                                            <div className="text-xs text-muted-foreground">{log.adminEmail}</div>
-                                        </TableCell>
-                                        <TableCell>{log.action}</TableCell>
-                                        <TableCell className="text-muted-foreground">{log.details || 'N/A'}</TableCell>
-                                        <TableCell className="text-right">
-                                            {safeFormatDate(log.timestamp, 'PPpp')}
-                                        </TableCell>
-                                    </TableRow>
-                                ))
-                            )}
-                        </TableBody>
-                    </Table>
-                </CardContent>
-            </Card>
+                            ))
+                        )}
+                    </TableBody>
+                </Table>
+            </div>
         </PageTransition>
     );
 }
