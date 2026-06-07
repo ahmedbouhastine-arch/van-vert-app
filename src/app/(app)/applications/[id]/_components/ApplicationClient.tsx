@@ -4,16 +4,10 @@
 import { useState, useTransition, useRef, useEffect, useMemo } from "react";
 import { getStorage, ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import type { Application, ApplicationDocument, FirebaseTimestamp, FlightLog } from "@/types";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-  CardFooter,
-} from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { StatusBadge } from "@/components/StatusBadge";
+import { VvButton } from "@/components/vv/VvButton";
+import { VvStatusBadge, type VvStatusBadgeProps } from "@/components/vv/VvStatusBadge";
+import { cn } from "@/lib/utils";
 import {
   AlertCircle,
   Bot,
@@ -30,7 +24,6 @@ import {
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { format } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
 import { checkRecency, type CheckRecencyOutput } from "@/ai/flows/check-recency";
@@ -38,7 +31,6 @@ import * as serverActions from '@/app/actions';
 import { useFirestore, errorEmitter, FirestorePermissionError, useAuth, useFirebaseApp } from "@/firebase";
 import { doc, serverTimestamp, updateDoc, collection, addDoc } from "firebase/firestore";
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge";
 import { v4 as uuidv4 } from 'uuid';
 
 // Upload limits
@@ -82,6 +74,33 @@ function getErrorMessage(err: unknown): string {
   return 'An unexpected error occurred';
 }
 
+type VvBadgeStatus = NonNullable<VvStatusBadgeProps["status"]>;
+
+const APP_STATUS_TO_BADGE: Record<Application["status"], VvBadgeStatus> = {
+  draft: "draft",
+  submitted: "submitted",
+  in_review: "in-review",
+  needs_attention: "needs-attention",
+  approved: "ready",
+  rejected: "missing",
+};
+
+const DOC_STATUS_TO_BADGE: Record<ApplicationDocument["status"], VvBadgeStatus> = {
+  missing: "missing",
+  uploaded: "submitted",
+  needs_attention: "needs-attention",
+  approved: "ready",
+  rejected: "missing",
+};
+
+const DOC_STATUS_LABEL: Record<ApplicationDocument["status"], string> = {
+  missing: "Missing",
+  uploaded: "Uploaded",
+  needs_attention: "Needs attention",
+  approved: "Approved",
+  rejected: "Rejected",
+};
+
 // Safe date formatter for flight logs
 function formatFlightDate(dateStr: string): string {
   if (dateStr.endsWith('-00')) {
@@ -121,37 +140,39 @@ function DocumentCard({
   const isExpiryCheckDisabled = isButtonDisabled || isCheckingExpiry;
 
   return (
-    <Card className="overflow-hidden">
-      <CardHeader className="flex flex-row items-start justify-between gap-4 bg-muted/50 p-4">
+    <div className="overflow-hidden rounded-xl border border-[var(--vv-border)] bg-white">
+      <div className="flex items-start justify-between gap-4 border-b border-[var(--vv-border-soft)] bg-[var(--surface)] p-4">
         <div>
-          <CardTitle className="text-base font-medium">{doc.name}</CardTitle>
-          <CardDescription className="text-xs mt-1">
-            {doc.description}
-          </CardDescription>
+          <h3 className="font-outfit text-[15px] font-semibold text-[var(--navy)]">{doc.name}</h3>
+          <p className="mt-1 text-xs text-[var(--text-muted)]">{doc.description}</p>
         </div>
-        <StatusBadge status={doc.status} />
-      </CardHeader>
-      <CardContent className="p-4 text-sm">
+        <VvStatusBadge status={DOC_STATUS_TO_BADGE[doc.status] ?? "missing"}>{DOC_STATUS_LABEL[doc.status] ?? doc.status}</VvStatusBadge>
+      </div>
+      <div className="p-4 text-sm">
         {doc.status === "missing" && (
-          <Button variant="outline" onClick={() => onUpload(doc.id)} disabled={isButtonDisabled}>
-            {isUploading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <UploadCloud className="mr-2 h-4 w-4" />}
-            {isUploading ? 'Uploading...' : 'Upload Document'}
-          </Button>
+          <VvButton variant="outline" size="sm" onClick={() => onUpload(doc.id)} disabled={isButtonDisabled} loading={isUploading}>
+            <UploadCloud className="h-3.5 w-3.5" />
+            {isUploading ? 'Uploading...' : 'Upload document'}
+          </VvButton>
         )}
         {doc.status !== "missing" && (
-          <div className="flex items-center gap-4 text-muted-foreground">
-            <FileIcon className="h-5 w-5" />
-            <span className="font-medium text-foreground truncate">{doc.fileName}</span>
-            <Button variant="link" size="sm" onClick={() => onUpload(doc.id)} disabled={isButtonDisabled}>
-              {isUploading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Replace'}
-            </Button>
+          <div className="flex items-center gap-3 text-[var(--text-secondary)]">
+            <FileIcon className="h-5 w-5 text-[var(--sky)]" />
+            <span className="truncate font-medium text-[var(--text-primary)]">{doc.fileName}</span>
+            <button
+              onClick={() => onUpload(doc.id)}
+              disabled={isButtonDisabled}
+              className="text-xs font-semibold text-[var(--sky)] hover:underline disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {isUploading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : 'Replace'}
+            </button>
           </div>
         )}
         {doc.requiresExpiry && (
           <div className="mt-4 space-y-2">
             <div className="grid w-full max-w-sm items-center gap-1.5">
-                <Label htmlFor={`expiry-${doc.id}`} className="text-xs">
-                Expiry Date
+                <Label htmlFor={`expiry-${doc.id}`} className="text-[11px] font-semibold uppercase tracking-wider text-[var(--text-muted)]">
+                Expiry date
                 </Label>
                 <div className="flex w-full max-w-sm items-center space-x-2">
                     <Input
@@ -160,6 +181,7 @@ function DocumentCard({
                     value={doc.expiryDate || ''}
                     onChange={(e) => onDateChange(doc.id, e.target.value)}
                     disabled={doc.status === "missing" || isSubmitted}
+                    className="rounded-lg border-[var(--vv-border)] focus-visible:ring-[var(--sky)]"
                     />
                     <Button
                         type="button"
@@ -168,30 +190,31 @@ function DocumentCard({
                         onClick={() => onClearDate(doc.id)}
                         disabled={doc.status === 'missing' || isSubmitted || !doc.expiryDate}
                         aria-label="Clear date"
+                        className="shrink-0 rounded-lg border-[var(--vv-border)]"
                     >
                         <X className="h-4 w-4" />
                     </Button>
                 </div>
             </div>
             {doc.status !== 'missing' && (
-                <Button variant="secondary" size="sm" onClick={() => onCheckExpiry(doc.id)} disabled={isExpiryCheckDisabled} className="w-full max-w-sm">
-                    {isCheckingExpiry ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Bot className="mr-2 h-4 w-4" />}
-                    AI Check Expiry
-                </Button>
+                <VvButton variant="outline" size="sm" onClick={() => onCheckExpiry(doc.id)} disabled={isExpiryCheckDisabled} loading={isCheckingExpiry} className="w-full max-w-sm justify-center">
+                    <Bot className="h-3.5 w-3.5" />
+                    AI check expiry
+                </VvButton>
             )}
           </div>
         )}
         {doc.isExpiringSoon && (
-            <Alert variant="destructive" className="mt-4 bg-orange-50 border-orange-200 text-orange-700 [&>svg]:text-orange-700">
-                <AlertCircle className="h-4 w-4" />
-                <AlertTitle className="font-semibold text-orange-800">Expiry Warning</AlertTitle>
-                <AlertDescription className="text-orange-700">
-                    This document is expiring soon. Please upload a renewed version.
-                </AlertDescription>
-            </Alert>
+            <div className="mt-4 flex items-start gap-3 rounded-lg border border-[var(--status-attention)]/30 bg-[var(--status-attention)]/10 p-3.5">
+                <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-[var(--status-attention)]" />
+                <div>
+                    <p className="text-sm font-semibold text-[var(--navy)]">Expiry warning</p>
+                    <p className="mt-0.5 text-sm text-[var(--text-secondary)]">This document is expiring soon. Please upload a renewed version.</p>
+                </div>
+            </div>
         )}
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   );
 }
 
@@ -684,25 +707,37 @@ export function ApplicationClient({
   const allDocsUploaded = appState.documents.every(doc => doc.status !== 'missing');
   const isSubmitted = appState.status !== 'draft';
 
+  const filterPillClass = (active: boolean) =>
+    cn(
+      "shrink-0 rounded-full border px-3.5 py-[7px] text-[13px] font-medium transition-colors",
+      active
+        ? "border-[var(--navy)] bg-[var(--navy)] text-white"
+        : "border-[var(--vv-border)] bg-white text-[var(--text-secondary)] hover:border-[var(--sky)]"
+    );
+
   return (
     <div className="grid gap-8">
       <input type="file" ref={fileInputRef} onChange={handleFileSelected} className="hidden" accept="image/png, image/jpeg, image/webp,application/pdf" />
       <input type="file" ref={logPdfInputRef} onChange={handleFlightLogUpload} accept="application/pdf" className="hidden" />
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <CardTitle className="text-2xl font-headline">{appState.licenseType}</CardTitle>
-            <StatusBadge status={appState.status} />
+
+      <div className="overflow-hidden rounded-xl bg-[var(--navy)] p-7 text-white">
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <div className="font-mono text-xs uppercase tracking-[2px] text-white/50">{appState.id}</div>
+            <h1 className="mt-1.5 font-outfit text-[26px] font-bold tracking-[-0.01em]">{appState.licenseType}</h1>
+            <p className="mt-1.5 text-sm text-white/60">
+              Last updated {safeFormatDate(appState.updatedAt, "MMM d, yyyy")}
+              {appState.submittedAt && ` · Submitted ${safeFormatDate(appState.submittedAt, "MMM d, yyyy")}`}
+            </p>
           </div>
-          <CardDescription>
-            Last updated on {safeFormatDate(appState.updatedAt, "MMMM d, yyyy")}
-            {appState.submittedAt && ` | Submitted on ${safeFormatDate(appState.submittedAt, "MMMM d, yyyy")}`}
-          </CardDescription>
-        </CardHeader>
-      </Card>
+          <VvStatusBadge status={APP_STATUS_TO_BADGE[appState.status] ?? "draft"} className="bg-white/10 text-white [&>span]:bg-white">
+            {appState.status.replace(/_/g, " ")}
+          </VvStatusBadge>
+        </div>
+      </div>
 
       <div className="grid gap-4">
-        <h2 className="font-semibold text-lg">Required Documents</h2>
+        <h2 className="font-outfit text-lg font-semibold text-[var(--navy)]">Required documents</h2>
         {appState.documents.filter(doc => doc.name !== "Detailed Logbook Summary").map((doc) => (
           <DocumentCard
             key={doc.id}
@@ -719,115 +754,97 @@ export function ApplicationClient({
       </div>
 
        {appState.feedback && (
-        <Alert>
-          <AlertCircle className="h-4 w-4" />
-          <AlertTitle>Feedback from Admin</AlertTitle>
-          <AlertDescription>{appState.feedback}</AlertDescription>
-        </Alert>
+        <div className="flex items-start gap-3 rounded-xl border border-[var(--status-attention)]/30 bg-[var(--status-attention)]/10 p-4">
+          <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-[var(--status-attention)]" />
+          <div>
+            <p className="text-sm font-semibold text-[var(--navy)]">Feedback from reviewer</p>
+            <p className="mt-0.5 text-sm leading-relaxed text-[var(--text-secondary)]">{appState.feedback}</p>
+          </div>
+        </div>
       )}
 
-      <Card>
-        <CardHeader>
-            <div className="flex items-start justify-between">
-                <div>
-                    <CardTitle>Flight Logs</CardTitle>
-                    <CardDescription>Upload a PDF of your flight logbook. The AI will extract recent flights automatically.</CardDescription>
-                </div>
-                <div className="flex flex-col items-end gap-2">
-                    {totalFlightHours > 0 && (
-                        <div className="text-right">
-                            <p className="text-3xl font-bold">{totalFlightHours.toFixed(2)}</p>
-                            <p className="text-sm text-muted-foreground">Total Hours</p>
-                        </div>
-                    )}
-                    <div className="flex gap-2">
-                        {appState.flightLogs && appState.flightLogs.length > 0 && !isReviewMode && (
-                            <Button onClick={handleRecalculateHours} variant="secondary" size="sm" className="mt-2">
-                                <RefreshCw className="mr-2 h-4 w-4" />
-                                Refresh Totals
-                            </Button>
-                        )}
-                         {appState.flightLogs && appState.flightLogs.length > 0 && !isSubmitted && !isReviewMode && (
-                             <Button onClick={handleToggleReviewMode} variant="outline" size="sm" className="mt-2">
-                                <Edit2 className="mr-2 h-4 w-4" />
-                                Review & Edit
-                            </Button>
-                        )}
+      <div className="overflow-hidden rounded-xl border border-[var(--vv-border)] bg-white">
+        <div className="flex items-start justify-between gap-4 p-6">
+            <div>
+                <h2 className="font-outfit text-lg font-semibold text-[var(--navy)]">Flight logs</h2>
+                <p className="mt-1 text-sm text-[var(--text-muted)]">Upload a PDF of your flight logbook. The AI will extract recent flights automatically.</p>
+            </div>
+            <div className="flex shrink-0 flex-col items-end gap-2">
+                {totalFlightHours > 0 && (
+                    <div className="text-right">
+                        <p className="font-outfit text-[28px] font-bold tracking-[-0.02em] text-[var(--navy)]">{totalFlightHours.toFixed(2)}</p>
+                        <p className="text-xs text-[var(--text-muted)]">Total hours</p>
                     </div>
+                )}
+                <div className="flex gap-2">
+                    {appState.flightLogs && appState.flightLogs.length > 0 && !isReviewMode && (
+                        <VvButton onClick={handleRecalculateHours} variant="outline" size="sm">
+                            <RefreshCw className="h-3.5 w-3.5" />
+                            Refresh totals
+                        </VvButton>
+                    )}
+                     {appState.flightLogs && appState.flightLogs.length > 0 && !isSubmitted && !isReviewMode && (
+                         <VvButton onClick={handleToggleReviewMode} variant="outline" size="sm">
+                            <Edit2 className="h-3.5 w-3.5" />
+                            Review & edit
+                        </VvButton>
+                    )}
                 </div>
             </div>
-        </CardHeader>
-        <CardContent>
+        </div>
+        <div className="border-t border-[var(--vv-border-soft)] p-6">
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
-                <Card className="bg-card text-card-foreground shadow-sm">
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Total Hours</CardTitle>
-                        <Loader2 className="h-4 w-4 text-muted-foreground" />
-                    </CardHeader>
-                    <CardContent>
-                        <div className="text-2xl font-bold">{totalFlightHours.toFixed(2)}</div>
-                    </CardContent>
-                </Card>
+                <div className="rounded-xl border border-[var(--vv-border)] bg-[var(--surface)] p-4">
+                    <div className="text-[11px] font-semibold uppercase tracking-wider text-[var(--text-muted)]">Total hours</div>
+                    <div className="mt-1.5 font-outfit text-2xl font-bold text-[var(--navy)]">{totalFlightHours.toFixed(2)}</div>
+                </div>
                 {logbookFormat !== 'simple' && (
                     <>
-                        <Card className="bg-card text-card-foreground shadow-sm border-green-500/30 bg-green-500/10">
-                            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                                <CardTitle className="text-sm font-medium">
-                                    {logbookFormat === 'typeB' ? 'PIC Hours (Incl. Solo)' : 'PIC Hours'}
-                                </CardTitle>
-                                <Bot className="h-4 w-4 text-muted-foreground" />
-                            </CardHeader>
-                            <CardContent>
-                                <div className="text-2xl font-bold text-green-400">{picHours.toFixed(2)}</div>
-                            </CardContent>
-                        </Card>
+                        <div className="rounded-xl border border-[var(--status-ready)]/25 bg-[var(--status-ready)]/10 p-4">
+                            <div className="text-[11px] font-semibold uppercase tracking-wider text-[var(--text-muted)]">
+                                {logbookFormat === 'typeB' ? 'PIC hours (incl. solo)' : 'PIC hours'}
+                            </div>
+                            <div className="mt-1.5 font-outfit text-2xl font-bold text-[var(--status-ready)]">{picHours.toFixed(2)}</div>
+                        </div>
                         {logbookFormat === 'typeA' && (
-                            <Card className="bg-card text-card-foreground shadow-sm border-purple-500/30 bg-purple-500/10">
-                                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                                    <CardTitle className="text-sm font-medium">Solo Hours</CardTitle>
-                                    <Bot className="h-4 w-4 text-muted-foreground" />
-                                </CardHeader>
-                                <CardContent>
-                                    <div className="text-2xl font-bold text-purple-400">{soloHours.toFixed(2)}</div>
-                                </CardContent>
-                            </Card>
+                            <div className="rounded-xl border border-[var(--sky)]/25 bg-[var(--sky-pale)] p-4">
+                                <div className="text-[11px] font-semibold uppercase tracking-wider text-[var(--text-muted)]">Solo hours</div>
+                                <div className="mt-1.5 font-outfit text-2xl font-bold text-[var(--sky)]">{soloHours.toFixed(2)}</div>
+                            </div>
                         )}
-                        <Card className="bg-card text-card-foreground shadow-sm border-blue-500/30 bg-blue-500/10">
-                            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                                <CardTitle className="text-sm font-medium">Dual Hours</CardTitle>
-                                <Bot className="h-4 w-4 text-muted-foreground" />
-                            </CardHeader>
-                            <CardContent>
-                                <div className="text-2xl font-bold text-blue-400">{dualHours.toFixed(2)}</div>
-                            </CardContent>
-                        </Card>
+                        <div className="rounded-xl border border-[var(--navy)]/15 bg-[var(--navy)]/5 p-4">
+                            <div className="text-[11px] font-semibold uppercase tracking-wider text-[var(--text-muted)]">Dual hours</div>
+                            <div className="mt-1.5 font-outfit text-2xl font-bold text-[var(--navy)]">{dualHours.toFixed(2)}</div>
+                        </div>
                     </>
                 )}
-                <Card className="bg-card text-card-foreground shadow-sm border-amber-500/30 bg-amber-500/10">
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Simulated Instrument</CardTitle>
-                        <Bot className="h-4 w-4 text-muted-foreground" />
-                    </CardHeader>
-                    <CardContent>
-                        <div className="text-2xl font-bold text-amber-400">{instrumentSimHours.toFixed(2)}</div>
-                    </CardContent>
-                </Card>
+                <div className="rounded-xl border border-[var(--status-attention)]/25 bg-[var(--status-attention)]/10 p-4">
+                    <div className="text-[11px] font-semibold uppercase tracking-wider text-[var(--text-muted)]">Simulated instrument</div>
+                    <div className="mt-1.5 font-outfit text-2xl font-bold text-[var(--status-attention)]">{instrumentSimHours.toFixed(2)}</div>
+                </div>
             </div>
 
             {isRecencyChecking ? (
-                <div className="flex items-center gap-2 text-muted-foreground mb-6">
-                    <Loader2 className="h-5 w-5 animate-spin" />
+                <div className="mb-6 flex items-center gap-2 text-sm text-[var(--text-muted)]">
+                    <Loader2 className="h-4 w-4 animate-spin" />
                     <span>AI is analyzing flight logs...</span>
                 </div>
             ) : recencyResult ? (
-                <div className={`p-4 rounded-md flex items-start gap-4 mb-6 ${recencyResult.hasRecency ? 'bg-green-50 border-green-200 text-green-800' : 'bg-red-50 border-red-200 text-red-800'}`}>
-                    {recencyResult.hasRecency ? <Check className="h-5 w-5 flex-shrink-0 mt-0.5" /> : <X className="h-5 w-5 flex-shrink-0 mt-0.5" />}
+                <div className={cn(
+                    "mb-6 flex items-start gap-3 rounded-xl border p-4",
+                    recencyResult.hasRecency
+                        ? "border-[var(--status-ready)]/25 bg-[var(--status-ready)]/10"
+                        : "border-[var(--status-missing)]/25 bg-[var(--status-missing)]/10"
+                )}>
+                    {recencyResult.hasRecency
+                        ? <Check className="mt-0.5 h-4 w-4 shrink-0 text-[var(--status-ready)]" />
+                        : <X className="mt-0.5 h-4 w-4 shrink-0 text-[var(--status-missing)]" />}
                     <div>
-                        <h4 className="font-semibold">
-                            {recencyResult.hasRecency ? 'Recency Requirement Met' : 'Recency Requirement Not Met'}
+                        <h4 className="text-sm font-semibold text-[var(--navy)]">
+                            {recencyResult.hasRecency ? 'Recency requirement met' : 'Recency requirement not met'}
                         </h4>
-                        <p className="text-sm">
-                            {recencyResult.hasRecency 
+                        <p className="mt-0.5 text-sm text-[var(--text-secondary)]">
+                            {recencyResult.hasRecency
                                 ? `You have logged ${recencyResult.totalHours} hours in the last 6 months.`
                                 : `Your logged flights are outside the 6-month window. Flights must be within the last 6 months to meet recency requirements.`}
                         </p>
@@ -840,155 +857,138 @@ export function ApplicationClient({
                     {!isReviewMode ? (
                         <>
                             <div className="flex items-center gap-2 mb-4 overflow-x-auto pb-2">
-                                <Button 
-                                    variant={selectedFlightTypeFilter === 'All' ? 'default' : 'outline'} 
-                                    size="sm" 
-                                    onClick={() => setSelectedFlightTypeFilter('All')}
-                                >
+                                <button className={filterPillClass(selectedFlightTypeFilter === 'All')} onClick={() => setSelectedFlightTypeFilter('All')}>
                                     All
-                                </Button>
+                                </button>
                                 {logbookFormat !== 'simple' && (
                                     <>
-                                        <Button 
-                                            variant={selectedFlightTypeFilter === 'Dual' ? 'default' : 'outline'} 
-                                            size="sm" 
-                                            onClick={() => setSelectedFlightTypeFilter('Dual')}
-                                        >
+                                        <button className={filterPillClass(selectedFlightTypeFilter === 'Dual')} onClick={() => setSelectedFlightTypeFilter('Dual')}>
                                             Dual
-                                        </Button>
-                                        <Button 
-                                            variant={selectedFlightTypeFilter === 'PIC' ? 'default' : 'outline'} 
-                                            size="sm" 
-                                            onClick={() => setSelectedFlightTypeFilter('PIC')}
-                                        >
+                                        </button>
+                                        <button className={filterPillClass(selectedFlightTypeFilter === 'PIC')} onClick={() => setSelectedFlightTypeFilter('PIC')}>
                                             {logbookFormat === 'typeB' ? 'PIC (Incl. Solo)' : 'PIC'}
-                                        </Button>
+                                        </button>
                                         {logbookFormat === 'typeA' && (
-                                            <Button 
-                                                variant={selectedFlightTypeFilter === 'Solo' ? 'default' : 'outline'} 
-                                                size="sm" 
-                                                onClick={() => setSelectedFlightTypeFilter('Solo')}
-                                            >
+                                            <button className={filterPillClass(selectedFlightTypeFilter === 'Solo')} onClick={() => setSelectedFlightTypeFilter('Solo')}>
                                                 Solo
-                                            </Button>
+                                            </button>
                                         )}
                                     </>
                                 )}
-                                <Button 
-                                    variant={selectedFlightTypeFilter === 'Instrument' ? 'default' : 'outline'} 
-                                    size="sm" 
-                                    onClick={() => setSelectedFlightTypeFilter('Instrument')}
-                                >
+                                <button className={filterPillClass(selectedFlightTypeFilter === 'Instrument')} onClick={() => setSelectedFlightTypeFilter('Instrument')}>
                                     Instrument
-                                </Button>
+                                </button>
                             </div>
 
-                            <div className="mb-4 text-sm text-muted-foreground">
+                            <div className="mb-4 text-sm text-[var(--text-muted)]">
                                 Showing {Math.min((currentPage - 1) * ITEMS_PER_PAGE + 1, totalFilteredFlights)}-{Math.min(currentPage * ITEMS_PER_PAGE, totalFilteredFlights)} of {totalFilteredFlights} flights
                             </div>
                             
-                            <div className="space-y-3">
+                            <div className="space-y-2.5">
                                 {paginatedFlights.length > 0 ? (
                                     paginatedFlights.map((log, index) => (
-                                        <Card key={log.id} className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                                        <div key={log.id} className="flex flex-col gap-3 rounded-xl border border-[var(--vv-border)] bg-white p-4 sm:flex-row sm:items-center sm:justify-between">
                                             <div className="flex items-center gap-4">
-                                                <div className="text-sm font-bold text-muted-foreground w-8 shrink-0">
+                                                <div className="w-8 shrink-0 text-sm font-bold text-[var(--text-muted)]">
                                                     #{((currentPage - 1) * ITEMS_PER_PAGE) + index + 1}
                                                 </div>
                                                 <div>
-                                                    <div className="font-medium text-base">{formatFlightDate(log.date)}</div>
-                                                    <div className="text-sm text-muted-foreground">{log.aircraft}</div>
+                                                    <div className="text-[15px] font-medium text-[var(--text-primary)]">{formatFlightDate(log.date)}</div>
+                                                    <div className="text-sm text-[var(--text-muted)]">{log.aircraft}</div>
                                                 </div>
                                             </div>
-                                            <div className="flex flex-wrap gap-2 justify-end">
+                                            <div className="flex flex-wrap justify-end gap-2">
                                                 {logbookFormat === 'typeA' && (
                                                     <>
                                                         {(log.dualReceived || 0) > 0 && (
-                                                            <Badge variant="outline" className="bg-blue-500/20 text-blue-400 border-blue-500/30">
+                                                            <span className="rounded-full border border-[var(--sky)]/25 bg-[var(--sky-pale)] px-2.5 py-1 text-xs font-medium text-[var(--sky)]">
                                                                 DUAL {log.dualReceived?.toFixed(2)}h
-                                                            </Badge>
+                                                            </span>
                                                         )}
                                                         {(log.pilotInCommand || 0) > 0 && (
-                                                            <Badge variant="outline" className="bg-green-500/20 text-green-400 border-green-500/30">
+                                                            <span className="rounded-full border border-[var(--status-ready)]/25 bg-[var(--status-ready)]/10 px-2.5 py-1 text-xs font-medium text-[var(--status-ready)]">
                                                                 PIC {log.pilotInCommand?.toFixed(2)}h
-                                                            </Badge>
+                                                            </span>
                                                         )}
                                                         {(log.solo || 0) > 0 && (
-                                                            <Badge variant="outline" className="bg-purple-500/20 text-purple-400 border-purple-500/30">
+                                                            <span className="rounded-full border border-[var(--navy)]/15 bg-[var(--navy)]/5 px-2.5 py-1 text-xs font-medium text-[var(--navy)]">
                                                                 SOLO {log.solo?.toFixed(2)}h
-                                                            </Badge>
+                                                            </span>
                                                         )}
                                                     </>
                                                 )}
                                                 {logbookFormat === 'typeB' && (
                                                     <>
                                                         {(log.dualReceived || 0) > 0 && (
-                                                            <Badge variant="outline" className="bg-blue-500/20 text-blue-400 border-blue-500/30">
+                                                            <span className="rounded-full border border-[var(--sky)]/25 bg-[var(--sky-pale)] px-2.5 py-1 text-xs font-medium text-[var(--sky)]">
                                                                 DUAL {log.dualReceived?.toFixed(2)}h
-                                                            </Badge>
+                                                            </span>
                                                         )}
                                                         {(log.pilotInCommand || 0) > 0 && (
-                                                            <Badge variant="outline" className="bg-green-500/20 text-green-400 border-green-500/30">
+                                                            <span className="rounded-full border border-[var(--status-ready)]/25 bg-[var(--status-ready)]/10 px-2.5 py-1 text-xs font-medium text-[var(--status-ready)]">
                                                                 PIC (INCL. SOLO) {log.pilotInCommand?.toFixed(2)}h
-                                                            </Badge>
+                                                            </span>
                                                         )}
                                                     </>
                                                 )}
                                                 {logbookFormat === 'simple' && (
-                                                    <Badge variant="outline" className="bg-slate-500/20 text-slate-400 border-slate-500/30">
+                                                    <span className="rounded-full border border-[var(--vv-border)] bg-[var(--surface)] px-2.5 py-1 text-xs font-medium text-[var(--text-secondary)]">
                                                         FLIGHT {log.duration.toFixed(2)}h
-                                                    </Badge>
+                                                    </span>
                                                 )}
                                                 {(log.instrumentSimulatedHours || 0) > 0 && (
-                                                    <Badge variant="outline" className="bg-amber-500/20 text-amber-400 border-amber-500/30">
+                                                    <span className="rounded-full border border-[var(--status-attention)]/25 bg-[var(--status-attention)]/10 px-2.5 py-1 text-xs font-medium text-[var(--status-attention)]">
                                                         INSTRUMENT {log.instrumentSimulatedHours?.toFixed(2)}h
-                                                    </Badge>
+                                                    </span>
                                                 )}
                                             </div>
-                                        </Card>
+                                        </div>
                                     ))
                                 ) : (
-                                    <div className="text-center py-8 text-muted-foreground border rounded-lg border-dashed">
+                                    <div className="rounded-xl border border-dashed border-[var(--vv-border)] py-8 text-center text-sm text-[var(--text-muted)]">
                                         No flight logs have been extracted yet or match the current filter.
                                     </div>
                                 )}
                             </div>
 
-                            <div className="flex items-center justify-end space-x-2 py-4">
-                                <Button
+                            <div className="flex items-center justify-end gap-2 py-4">
+                                <VvButton
                                     variant="outline"
                                     size="sm"
                                     onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
                                     disabled={currentPage === 1}
                                 >
-                                    <ChevronLeft className="h-4 w-4 mr-2" />Previous
-                                </Button>
-                                <div className="flex items-center space-x-1">
+                                    <ChevronLeft className="h-3.5 w-3.5" />Previous
+                                </VvButton>
+                                <div className="flex items-center gap-1">
                                     {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
-                                        <Button
+                                        <button
                                             key={page}
-                                            variant={currentPage === page ? "secondary" : "outline"}
-                                            size="sm"
                                             onClick={() => setCurrentPage(page)}
-                                            className={currentPage === page ? "bg-primary text-primary-foreground" : ""}
+                                            className={cn(
+                                                "h-8 w-8 rounded-lg text-[13px] font-medium transition-colors",
+                                                currentPage === page
+                                                    ? "bg-[var(--navy)] text-white"
+                                                    : "border border-[var(--vv-border)] bg-white text-[var(--text-secondary)] hover:border-[var(--sky)]"
+                                            )}
                                         >
                                             {page}
-                                        </Button>
+                                        </button>
                                     ))}
                                 </div>
-                                <Button
+                                <VvButton
                                     variant="outline"
                                     size="sm"
                                     onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
                                     disabled={currentPage === totalPages}
                                 >
-                                    Next<ChevronRight className="h-4 w-4 ml-2" />
-                                </Button>
+                                    Next<ChevronRight className="h-3.5 w-3.5" />
+                                </VvButton>
                             </div>
                         </>
                     ) : (
                         <div className="space-y-4">
-                            <div className="border rounded-md overflow-x-auto">
+                            <div className="overflow-x-auto rounded-xl border border-[var(--vv-border)]">
                                 <Table>
                                     <TableHeader>
                                         <TableRow>
@@ -1053,7 +1053,7 @@ export function ApplicationClient({
                                                     />
                                                 </TableCell>
                                                 <TableCell className="p-2">
-                                                    <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive" onClick={() => handleRemoveEditableFlight(log.id)}>
+                                                    <Button variant="ghost" size="icon" className="h-8 w-8 text-[var(--status-missing)] hover:bg-[var(--status-missing)]/10 hover:text-[var(--status-missing)]" onClick={() => handleRemoveEditableFlight(log.id)}>
                                                         <Trash2 className="h-4 w-4" />
                                                     </Button>
                                                 </TableCell>
@@ -1062,61 +1062,61 @@ export function ApplicationClient({
                                     </TableBody>
                                 </Table>
                             </div>
-                            <Button variant="outline" size="sm" onClick={handleAddEditableFlight} className="w-full border-dashed">
-                                <Plus className="mr-2 h-4 w-4" /> Add Flight Row
-                            </Button>
-                            <div className="flex justify-end gap-2 pt-4 border-t">
-                                <Button variant="outline" onClick={handleToggleReviewMode} disabled={isSavingLogs}>
+                            <VvButton variant="outline" size="sm" onClick={handleAddEditableFlight} className="w-full justify-center border-dashed">
+                                <Plus className="h-3.5 w-3.5" /> Add flight row
+                            </VvButton>
+                            <div className="flex justify-end gap-2 border-t border-[var(--vv-border-soft)] pt-4">
+                                <VvButton variant="outline" onClick={handleToggleReviewMode} disabled={isSavingLogs}>
                                     Cancel
-                                </Button>
-                                <Button onClick={handleSaveReviewChanges} disabled={isSavingLogs}>
-                                    {isSavingLogs ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-                                    Save Changes
-                                </Button>
+                                </VvButton>
+                                <VvButton onClick={handleSaveReviewChanges} disabled={isSavingLogs} loading={isSavingLogs}>
+                                    <Save className="h-3.5 w-3.5" />
+                                    Save changes
+                                </VvButton>
                             </div>
                         </div>
                     )}
                 </div>
             )}
-        </CardContent>
-        <CardFooter className="flex items-center gap-2 border-t pt-6">
-            <Button
+        </div>
+        <div className="flex items-center gap-2 border-t border-[var(--vv-border-soft)] p-6">
+            <VvButton
                 variant="outline"
                 onClick={() => logPdfInputRef.current?.click()}
                 disabled={isSubmitted || isUploadingLog}
+                loading={isUploadingLog}
             >
-                {isUploadingLog ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <UploadCloud className="mr-2 h-4 w-4" />}
-                {appState.flightLogPdfUrl ? 'Replace PDF' : 'Upload Log PDF'}
-            </Button>
+                <UploadCloud className="h-3.5 w-3.5" />
+                {appState.flightLogPdfUrl ? 'Replace PDF' : 'Upload log PDF'}
+            </VvButton>
             {appState.flightLogPdfUrl && (
-                <Button variant="secondary" onClick={handleDownloadLogPdf} disabled={isUploadingLog}>
-                    <Download className="mr-2 h-4 w-4" /> Download PDF
-                </Button>
+                <VvButton variant="ghost" onClick={handleDownloadLogPdf} disabled={isUploadingLog}>
+                    <Download className="h-3.5 w-3.5" /> Download PDF
+                </VvButton>
             )}
-        </CardFooter>
-      </Card>
+        </div>
+      </div>
 
-
-      <Card>
-        <CardHeader>
-            <CardTitle>Next Steps</CardTitle>
-        </CardHeader>
-        <CardContent className="grid sm:grid-cols-2 gap-4">
-            <Button onClick={handleSaveDraft} disabled={isPending || isSubmitted} variant="outline">
-                {isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-                Save Draft
-            </Button>
-            <Button onClick={handleSubmit} disabled={!allDocsUploaded || isSubmitted || isPending} className="sm:col-start-2">
-                <Check className="mr-2 h-4 w-4" /> 
-                {isSubmitted ? 'Submitted' : 'Submit Application'}
-            </Button>
-        </CardContent>
+      <div className="overflow-hidden rounded-xl border border-[var(--vv-border)] bg-white">
+        <div className="p-6">
+            <h2 className="font-outfit text-lg font-semibold text-[var(--navy)]">Next steps</h2>
+        </div>
+        <div className="grid gap-4 px-6 pb-6 sm:grid-cols-2">
+            <VvButton onClick={handleSaveDraft} disabled={isPending || isSubmitted} loading={isPending} variant="outline" className="justify-center">
+                <Save className="h-3.5 w-3.5" />
+                Save draft
+            </VvButton>
+            <VvButton onClick={handleSubmit} disabled={!allDocsUploaded || isSubmitted || isPending} loading={isPending} className="justify-center sm:col-start-2">
+                <Check className="h-3.5 w-3.5" />
+                {isSubmitted ? 'Submitted' : 'Submit application'}
+            </VvButton>
+        </div>
         {!allDocsUploaded && !isSubmitted && (
-             <CardFooter>
-                 <p className="text-sm text-muted-foreground">You must upload all required documents before submitting.</p>
-            </CardFooter>
+             <div className="border-t border-[var(--vv-border-soft)] px-6 py-4">
+                 <p className="text-sm text-[var(--text-muted)]">You must upload all required documents before submitting.</p>
+            </div>
         )}
-      </Card>
+      </div>
     </div>
   );
 }
