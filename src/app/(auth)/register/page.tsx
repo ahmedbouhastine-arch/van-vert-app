@@ -223,11 +223,11 @@ export default function RegisterPage() {
                 {validatedRequirements.map(req => (
                   <div key={req.id} className="flex items-center gap-1.5">
                     {req.isValid ? (
-                      <CheckCircle2 className="h-3.5 w-3.5 text-status-ready" />
+                      <CheckCircle2 className="h-3.5 w-3.5 text-status-ready-text" />
                     ) : (
                       <span className="h-3.5 w-3.5 rounded-full border border-vv-border" />
                     )}
-                    <span className={`text-[11px] font-medium uppercase tracking-wider ${req.isValid ? 'text-status-ready' : 'text-text-muted'}`}>
+                    <span className={`text-[11px] font-medium uppercase tracking-wider ${req.isValid ? 'text-status-ready-text' : 'text-text-muted'}`}>
                       {req.text}
                     </span>
                   </div>
