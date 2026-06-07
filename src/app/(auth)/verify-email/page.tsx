@@ -1,15 +1,25 @@
 'use client';
 
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useUser, useAuth } from '@/firebase';
 import { useEffect, useState } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, MailCheck, LogOut } from 'lucide-react';
+import { ArrowLeft, Loader2, LogOut, Mail } from 'lucide-react';
 import { signOut } from 'firebase/auth';
 import * as serverActions from '@/app/actions';
-import { PageTransition } from "@/components/PageTransition";
+import { LoadingScreen } from '@/components/LoadingScreen';
+import { VvButton } from '@/components/vv/VvButton';
+import { VvCard } from '@/components/vv/VvCard';
+
+function Logo() {
+  return (
+    <span className="font-outfit text-2xl font-bold tracking-tight">
+      <span className="text-navy">Van-</span>
+      <span className="text-sky">Vert</span>
+    </span>
+  );
+}
 
 export default function VerifyEmailPage() {
   const { user, loading } = useUser();
@@ -27,14 +37,14 @@ export default function VerifyEmailPage() {
 
   const handleResendVerification = async () => {
     if (!user || !user.email) return;
-    
+
     setIsResending(true);
     try {
         const result = await serverActions.sendVerificationEmailAction(user.email);
         if (result.success) {
-            toast({ 
-                title: "Verification Email Sent", 
-                description: "A new verification link has been sent to your email address." 
+            toast({
+                title: "Verification Email Sent",
+                description: "A new verification link has been sent to your email address."
             });
         } else {
             throw new Error(result.error);
@@ -56,14 +66,14 @@ export default function VerifyEmailPage() {
     try {
       // 1. Clear server-side session
       await fetch('/api/auth/session/logout', { method: 'POST' });
-      
+
       // 2. Sign out from Firebase Client SDK
       await signOut(auth);
-      
+
       // 3. Clear local storage for a fresh state
       localStorage.clear();
       sessionStorage.clear();
-      
+
       // 4. Redirect to login
       router.push('/login');
       router.refresh();
@@ -79,71 +89,66 @@ export default function VerifyEmailPage() {
   };
 
   if (loading) {
-    return (
-        <div className="flex items-center justify-center min-h-screen bg-slate-900">
-            <Loader2 className="h-12 w-12 animate-spin text-blue-400" />
-        </div>
-    );
+    return <LoadingScreen text="Checking your account..." />;
   }
 
   return (
-    <PageTransition className="flex items-center justify-center min-h-screen bg-slate-950">
-      {/* Background decoration */}
-      <div className="absolute inset-0 z-0 pointer-events-none overflow-hidden">
-        <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-primary/20 rounded-full blur-[120px]" />
-        <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-blue-500/10 rounded-full blur-[120px]" />
-      </div>
+    <div className="relative flex min-h-screen flex-col items-center bg-sky-mist px-6 py-10">
+      <Link
+        href="/"
+        className="absolute left-6 top-6 flex items-center gap-2 rounded-full border border-vv-border bg-white px-4 py-2 text-sm font-medium text-text-secondary shadow-sm transition-colors hover:text-navy md:left-10 md:top-10"
+      >
+        <ArrowLeft className="h-4 w-4" /> Home
+      </Link>
 
-      <Card className="w-full max-w-md bg-slate-900/80 backdrop-blur-xl border-white/10 shadow-2xl rounded-3xl relative z-10">
-        <CardHeader className="text-center pt-10">
-            <div className="flex justify-center items-center mb-6">
-                <div className="p-4 rounded-full bg-blue-500/10 text-blue-400 border border-blue-500/20">
-                    <MailCheck className="h-12 w-12" />
-                </div>
-            </div>
-          <CardTitle className="text-3xl font-extrabold text-white font-headline tracking-tight">Verify Your Email</CardTitle>
-        </CardHeader>
-        <CardContent className="text-center px-8 pb-10">
-          <p className="mb-6 text-slate-300 leading-relaxed">
-            We&apos;ve sent a verification email to <span className="font-bold text-blue-400">{user?.email}</span>. Please check your inbox and click the link to activate your account.
+      <div className="mt-24 w-full max-w-md md:mt-32">
+        <div className="mb-8 flex justify-center">
+          <Logo />
+        </div>
+
+        <VvCard className="text-center">
+          <span className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-sky-pale">
+            <Mail className="h-7 w-7 text-sky" />
+          </span>
+          <h1 className="mt-6 font-outfit text-2xl font-bold text-navy">Verify your email</h1>
+          <p className="mx-auto mt-2 max-w-xs text-sm leading-relaxed text-text-secondary">
+            We sent a verification link to <span className="font-semibold text-navy">{user?.email}</span>. Click the link to activate your account.
           </p>
-          <div className="p-4 rounded-2xl bg-white/5 border border-white/10 mb-8 text-sm text-slate-400 text-left">
-            <p className="font-medium text-slate-200 mb-1">Didn&apos;t get the email?</p>
-            <ul className="list-disc pl-4 space-y-1">
-                <li>Check your spam or junk folder.</li>
-                <li>Verify your email address is correct.</li>
-                <li>Wait a few minutes before resending.</li>
+
+          <div className="mt-6 rounded-xl border border-vv-border bg-surface p-5 text-left text-sm text-text-secondary">
+            <p className="mb-2 font-semibold text-navy">Didn&apos;t see it?</p>
+            <ul className="space-y-1.5">
+              <li>· Check your spam or junk folder</li>
+              <li>· Confirm the email above is correct</li>
+              <li>· Wait 60 seconds before resending</li>
             </ul>
           </div>
-          
-          <div className="space-y-3">
-            <Button 
-              onClick={handleResendVerification} 
-              disabled={isResending || isLoggingOut}
-              className="w-full h-12 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl text-base transition-all duration-300 shadow-lg shadow-blue-600/20 disabled:opacity-50"
-            >
-              {isResending ? (
-                  <>
-                      <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                      Resending...
-                  </>
-              ) : (
-                  "Resend Verification Email"
-              )}
-            </Button>
 
-            <Button 
-              variant="ghost" 
-              onClick={handleLogout}
-              disabled={isLoggingOut}
-              className="w-full text-slate-400 hover:text-white hover:bg-white/5 rounded-xl transition-all"
-            >
-              {isLoggingOut ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <LogOut className="mr-2 h-4 w-4" />}
-              Log Out and Start Over
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
-    </PageTransition>
+          <VvButton
+            size="lg"
+            className="mt-6 w-full"
+            onClick={handleResendVerification}
+            disabled={isResending || isLoggingOut}
+          >
+            {isResending ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" /> Resending...
+              </>
+            ) : (
+              "Resend verification email"
+            )}
+          </VvButton>
+
+          <button
+            onClick={handleLogout}
+            disabled={isResending || isLoggingOut}
+            className="mt-4 inline-flex items-center gap-2 text-sm font-medium text-sky transition-colors hover:text-navy disabled:opacity-50"
+          >
+            {isLoggingOut ? <Loader2 className="h-4 w-4 animate-spin" /> : <LogOut className="h-4 w-4" />}
+            Back to login
+          </button>
+        </VvCard>
+      </div>
+    </div>
   );
 }
