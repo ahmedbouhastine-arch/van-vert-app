@@ -8,11 +8,12 @@ import { cn } from "@/lib/utils";
 export interface VvInputProps extends Omit<React.InputHTMLAttributes<HTMLInputElement>, "size"> {
   label?: string;
   leftIcon?: React.ReactNode;
+  rightIcon?: React.ReactNode;
   error?: string | boolean;
 }
 
 const VvInput = React.forwardRef<HTMLInputElement, VvInputProps>(
-  ({ label, leftIcon, error, type, className, disabled, id, ...props }, ref) => {
+  ({ label, leftIcon, rightIcon, error, type, className, disabled, id, ...props }, ref) => {
     const [showPassword, setShowPassword] = React.useState(false);
     const isPassword = type === "password";
     const generatedId = React.useId();
@@ -41,22 +42,28 @@ const VvInput = React.forwardRef<HTMLInputElement, VvInputProps>(
               "w-full rounded-lg border-[1.5px] border-[var(--vv-border)] bg-white px-4 py-3.5 text-sm text-[var(--text-primary)] outline-none transition-colors placeholder:text-[var(--text-muted)]",
               "focus:border-[var(--sky)] focus:shadow-[0_0_0_4px_rgba(0,120,165,0.08)]",
               leftIcon && "pl-11",
-              isPassword && "pr-11",
+              (isPassword || rightIcon) && "pr-11",
               error && "border-[var(--status-missing)] focus:border-[var(--status-missing)] focus:shadow-[0_0_0_4px_rgba(220,38,38,0.08)]",
               disabled && "opacity-50",
               className
             )}
             {...props}
           />
-          {isPassword && (
-            <button
-              type="button"
-              tabIndex={-1}
-              onClick={() => setShowPassword((show) => !show)}
-              className="absolute right-3.5 top-1/2 flex -translate-y-1/2 text-[var(--text-muted)] transition-colors hover:text-[var(--sky)]"
-            >
-              {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-            </button>
+          {rightIcon ? (
+            <span className="absolute right-3.5 top-1/2 flex -translate-y-1/2 text-[var(--text-muted)]">
+              {rightIcon}
+            </span>
+          ) : (
+            isPassword && (
+              <button
+                type="button"
+                tabIndex={-1}
+                onClick={() => setShowPassword((show) => !show)}
+                className="absolute right-3.5 top-1/2 flex -translate-y-1/2 text-[var(--text-muted)] transition-colors hover:text-[var(--sky)]"
+              >
+                {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              </button>
+            )
           )}
         </div>
         {typeof error === "string" && error && (

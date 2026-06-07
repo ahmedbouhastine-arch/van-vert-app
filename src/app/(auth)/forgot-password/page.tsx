@@ -8,17 +8,7 @@ import { sendPasswordResetEmail } from "firebase/auth";
 import { useToast } from "@/hooks/use-toast";
 import { ArrowLeft, Lock, Mail } from "lucide-react";
 import { VvButton } from "@/components/vv/VvButton";
-import { VvCard } from "@/components/vv/VvCard";
 import { VvInput } from "@/components/vv/VvInput";
-
-function Logo() {
-  return (
-    <span className="font-outfit text-2xl font-bold tracking-tight">
-      <span className="text-navy">Van-</span>
-      <span className="text-sky">Vert</span>
-    </span>
-  );
-}
 
 export default function ForgotPasswordPage() {
     const { toast } = useToast();
@@ -30,69 +20,113 @@ export default function ForgotPasswordPage() {
     const handlePasswordReset = async (event: React.FormEvent<HTMLFormElement>) => {
         event.preventDefault();
         setIsSubmitting(true);
-
         try {
             await sendPasswordResetEmail(auth, email);
             setEmailSent(true);
-            toast({
-                title: 'Reset Link Sent',
-                description: `A password reset link has been sent to ${email}.`,
-            });
+            toast({ title: 'Reset Link Sent', description: `A password reset link has been sent to ${email}.` });
         } catch (error: unknown) {
             const err = (error as { code?: unknown; message?: unknown }) || {};
             let description = typeof err.message === 'string' ? err.message : 'Failed to send reset link.';
             if (typeof err.code === 'string' && err.code === 'auth/user-not-found') {
-              description = "No account found with this email address.";
+                description = "No account found with this email address.";
             }
-            toast({
-              variant: 'destructive',
-              title: 'Failed to Send',
-              description: description,
-            });
+            toast({ variant: 'destructive', title: 'Failed to Send', description });
         } finally {
             setIsSubmitting(false);
         }
-    }
+    };
 
     return (
-        <div className="relative flex min-h-screen flex-col items-center bg-sky-mist px-6 py-10">
+        <div
+            style={{
+                minHeight: '100vh',
+                background: 'var(--sky-mist)',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
+                padding: '48px 24px',
+                position: 'relative',
+            }}
+        >
+            {/* Back to home */}
             <Link
                 href="/"
-                className="absolute left-6 top-6 flex items-center gap-2 rounded-full border border-[var(--vv-border)] bg-white px-4 py-2 text-sm font-medium text-[var(--text-secondary)] shadow-sm transition-colors hover:text-navy md:left-10 md:top-10"
+                style={{
+                    position: 'absolute', top: 28, left: 32,
+                    display: 'inline-flex', alignItems: 'center', gap: 8,
+                    color: 'var(--text-secondary)', fontSize: 13,
+                    padding: '8px 14px', borderRadius: 8,
+                    background: 'white', border: '1px solid var(--border)',
+                    transition: 'color 0.15s',
+                }}
+                className="hover:text-navy"
             >
-                <ArrowLeft className="h-4 w-4" /> Home
+                <ArrowLeft className="h-3.5 w-3.5" /> Home
             </Link>
 
-            <div className="mt-24 w-full max-w-md md:mt-32">
-                <div className="mb-8 flex justify-center">
-                    <Logo />
-                </div>
+            {/* Wordmark */}
+            <div style={{ marginBottom: 28 }}>
+                <span style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 26, letterSpacing: '-0.02em', lineHeight: 1 }}>
+                    <span style={{ color: 'var(--navy)' }}>Van-</span>
+                    <span style={{ color: 'var(--sky)' }}>Vert</span>
+                </span>
+            </div>
 
-                <VvCard className="text-center">
-                    {emailSent ? (
-                        <>
-                            <span className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-status-ready-bg">
-                                <Mail className="h-7 w-7 text-status-ready-text" />
-                            </span>
-                            <h1 className="mt-6 font-outfit text-2xl font-bold text-navy">Check your inbox</h1>
-                            <p className="mx-auto mt-2 max-w-xs text-sm leading-relaxed text-[var(--text-secondary)]">
-                                We sent a password reset link to{" "}
-                                <span className="font-semibold text-navy">{email}</span>. The link expires in 24 hours.
-                            </p>
+            {/* Card */}
+            <div style={{
+                width: '100%', maxWidth: 440,
+                background: 'white',
+                border: '1px solid var(--border)',
+                borderRadius: 16,
+                padding: 40,
+            }}>
+                {emailSent ? (
+                    <>
+                        {/* Success state */}
+                        <div style={{
+                            width: 56, height: 56, borderRadius: 12,
+                            background: '#dcfce7', color: 'var(--status-ready)',
+                            display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                            marginBottom: 20,
+                        }}>
+                            <Mail className="h-6 w-6" />
+                        </div>
 
-                            <div className="mt-6 rounded-xl border border-[var(--vv-border)] bg-surface p-5 text-left text-sm text-[var(--text-secondary)]">
-                                <p className="mb-2 font-semibold text-navy">Didn&apos;t see it?</p>
-                                <ul className="space-y-1.5">
-                                    <li>· Check your spam or junk folder</li>
-                                    <li>· Confirm the email above is correct</li>
-                                    <li>· Wait 60 seconds before resending</li>
-                                </ul>
+                        <h1 style={{ fontFamily: 'var(--font-display)', fontWeight: 600, fontSize: 26, letterSpacing: '-0.01em', color: 'var(--navy)' }}>
+                            Check your inbox
+                        </h1>
+                        <p style={{ marginTop: 10, fontSize: 14, color: 'var(--text-secondary)', lineHeight: 1.6, maxWidth: 340 }}>
+                            We sent a password reset link to{' '}
+                            <span style={{ fontWeight: 600, color: 'var(--navy)' }}>{email}</span>. The link expires in 24 hours.
+                        </p>
+
+                        <div style={{
+                            marginTop: 28, padding: 18, borderRadius: 10,
+                            background: 'var(--sky-mist)', border: '1px solid var(--border)',
+                        }}>
+                            <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--navy)', marginBottom: 8 }}>
+                                Didn&apos;t see it?
                             </div>
+                            <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 6 }}>
+                                {[
+                                    'Check your spam or junk folder',
+                                    'Confirm the email above is correct',
+                                    'Wait 60 seconds before resending',
+                                ].map((t, i) => (
+                                    <li key={i} style={{ fontSize: 13, color: 'var(--text-secondary)', display: 'flex', gap: 8, alignItems: 'flex-start' }}>
+                                        <span style={{ color: 'var(--sky)', marginTop: 2 }}>·</span>
+                                        {t}
+                                    </li>
+                                ))}
+                            </ul>
+                        </div>
 
+                        <div style={{ marginTop: 24, display: 'flex', flexDirection: 'column', gap: 10 }}>
                             <VvButton
                                 size="lg"
-                                className="mt-6 w-full"
                                 loading={isSubmitting}
+                                style={{ width: '100%', justifyContent: 'center' }}
                                 onClick={async () => {
                                     setIsSubmitting(true);
                                     try {
@@ -107,44 +141,60 @@ export default function ForgotPasswordPage() {
                             >
                                 Resend reset link
                             </VvButton>
-                            <Link href="/login" className="mt-4 inline-block text-sm font-medium text-sky hover:text-navy">
-                                Back to login
+                            <Link
+                                href="/login"
+                                style={{ textAlign: 'center', fontSize: 13, color: 'var(--text-secondary)', display: 'block' }}
+                            >
+                                Remembered it?{' '}
+                                <span style={{ color: 'var(--sky)', fontWeight: 600 }}>Sign in</span>
                             </Link>
-                        </>
-                    ) : (
-                        <>
-                            <span className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-sky-pale">
-                                <Lock className="h-7 w-7 text-sky" />
-                            </span>
-                            <h1 className="mt-6 font-outfit text-2xl font-bold text-navy">Reset your password</h1>
-                            <p className="mx-auto mt-2 max-w-xs text-sm leading-relaxed text-[var(--text-secondary)]">
-                                Enter the email on your account. We&apos;ll send a secure link to set a new password — valid for 30 minutes.
-                            </p>
+                        </div>
+                    </>
+                ) : (
+                    <>
+                        {/* Form state */}
+                        <div style={{
+                            width: 56, height: 56, borderRadius: 12,
+                            background: 'var(--sky-pale)', color: 'var(--sky)',
+                            display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                            marginBottom: 20,
+                        }}>
+                            <Lock className="h-6 w-6" />
+                        </div>
 
-                            <form onSubmit={handlePasswordReset} className="mt-6 flex flex-col gap-5 text-left">
-                                <VvInput
-                                    id="email"
-                                    name="email"
-                                    type="email"
-                                    label="Email"
-                                    placeholder="pilot@vanvert.co"
-                                    leftIcon={<Mail className="h-4 w-4" />}
-                                    required
-                                    value={email}
-                                    onChange={(e) => setEmail(e.target.value)}
-                                />
-                                <VvButton type="submit" size="lg" loading={isSubmitting} className="w-full">
-                                    Send reset link
-                                </VvButton>
-                            </form>
+                        <h1 style={{ fontFamily: 'var(--font-display)', fontWeight: 600, fontSize: 26, letterSpacing: '-0.01em', color: 'var(--navy)' }}>
+                            Reset your password
+                        </h1>
+                        <p style={{ marginTop: 10, fontSize: 14, color: 'var(--text-secondary)', lineHeight: 1.6 }}>
+                            Enter the email on your account. We&apos;ll send a secure link to set a new password — valid for 30 minutes.
+                        </p>
 
-                            <p className="mt-5 text-sm text-[var(--text-secondary)]">
-                                Remembered it?{" "}
-                                <Link href="/login" className="font-semibold text-sky hover:text-navy">Sign in</Link>
-                            </p>
-                        </>
-                    )}
-                </VvCard>
+                        <form
+                            onSubmit={handlePasswordReset}
+                            style={{ marginTop: 28, display: 'flex', flexDirection: 'column', gap: 16 }}
+                        >
+                            <VvInput
+                                id="email"
+                                name="email"
+                                type="email"
+                                label="Email"
+                                placeholder="pilot@vanvert.co"
+                                leftIcon={<Mail className="h-4 w-4" />}
+                                required
+                                value={email}
+                                onChange={(e) => setEmail(e.target.value)}
+                            />
+                            <VvButton type="submit" size="lg" loading={isSubmitting} style={{ width: '100%', justifyContent: 'center' }}>
+                                Send reset link
+                            </VvButton>
+                        </form>
+
+                        <div style={{ marginTop: 24, fontSize: 13, color: 'var(--text-secondary)', textAlign: 'center' }}>
+                            Remembered it?{' '}
+                            <Link href="/login" style={{ color: 'var(--sky)', fontWeight: 600 }}>Sign in</Link>
+                        </div>
+                    </>
+                )}
             </div>
         </div>
     );

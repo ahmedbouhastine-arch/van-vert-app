@@ -10,145 +10,197 @@ import { signOut } from 'firebase/auth';
 import * as serverActions from '@/app/actions';
 import { LoadingScreen } from '@/components/LoadingScreen';
 import { VvButton } from '@/components/vv/VvButton';
-import { VvCard } from '@/components/vv/VvCard';
-
-function Logo() {
-  return (
-    <span className="font-outfit text-2xl font-bold tracking-tight">
-      <span className="text-navy">Van-</span>
-      <span className="text-sky">Vert</span>
-    </span>
-  );
-}
 
 export default function VerifyEmailPage() {
-  const { user, loading } = useUser();
-  const auth = useAuth();
-  const router = useRouter();
-  const { toast } = useToast();
-  const [isResending, setIsResending] = useState(false);
-  const [isLoggingOut, setIsLoggingOut] = useState(false);
+    const { user, loading } = useUser();
+    const auth = useAuth();
+    const router = useRouter();
+    const { toast } = useToast();
+    const [isResending, setIsResending] = useState(false);
+    const [isLoggingOut, setIsLoggingOut] = useState(false);
+    const [resent, setResent] = useState(false);
 
-  useEffect(() => {
-    if (!loading && user?.emailVerified) {
-      router.push('/dashboard');
-    }
-  }, [user, loading, router]);
-
-  const handleResendVerification = async () => {
-    if (!user || !user.email) return;
-
-    setIsResending(true);
-    try {
-        const result = await serverActions.sendVerificationEmailAction(user.email);
-        if (result.success) {
-            toast({
-                title: "Verification Email Sent",
-                description: "A new verification link has been sent to your email address."
-            });
-        } else {
-            throw new Error(result.error);
+    useEffect(() => {
+        if (!loading && user?.emailVerified) {
+            router.push('/dashboard');
         }
-    } catch (error) {
-        console.error("Resend failed:", error);
-        toast({
-            variant: "destructive",
-            title: "Resend Failed",
-            description: error instanceof Error ? error.message : "Failed to resend verification email. Please try again later."
-        });
-    } finally {
-        setIsResending(false);
+    }, [user, loading, router]);
+
+    const handleResendVerification = async () => {
+        if (!user || !user.email) return;
+        setIsResending(true);
+        try {
+            const result = await serverActions.sendVerificationEmailAction(user.email);
+            if (result.success) {
+                setResent(true);
+                setTimeout(() => setResent(false), 3000);
+                toast({ title: "Verification Email Sent", description: "A new verification link has been sent to your email address." });
+            } else {
+                throw new Error(result.error);
+            }
+        } catch (error) {
+            console.error("Resend failed:", error);
+            toast({ variant: "destructive", title: "Resend Failed", description: error instanceof Error ? error.message : "Failed to resend. Please try again." });
+        } finally {
+            setIsResending(false);
+        }
+    };
+
+    const handleLogout = async () => {
+        setIsLoggingOut(true);
+        try {
+            await fetch('/api/auth/session/logout', { method: 'POST' });
+            await signOut(auth);
+            localStorage.clear();
+            sessionStorage.clear();
+            router.push('/login');
+            router.refresh();
+        } catch (error) {
+            console.error("Logout failed:", error);
+            setIsLoggingOut(false);
+            toast({ variant: "destructive", title: "Logout Failed", description: "An error occurred while trying to log out. Please try again." });
+        }
+    };
+
+    if (loading) {
+        return <LoadingScreen text="Checking your account..." />;
     }
-  };
 
-  const handleLogout = async () => {
-    setIsLoggingOut(true);
-    try {
-      // 1. Clear server-side session
-      await fetch('/api/auth/session/logout', { method: 'POST' });
+    return (
+        <div
+            style={{
+                minHeight: '100vh',
+                background: 'var(--sky-mist)',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
+                padding: '48px 24px',
+                position: 'relative',
+            }}
+        >
+            {/* Back to home */}
+            <Link
+                href="/"
+                style={{
+                    position: 'absolute', top: 28, left: 32,
+                    display: 'inline-flex', alignItems: 'center', gap: 8,
+                    color: 'var(--text-secondary)', fontSize: 13,
+                    padding: '8px 14px', borderRadius: 8,
+                    background: 'white', border: '1px solid var(--border)',
+                    transition: 'color 0.15s',
+                }}
+                className="hover:text-navy"
+            >
+                <ArrowLeft className="h-3.5 w-3.5" /> Home
+            </Link>
 
-      // 2. Sign out from Firebase Client SDK
-      await signOut(auth);
+            {/* Wordmark */}
+            <div style={{ marginBottom: 28 }}>
+                <span style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 26, letterSpacing: '-0.02em', lineHeight: 1 }}>
+                    <span style={{ color: 'var(--navy)' }}>Van-</span>
+                    <span style={{ color: 'var(--sky)' }}>Vert</span>
+                </span>
+            </div>
 
-      // 3. Clear local storage for a fresh state
-      localStorage.clear();
-      sessionStorage.clear();
+            {/* Card */}
+            <div
+                style={{
+                    width: '100%', maxWidth: 480,
+                    background: 'white',
+                    border: '1px solid var(--border)',
+                    borderRadius: 16,
+                    padding: 40,
+                    textAlign: 'center',
+                }}
+            >
+                {/* Icon */}
+                <div style={{
+                    width: 64, height: 64, borderRadius: 14,
+                    background: 'var(--sky-pale)', color: 'var(--sky)',
+                    display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                    marginBottom: 24,
+                }}>
+                    <Mail className="h-7 w-7" />
+                </div>
 
-      // 4. Redirect to login
-      router.push('/login');
-      router.refresh();
-    } catch (error) {
-      console.error("Logout failed during verification:", error);
-      setIsLoggingOut(false);
-      toast({
-        variant: "destructive",
-        title: "Logout Failed",
-        description: "An error occurred while trying to log out. Please try again."
-      });
-    }
-  };
+                <h1 style={{ fontFamily: 'var(--font-display)', fontWeight: 600, fontSize: 28, letterSpacing: '-0.01em', color: 'var(--navy)' }}>
+                    Verify your email
+                </h1>
+                <p style={{ marginTop: 12, fontSize: 14, color: 'var(--text-secondary)', lineHeight: 1.65 }}>
+                    We sent a verification link to{' '}
+                    <span style={{ fontWeight: 600, color: 'var(--navy)' }}>{user?.email}</span>.
+                    {' '}Click the link to activate your account.
+                </p>
 
-  if (loading) {
-    return <LoadingScreen text="Checking your account..." />;
-  }
+                {/* Didn't see it */}
+                <div style={{
+                    marginTop: 28, padding: 18, borderRadius: 10,
+                    background: 'var(--sky-mist)', border: '1px solid var(--border)',
+                    textAlign: 'left',
+                }}>
+                    <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--navy)', marginBottom: 8 }}>
+                        Didn&apos;t see it?
+                    </div>
+                    <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 6 }}>
+                        {[
+                            'Check your spam or junk folder',
+                            'Confirm the email above is correct',
+                            'Wait 60 seconds before resending',
+                        ].map((t, i) => (
+                            <li key={i} style={{ fontSize: 13, color: 'var(--text-secondary)', display: 'flex', gap: 8, alignItems: 'flex-start' }}>
+                                <span style={{ color: 'var(--sky)', marginTop: 2 }}>·</span>
+                                {t}
+                            </li>
+                        ))}
+                    </ul>
+                </div>
 
-  return (
-    <div className="relative flex min-h-screen flex-col items-center bg-sky-mist px-6 py-10">
-      <Link
-        href="/"
-        className="absolute left-6 top-6 flex items-center gap-2 rounded-full border border-[var(--vv-border)] bg-white px-4 py-2 text-sm font-medium text-[var(--text-secondary)] shadow-sm transition-colors hover:text-navy md:left-10 md:top-10"
-      >
-        <ArrowLeft className="h-4 w-4" /> Home
-      </Link>
+                {/* Resent confirmation */}
+                {resent && (
+                    <div style={{
+                        marginTop: 16, padding: '10px 16px', borderRadius: 8,
+                        background: '#dcfce7', color: 'var(--status-ready)',
+                        fontSize: 13, fontWeight: 500,
+                        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                    }}>
+                        ✓ Email sent — check your inbox
+                    </div>
+                )}
 
-      <div className="mt-24 w-full max-w-md md:mt-32">
-        <div className="mb-8 flex justify-center">
-          <Logo />
+                {/* Actions */}
+                <div style={{ marginTop: 24, display: 'flex', flexDirection: 'column', gap: 10 }}>
+                    <VvButton
+                        size="lg"
+                        onClick={handleResendVerification}
+                        disabled={isResending || isLoggingOut}
+                        style={{ width: '100%', justifyContent: 'center' }}
+                    >
+                        {isResending ? (
+                            <><Loader2 className="h-4 w-4 animate-spin" /> Resending...</>
+                        ) : (
+                            'Resend verification email'
+                        )}
+                    </VvButton>
+
+                    <button
+                        onClick={handleLogout}
+                        disabled={isResending || isLoggingOut}
+                        style={{
+                            display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                            fontSize: 14, fontWeight: 500,
+                            color: 'var(--sky)', background: 'transparent', border: 'none',
+                            cursor: 'pointer', padding: '10px 0',
+                            transition: 'color 0.15s',
+                            opacity: (isResending || isLoggingOut) ? 0.5 : 1,
+                        }}
+                        className="hover:text-navy"
+                    >
+                        {isLoggingOut ? <Loader2 className="h-4 w-4 animate-spin" /> : <LogOut className="h-4 w-4" />}
+                        Back to login
+                    </button>
+                </div>
+            </div>
         </div>
-
-        <VvCard className="text-center">
-          <span className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-sky-pale">
-            <Mail className="h-7 w-7 text-sky" />
-          </span>
-          <h1 className="mt-6 font-outfit text-2xl font-bold text-navy">Verify your email</h1>
-          <p className="mx-auto mt-2 max-w-xs text-sm leading-relaxed text-[var(--text-secondary)]">
-            We sent a verification link to <span className="font-semibold text-navy">{user?.email}</span>. Click the link to activate your account.
-          </p>
-
-          <div className="mt-6 rounded-xl border border-[var(--vv-border)] bg-surface p-5 text-left text-sm text-[var(--text-secondary)]">
-            <p className="mb-2 font-semibold text-navy">Didn&apos;t see it?</p>
-            <ul className="space-y-1.5">
-              <li>· Check your spam or junk folder</li>
-              <li>· Confirm the email above is correct</li>
-              <li>· Wait 60 seconds before resending</li>
-            </ul>
-          </div>
-
-          <VvButton
-            size="lg"
-            className="mt-6 w-full"
-            onClick={handleResendVerification}
-            disabled={isResending || isLoggingOut}
-          >
-            {isResending ? (
-              <>
-                <Loader2 className="h-4 w-4 animate-spin" /> Resending...
-              </>
-            ) : (
-              "Resend verification email"
-            )}
-          </VvButton>
-
-          <button
-            onClick={handleLogout}
-            disabled={isResending || isLoggingOut}
-            className="mt-4 inline-flex items-center gap-2 text-sm font-medium text-sky transition-colors hover:text-navy disabled:opacity-50"
-          >
-            {isLoggingOut ? <Loader2 className="h-4 w-4 animate-spin" /> : <LogOut className="h-4 w-4" />}
-            Back to login
-          </button>
-        </VvCard>
-      </div>
-    </div>
-  );
+    );
 }

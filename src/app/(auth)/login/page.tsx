@@ -9,7 +9,7 @@ import { signInWithEmailAndPassword } from "firebase/auth";
 import { useAuth, useUser, useFirestore } from "@/firebase";
 import { GoogleIcon } from "@/components/GoogleIcon";
 import { LoadingScreen } from "@/components/LoadingScreen";
-import { ArrowLeft, ArrowRight, Mail, Lock } from "lucide-react";
+import { ArrowLeft, ArrowRight, Mail, Lock, Eye, EyeOff } from "lucide-react";
 import { signInWithGoogle } from "@/firebase/auth-actions";
 import { sendPasswordResetEmailAction } from '@/app/actions';
 import { BASE_URL } from "@/lib/utils";
@@ -34,6 +34,7 @@ const LoginPage = () => {
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isForgotPasswordOpen, setIsForgotPasswordOpen] = useState(false);
     const [forgotPasswordEmail, setForgotPasswordEmail] = useState("");
+    const [showPassword, setShowPassword] = useState(false);
 
     useEffect(() => {
         if (!loading && user) {
@@ -62,24 +63,16 @@ const LoginPage = () => {
               ['auth/invalid-credential', 'auth/user-not-found', 'auth/wrong-password'].includes(error.code as string)) {
             description = "Invalid email or password. Please try again.";
           }
-          toast({
-            variant: 'destructive',
-            title: 'Login Failed',
-            description: description,
-          });
+          toast({ variant: 'destructive', title: 'Login Failed', description });
           setIsSubmitting(false);
         }
-    }
+    };
 
     const [mustLinkEmail, setMustLinkEmail] = useState<string | null>(null);
 
     const handleGoogleLogin = async () => {
         if (!firestore) {
-            toast({
-                variant: 'destructive',
-                title: 'Error',
-                description: 'Cannot connect to the database. Please try again later.',
-            });
+            toast({ variant: 'destructive', title: 'Error', description: 'Cannot connect to the database. Please try again later.' });
             return;
         }
         setIsSubmitting(true);
@@ -99,10 +92,9 @@ const LoginPage = () => {
                  `${BASE_URL}/dashboard`
              );
              toast({ title: "Account Created" });
-             // No need to redirect manually as onAuthStateChanged handles it, but just in case:
              router.push('/dashboard');
         }
-    }
+    };
 
     const handlePasswordReset = async (event: React.FormEvent<HTMLFormElement>) => {
         event.preventDefault();
@@ -110,194 +102,372 @@ const LoginPage = () => {
         try {
             const result = await sendPasswordResetEmailAction(forgotPasswordEmail);
             if (result.success) {
-                toast({
-                  description: "Password reset email sent! Check your inbox.",
-                });
+                toast({ description: "Password reset email sent! Check your inbox." });
                 setIsForgotPasswordOpen(false);
             } else {
-                toast({
-                    variant: 'destructive',
-                    title: 'Error',
-                    description: result.error || 'Failed to send password reset email. Please try again.',
-                });
+                toast({ variant: 'destructive', title: 'Error', description: result.error || 'Failed to send password reset email. Please try again.' });
             }
         } catch (error) {
             console.error('Password reset error:', error);
-            toast({
-                variant: 'destructive',
-                title: 'Error',
-                description: 'An unexpected error occurred. Please try again.',
-            });
+            toast({ variant: 'destructive', title: 'Error', description: 'An unexpected error occurred. Please try again.' });
         } finally {
             setIsSubmitting(false);
             setForgotPasswordEmail("");
         }
-    }
+    };
 
     if (loading || user) {
-      return <LoadingScreen text="Checking your credentials..." />;
+        return <LoadingScreen text="Checking your credentials..." />;
     }
 
-  return (
-    <div className="flex min-h-screen">
-      {/* Left panel */}
-      <div className="relative hidden w-[38%] flex-col justify-between overflow-hidden bg-navy px-12 py-10 text-white lg:flex">
-        <div className="pointer-events-none absolute inset-0 overflow-hidden opacity-20">
-          <div className="absolute -bottom-40 -left-32 h-96 w-96 rounded-full border border-white/20" />
-          <div className="absolute -bottom-16 -left-10 h-64 w-64 rounded-full border border-white/20" />
-        </div>
-
-        <Link href="/" className="relative z-10 flex items-center gap-2 text-sm text-white/70 transition-colors hover:text-white">
-          <ArrowLeft className="h-4 w-4" /> Back to home
-        </Link>
-
-        <div className="relative z-10">
-          <span className="font-outfit text-2xl font-bold tracking-tight">
-            <span className="text-white">Van-</span>
-            <span className="text-sky-bright">Vert</span>
-          </span>
-
-          <p className="mt-12 text-xs font-semibold uppercase tracking-[0.2em] text-sky-pale/50">Welcome back</p>
-          <h1 className="mt-3 max-w-sm font-outfit text-3xl font-bold leading-tight tracking-tight">
-            Sign in and pick up where your conversion left off.
-          </h1>
-          <p className="mt-4 max-w-sm text-sm leading-relaxed text-sky-pale/60">
-            Your application stays exactly where you left it. New documents from your reviewer are highlighted at the top of your dashboard.
-          </p>
-        </div>
-
-        <p className="relative z-10 text-xs font-semibold uppercase tracking-[0.2em] text-sky-pale/40">
-          Vanguard Aviation Academy
-        </p>
-      </div>
-
-      {/* Right panel */}
-      <div className="flex flex-1 items-center justify-center bg-white px-6 py-16">
-        <div className="w-full max-w-md">
-          <h2 className="font-outfit text-3xl font-bold tracking-tight text-navy">Sign in</h2>
-          <p className="mt-2 text-sm text-[var(--text-secondary)]">
-            Don&apos;t have an account?{" "}
-            <Link href="/register" className="font-semibold text-sky hover:text-navy">Create one</Link>.
-          </p>
-
-          <form onSubmit={handleLogin} className="mt-8 flex flex-col gap-5">
-            <VvInput
-              id="email"
-              name="email"
-              type="email"
-              label="Email"
-              placeholder="pilot@vanvert.co"
-              leftIcon={<Mail className="h-4 w-4" />}
-              required
-              disabled={isSubmitting}
-            />
-
-            <div className="flex flex-col gap-1.5">
-              <VvInput
-                id="password"
-                name="password"
-                type="password"
-                label="Password"
-                placeholder="••••••••"
-                leftIcon={<Lock className="h-4 w-4" />}
-                required
-                disabled={isSubmitting}
-              />
-              <div className="mt-1 flex items-center justify-between">
-                <label className="flex items-center gap-2 text-sm text-[var(--text-secondary)]">
-                  <input type="checkbox" className="h-4 w-4 rounded border-[var(--vv-border)] text-sky focus:ring-sky" />
-                  Keep me signed in
-                </label>
-                <button
-                  type="button"
-                  onClick={() => setIsForgotPasswordOpen(true)}
-                  className="text-sm font-medium text-sky hover:text-navy transition-colors"
+    return (
+        <div
+            className="flex min-h-screen"
+            style={{ display: 'grid', gridTemplateColumns: '5fr 6fr' }}
+        >
+            {/* ── Left — navy brand panel ──────────────────────────────────────── */}
+            <aside
+                className="relative hidden flex-col justify-between overflow-hidden lg:flex"
+                style={{
+                    background: 'var(--navy)',
+                    color: 'white',
+                    padding: '48px 56px',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    justifyContent: 'space-between',
+                    position: 'relative',
+                    overflow: 'hidden',
+                }}
+            >
+                {/* Decorative arcs — bottom-left */}
+                <svg
+                    aria-hidden="true"
+                    style={{
+                        position: 'absolute', bottom: -180, left: -180,
+                        opacity: 0.06, pointerEvents: 'none',
+                    }}
+                    width="640" height="640" viewBox="0 0 640 640"
                 >
-                  Forgot password?
-                </button>
-              </div>
-            </div>
+                    {[280, 220, 160, 100, 40].map((r) => (
+                        <circle key={r} cx="320" cy="320" r={r} fill="none" stroke="white" strokeWidth="1" />
+                    ))}
+                </svg>
 
-            <VvButton type="submit" size="lg" loading={isSubmitting} className="mt-1">
-              Sign in <ArrowRight className="h-4 w-4" />
-            </VvButton>
-          </form>
+                {/* Back to home */}
+                <Link
+                    href="/"
+                    style={{
+                        display: 'inline-flex', alignItems: 'center', gap: 8,
+                        color: 'rgba(255,255,255,0.7)', fontSize: 13,
+                        position: 'relative', width: 'fit-content',
+                        transition: 'color 0.15s',
+                    }}
+                    className="hover:text-white"
+                >
+                    <ArrowLeft className="h-3.5 w-3.5" />
+                    Back to home
+                </Link>
 
-          <div className="my-7 flex items-center gap-4">
-            <div className="h-px flex-1 bg-[var(--vv-border)]" />
-            <span className="text-xs font-medium uppercase tracking-widest text-[var(--text-muted)]">Or</span>
-            <div className="h-px flex-1 bg-[var(--vv-border)]" />
-          </div>
+                {/* Center content */}
+                <div style={{ position: 'relative', maxWidth: 420 }}>
+                    {/* Wordmark */}
+                    <span
+                        style={{
+                            fontFamily: 'var(--font-display)',
+                            fontWeight: 700,
+                            fontSize: 36,
+                            letterSpacing: '-0.02em',
+                            lineHeight: 1,
+                        }}
+                    >
+                        <span style={{ color: 'white' }}>Van-</span>
+                        <span style={{ color: 'var(--sky-bright)' }}>Vert</span>
+                    </span>
 
-          <VvButton
-            variant="outline"
-            size="lg"
-            type="button"
-            onClick={handleGoogleLogin}
-            disabled={isSubmitting}
-            className="w-full border-[var(--vv-border)] text-[var(--text-primary)] hover:bg-surface hover:text-[var(--text-primary)]"
-          >
-            <GoogleIcon className="h-5 w-5" />
-            Continue with Google
-          </VvButton>
+                    {/* Kicker */}
+                    <div
+                        style={{
+                            marginTop: 48,
+                            fontSize: 11, fontWeight: 600,
+                            letterSpacing: '3px', textTransform: 'uppercase',
+                            color: 'var(--sky-bright)',
+                        }}
+                    >
+                        Welcome back
+                    </div>
 
-          <p className="mt-8 text-center text-xs leading-relaxed text-[var(--text-muted)]">
-            Protected by SSO-grade encryption. By signing in you agree to our{" "}
-            <Link href="/terms" className="underline hover:text-[var(--text-secondary)]">Terms</Link> and{" "}
-            <Link href="/privacy" className="underline hover:text-[var(--text-secondary)]">Privacy Policy</Link>.
-          </p>
+                    {/* Headline */}
+                    <h2
+                        style={{
+                            fontFamily: 'var(--font-display)',
+                            fontWeight: 600, fontSize: 36,
+                            lineHeight: 1.15, letterSpacing: '-0.015em',
+                            color: 'white', marginTop: 16,
+                        }}
+                    >
+                        Sign in and pick up where your conversion left off.
+                    </h2>
+
+                    {/* Body */}
+                    <p
+                        style={{
+                            marginTop: 16, fontSize: 15,
+                            lineHeight: 1.6, color: 'rgba(255,255,255,0.6)',
+                        }}
+                    >
+                        Your application stays exactly where you left it. New documents from your reviewer are highlighted at the top of your dashboard.
+                    </p>
+                </div>
+
+                {/* Footer */}
+                <div
+                    style={{
+                        position: 'relative',
+                        fontSize: 11, fontWeight: 500,
+                        letterSpacing: '3px', textTransform: 'uppercase',
+                        color: 'rgba(255,255,255,0.35)',
+                    }}
+                >
+                    Vanguard Aviation Academy
+                </div>
+            </aside>
+
+            {/* ── Right — form ─────────────────────────────────────────────────── */}
+            <main
+                style={{
+                    display: 'flex', flexDirection: 'column',
+                    justifyContent: 'center', alignItems: 'center',
+                    padding: '64px 48px',
+                    background: 'var(--white)',
+                }}
+            >
+                <div style={{ width: '100%', maxWidth: 420 }}>
+
+                    {/* Heading */}
+                    <div style={{ marginBottom: 32 }}>
+                        <h1
+                            style={{
+                                fontFamily: 'var(--font-display)',
+                                fontWeight: 600, fontSize: 30,
+                                letterSpacing: '-0.01em', lineHeight: 1.1,
+                                color: 'var(--navy)',
+                            }}
+                        >
+                            Sign in
+                        </h1>
+                        <p style={{ marginTop: 8, fontSize: 14, color: 'var(--text-secondary)' }}>
+                            Don&apos;t have an account?{' '}
+                            <Link href="/register" style={{ color: 'var(--sky)', fontWeight: 600 }}>
+                                Create one
+                            </Link>.
+                        </p>
+                    </div>
+
+                    {/* Form */}
+                    <form
+                        onSubmit={handleLogin}
+                        style={{ display: 'flex', flexDirection: 'column', gap: 16 }}
+                    >
+                        <VvInput
+                            id="email"
+                            name="email"
+                            type="email"
+                            label="Email"
+                            placeholder="pilot@vanvert.co"
+                            leftIcon={<Mail className="h-4 w-4" />}
+                            required
+                            disabled={isSubmitting}
+                        />
+
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                            <VvInput
+                                id="password"
+                                name="password"
+                                type={showPassword ? 'text' : 'password'}
+                                label="Password"
+                                placeholder="••••••••"
+                                leftIcon={<Lock className="h-4 w-4" />}
+                                rightIcon={
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowPassword(!showPassword)}
+                                        style={{ color: 'var(--text-muted)', display: 'flex' }}
+                                        className="hover:text-sky transition-colors"
+                                    >
+                                        {showPassword
+                                            ? <EyeOff className="h-4 w-4" />
+                                            : <Eye className="h-4 w-4" />
+                                        }
+                                    </button>
+                                }
+                                required
+                                disabled={isSubmitting}
+                            />
+
+                            {/* Keep me signed in + Forgot password */}
+                            <div
+                                style={{
+                                    marginTop: 4,
+                                    display: 'flex', alignItems: 'center',
+                                    justifyContent: 'space-between', fontSize: 13,
+                                }}
+                            >
+                                <label
+                                    style={{
+                                        display: 'inline-flex', gap: 8,
+                                        alignItems: 'center',
+                                        color: 'var(--text-secondary)', cursor: 'pointer',
+                                    }}
+                                >
+                                    <input
+                                        type="checkbox"
+                                        style={{ accentColor: 'var(--sky)', width: 14, height: 14 }}
+                                    />
+                                    Keep me signed in
+                                </label>
+                                <button
+                                    type="button"
+                                    onClick={() => setIsForgotPasswordOpen(true)}
+                                    style={{
+                                        color: 'var(--sky)', fontWeight: 500,
+                                        fontSize: 13, background: 'none', border: 'none',
+                                        cursor: 'pointer', transition: 'color 0.15s',
+                                    }}
+                                    className="hover:text-navy"
+                                >
+                                    Forgot password?
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* Submit */}
+                        <VvButton
+                            type="submit"
+                            size="lg"
+                            loading={isSubmitting}
+                            style={{ marginTop: 4, width: '100%', justifyContent: 'center' }}
+                        >
+                            Sign in <ArrowRight className="h-4 w-4" />
+                        </VvButton>
+                    </form>
+
+                    {/* Divider */}
+                    <div style={{ position: 'relative', textAlign: 'center', margin: '8px 0' }}>
+                        <div style={{ position: 'absolute', top: '50%', left: 0, right: 0, height: 1, background: 'var(--border)' }} />
+                        <span style={{
+                            position: 'relative', background: 'white', padding: '0 12px',
+                            fontSize: 11, fontWeight: 600, letterSpacing: '2px',
+                            textTransform: 'uppercase', color: 'var(--text-muted)',
+                        }}>
+                            or
+                        </span>
+                    </div>
+
+                    {/* Google */}
+                    <button
+                        type="button"
+                        onClick={handleGoogleLogin}
+                        disabled={isSubmitting}
+                        style={{
+                            width: '100%', display: 'flex', alignItems: 'center',
+                            justifyContent: 'center', gap: 10,
+                            padding: '13px 18px',
+                            background: 'white',
+                            border: '1.5px solid var(--border)',
+                            borderRadius: 8,
+                            color: 'var(--text-primary)',
+                            fontSize: 14, fontWeight: 500,
+                            fontFamily: 'var(--font-body)',
+                            cursor: 'pointer',
+                            transition: 'border-color 0.15s, background 0.15s',
+                        }}
+                        onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--surface)'; }}
+                        onMouseLeave={(e) => { e.currentTarget.style.background = 'white'; }}
+                    >
+                        <GoogleIcon className="h-[18px] w-[18px]" />
+                        Continue with Google
+                    </button>
+
+                    {/* Legal note */}
+                    <p
+                        style={{
+                            marginTop: 36, fontSize: 12,
+                            color: 'var(--text-muted)', textAlign: 'center',
+                            lineHeight: 1.6,
+                        }}
+                    >
+                        Protected by SSO-grade encryption. By signing in you agree to our{' '}
+                        <Link href="/terms" style={{ color: 'var(--text-secondary)', textDecoration: 'underline' }}>
+                            Terms
+                        </Link>{' '}and{' '}
+                        <Link href="/privacy" style={{ color: 'var(--text-secondary)', textDecoration: 'underline' }}>
+                            Privacy Policy
+                        </Link>.
+                    </p>
+                </div>
+            </main>
+
+            {/* ── Forgot password dialog ───────────────────────────────────────── */}
+            <Dialog open={isForgotPasswordOpen} onOpenChange={setIsForgotPasswordOpen}>
+                <DialogContent className="sm:max-w-md rounded-2xl">
+                    <DialogHeader>
+                        <DialogTitle
+                            style={{ fontFamily: 'var(--font-display)', fontWeight: 600, fontSize: 24, color: 'var(--navy)' }}
+                        >
+                            Reset password
+                        </DialogTitle>
+                        <DialogDescription style={{ color: 'var(--text-secondary)' }}>
+                            We&apos;ll send you a secure link to reset your password.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <form onSubmit={handlePasswordReset} className="space-y-4 pt-2">
+                        <VvInput
+                            id="forgot-password-email"
+                            type="email"
+                            placeholder="pilot@vanvert.co"
+                            leftIcon={<Mail className="h-4 w-4" />}
+                            required
+                            value={forgotPasswordEmail}
+                            onChange={(e) => setForgotPasswordEmail(e.target.value)}
+                        />
+                        <DialogFooter className="flex-col gap-3 sm:flex-row">
+                            <DialogClose asChild>
+                                <VvButton type="button" variant="ghost">Cancel</VvButton>
+                            </DialogClose>
+                            <VvButton type="submit" loading={isSubmitting} className="flex-1">
+                                Send link
+                            </VvButton>
+                        </DialogFooter>
+                    </form>
+                </DialogContent>
+            </Dialog>
+
+            {/* ── Must link email dialog ───────────────────────────────────────── */}
+            <Dialog open={!!mustLinkEmail} onOpenChange={(open) => !open && setMustLinkEmail(null)}>
+                <DialogContent className="sm:max-w-md rounded-2xl">
+                    <DialogHeader>
+                        <DialogTitle
+                            style={{ fontFamily: 'var(--font-display)', fontWeight: 600, fontSize: 24, color: 'var(--navy)' }}
+                        >
+                            Account exists
+                        </DialogTitle>
+                        <DialogDescription className="pt-2" style={{ color: 'var(--text-secondary)' }}>
+                            The email{' '}
+                            <span style={{ fontWeight: 500, color: 'var(--text-primary)' }}>{mustLinkEmail}</span>{' '}
+                            is already associated with an account using a different login method.
+                            <br /><br />
+                            Please log in with your email and password first, and then you can link your Google account in your profile settings.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <DialogFooter>
+                        <DialogClose asChild>
+                            <VvButton type="button" className="w-full">Got it</VvButton>
+                        </DialogClose>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </div>
-      </div>
-
-      <Dialog open={isForgotPasswordOpen} onOpenChange={setIsForgotPasswordOpen}>
-         <DialogContent className="sm:max-w-md rounded-2xl">
-           <DialogHeader>
-             <DialogTitle className="font-outfit text-2xl font-bold text-navy">Reset password</DialogTitle>
-             <DialogDescription className="text-[var(--text-secondary)]">
-               We&apos;ll send you a secure link to reset your password.
-             </DialogDescription>
-           </DialogHeader>
-           <form onSubmit={handlePasswordReset} className="space-y-4 pt-2">
-             <VvInput
-               id="forgot-password-email"
-               type="email"
-               placeholder="pilot@vanvert.co"
-               leftIcon={<Mail className="h-4 w-4" />}
-               required
-               value={forgotPasswordEmail}
-               onChange={(e) => setForgotPasswordEmail(e.target.value)}
-             />
-             <DialogFooter className="flex-col gap-3 sm:flex-row">
-               <DialogClose asChild>
-                 <VvButton type="button" variant="ghost">Cancel</VvButton>
-               </DialogClose>
-               <VvButton type="submit" loading={isSubmitting} className="flex-1">
-                 Send link
-               </VvButton>
-             </DialogFooter>
-           </form>
-         </DialogContent>
-      </Dialog>
-
-      <Dialog open={!!mustLinkEmail} onOpenChange={(open) => !open && setMustLinkEmail(null)}>
-         <DialogContent className="sm:max-w-md rounded-2xl">
-           <DialogHeader>
-             <DialogTitle className="font-outfit text-2xl font-bold text-navy">Account exists</DialogTitle>
-             <DialogDescription className="pt-2 text-[var(--text-secondary)]">
-               The email <span className="font-medium text-[var(--text-primary)]">{mustLinkEmail}</span> is already associated with an account using a different login method.
-               <br /><br />
-               Please log in with your email and password first, and then you can link your Google account in your profile settings.
-             </DialogDescription>
-           </DialogHeader>
-           <DialogFooter>
-             <DialogClose asChild>
-               <VvButton type="button" className="w-full">Got it</VvButton>
-             </DialogClose>
-           </DialogFooter>
-         </DialogContent>
-      </Dialog>
-    </div>
-  );
+    );
 };
 
 export default LoginPage;

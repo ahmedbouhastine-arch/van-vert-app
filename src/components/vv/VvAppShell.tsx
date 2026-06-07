@@ -374,7 +374,7 @@ export function VvAppShell({ crumbs, children }: VvAppShellProps) {
           </div>
         </header>
 
-        <main className="flex-1 px-6 py-10 lg:px-10 lg:py-10">
+        <main className="flex-1 px-6 py-10 lg:px-10 lg:pb-16 lg:pt-10">
           <div className="mx-auto w-full max-w-[1200px]">{children}</div>
         </main>
       </div>
