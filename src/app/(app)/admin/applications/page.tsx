@@ -9,63 +9,78 @@ import { useState, useMemo } from 'react';
 import type { Application, UserProfile } from '@/types';
 import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { StatusBadge } from '@/components/StatusBadge';
 import { ChevronRight, FileText, Search } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
-import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { PageTransition } from "@/components/PageTransition";
+import { VvPageHeader } from "@/components/vv/VvPageHeader";
+import { VvStatusBadge, type VvStatusBadgeProps } from "@/components/vv/VvStatusBadge";
+
+type VvBadgeStatus = NonNullable<VvStatusBadgeProps["status"]>;
+const APP_STATUS_TO_BADGE: Record<Application["status"], VvBadgeStatus> = {
+  draft: "draft",
+  submitted: "submitted",
+  in_review: "in-review",
+  needs_attention: "needs-attention",
+  approved: "ready",
+  rejected: "missing",
+};
+const APP_STATUS_LABEL: Record<Application["status"], string> = {
+  draft: "Draft",
+  submitted: "Submitted",
+  in_review: "In review",
+  needs_attention: "Needs attention",
+  approved: "Approved",
+  rejected: "Rejected",
+};
 
 // A new component for a single application card
 function ApplicationCard({ application, user }: { application: Application, user?: UserProfile }) {
   const isDraft = application.status === 'draft';
-  const lastUpdated = application.updatedAt?.toDate() 
+  const lastUpdated = application.updatedAt?.toDate()
     ? formatDistanceToNow(application.updatedAt.toDate(), { addSuffix: true })
     : 'N/A';
   const totalHours = application.flightLogs?.reduce((sum, log) => sum + log.duration, 0) || 0;
-  
+
   return (
     <Link href={`/admin/applications/${application.id}`}>
       <div className={cn(
-        "bg-muted/30 border rounded-lg p-4 flex items-center gap-4 transition-all duration-200 group relative overflow-hidden",
-        "hover:bg-muted/50 hover:shadow-md",
-        isDraft ? "border-amber-200/40 hover:border-amber-300/60" : "border-border/40 hover:border-border/60"
+        "group relative flex items-center gap-4 overflow-hidden rounded-lg border bg-white p-4 transition-colors",
+        isDraft ? "border-[var(--status-attention)]/30 hover:border-[var(--status-attention)]/60" : "border-[var(--vv-border)] hover:border-[var(--sky)]"
       )}>
         <div className={cn(
-          "absolute left-0 top-0 h-full w-1.5 transition-all duration-300",
-          isDraft ? "bg-amber-400" : "bg-primary/20",
-          "group-hover:w-2",
-          isDraft ? "group-hover:bg-amber-500" : "group-hover:bg-primary"
+          "absolute left-0 top-0 h-full w-1.5 transition-all",
+          isDraft ? "bg-[var(--status-attention)]/40 group-hover:bg-[var(--status-attention)]" : "bg-[var(--sky)]/20 group-hover:bg-[var(--sky)]"
         )}></div>
-        
-        <Avatar className="h-10 w-10 border ml-3">
+
+        <Avatar className="ml-3 h-10 w-10 border border-[var(--vv-border)]">
           <AvatarImage src={user?.photoURL} alt={user?.displayName || 'User'} />
-          <AvatarFallback className="bg-primary/10 text-primary">{user?.displayName?.charAt(0) || 'U'}</AvatarFallback>
+          <AvatarFallback className="bg-[var(--sky-pale)] text-[var(--sky)]">{user?.displayName?.charAt(0) || 'U'}</AvatarFallback>
         </Avatar>
 
-        <div className="flex-1 min-w-0">
+        <div className="min-w-0 flex-1">
           <div className="flex items-center gap-3">
-             <p className="font-semibold text-foreground truncate">{user?.displayName || 'Unknown Applicant'}</p>
-             {isDraft && <Badge variant="outline" className="text-xs bg-amber-100 text-amber-800 border-amber-200">DRAFT</Badge>}
+             <p className="truncate font-outfit text-sm font-semibold text-[var(--navy)]">{user?.displayName || 'Unknown Applicant'}</p>
+             {isDraft && <span className="rounded-full border border-[var(--status-attention)]/30 bg-[var(--status-attention)]/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-[var(--status-attention)]">Draft</span>}
           </div>
-          <p className="text-sm text-muted-foreground truncate">{user?.email}</p>
+          <p className="truncate text-sm text-[var(--text-muted)]">{user?.email}</p>
         </div>
 
-        <div className="hidden md:flex flex-col items-end text-right">
-            <p className="text-xs text-muted-foreground">Total Hours</p>
-            <p className="font-mono text-sm font-medium">{totalHours.toFixed(1)}h</p>
+        <div className="hidden flex-col items-end text-right md:flex">
+            <p className="text-xs text-[var(--text-muted)]">Total hours</p>
+            <p className="font-mono text-sm font-medium text-[var(--navy)]">{totalHours.toFixed(1)}h</p>
         </div>
 
-        <div className="hidden sm:flex flex-col items-end text-right">
-            <p className="text-xs text-muted-foreground">Last Updated</p>
-            <p className="text-sm font-medium">{lastUpdated}</p>
+        <div className="hidden flex-col items-end text-right sm:flex">
+            <p className="text-xs text-[var(--text-muted)]">Last updated</p>
+            <p className="text-sm font-medium text-[var(--text-secondary)]">{lastUpdated}</p>
         </div>
 
-        <div className="w-[120px] text-right">
-            <StatusBadge status={application.status} />
+        <div className="w-[140px] text-right">
+            <VvStatusBadge status={APP_STATUS_TO_BADGE[application.status]}>{APP_STATUS_LABEL[application.status]}</VvStatusBadge>
         </div>
-        
-        <ChevronRight className="h-5 w-5 text-muted-foreground transition-transform group-hover:translate-x-1" />
+
+        <ChevronRight className="h-5 w-5 text-[var(--text-muted)] transition-transform group-hover:translate-x-1" />
       </div>
     </Link>
   );
@@ -116,16 +131,16 @@ function AdminApplicationsPage() {
     if (isLoading) {
         return <div className="space-y-3">
             {[...Array(3)].map((_, i) => (
-                <div key={i} className="bg-muted/30 border rounded-lg p-4 h-20 animate-pulse"></div>
+                <div key={i} className="h-20 animate-pulse rounded-lg border border-[var(--vv-border)] bg-[var(--surface)]"></div>
             ))}
         </div>
     }
-    if (error) return <p className="text-red-500 text-sm">Error: {error.message}</p>;
+    if (error) return <p className="text-sm text-[var(--status-missing)]">Error: {error.message}</p>;
     if (apps.length === 0) {
-        return <div className="border-2 border-dashed rounded-lg flex flex-col items-center justify-center p-12 text-center text-muted-foreground">
-            <FileText className="h-10 w-10 mb-3" />
-            <h3 className="font-semibold text-lg">No applications found</h3>
-            <p className="text-sm mt-1">There are no applications in this category that match your search.</p>
+        return <div className="flex flex-col items-center justify-center rounded-lg border-2 border-dashed border-[var(--vv-border)] p-12 text-center text-[var(--text-muted)]">
+            <FileText className="mb-3 h-10 w-10" />
+            <h3 className="font-outfit text-lg font-semibold text-[var(--navy)]">No applications found</h3>
+            <p className="mt-1 text-sm">There are no applications in this category that match your search.</p>
         </div>
     }
     return <div className="space-y-3">
@@ -136,34 +151,36 @@ function AdminApplicationsPage() {
   };
 
   return (
-    <PageTransition className="p-6 max-w-7xl mx-auto">
-        <div className="mb-8">
-            <h1 className="text-3xl font-bold tracking-tight mb-1">Applications</h1>
-            <p className="text-muted-foreground">Review and manage all submitted pilot applications.</p>
-            <div className="relative mt-6">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-                <Input 
-                    placeholder="Search by name or email..." 
-                    className="pl-10"
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                />
-            </div>
+    <PageTransition>
+        <VvPageHeader
+          kicker="Operations"
+          title="Applications"
+          sub="Review and manage all submitted pilot applications."
+        />
+
+        <div className="relative mb-8 -mt-2 max-w-md">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--text-muted)]" />
+            <Input
+                placeholder="Search by name or email..."
+                className="rounded-lg border-[var(--vv-border)] pl-10 focus-visible:ring-[var(--sky)]"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+            />
         </div>
-        
+
         <div className="space-y-10">
             <div>
-                <div className="flex items-center gap-3 mb-4">
-                    <h2 className="text-xl font-semibold">Submitted Applications</h2>
-                    {!loading && <Badge variant="secondary">{submittedApps.length}</Badge>}
+                <div className="mb-4 flex items-center gap-3">
+                    <h2 className="font-outfit text-lg font-semibold text-[var(--navy)]">Submitted applications</h2>
+                    {!loading && <span className="rounded-full bg-[var(--surface)] px-2.5 py-0.5 text-xs font-semibold text-[var(--text-secondary)]">{submittedApps.length}</span>}
                 </div>
                 {renderAppList(submittedApps, loading || usersLoading, error || usersError)}
             </div>
 
             <div>
-                <div className="flex items-center gap-3 mb-4">
-                    <h2 className="text-xl font-semibold">Draft Applications</h2>
-                    {!loading && <Badge variant="secondary">{draftApps.length}</Badge>}
+                <div className="mb-4 flex items-center gap-3">
+                    <h2 className="font-outfit text-lg font-semibold text-[var(--navy)]">Draft applications</h2>
+                    {!loading && <span className="rounded-full bg-[var(--surface)] px-2.5 py-0.5 text-xs font-semibold text-[var(--text-secondary)]">{draftApps.length}</span>}
                 </div>
                 {renderAppList(draftApps, loading || usersLoading, error || usersError)}
             </div>
