@@ -96,7 +96,7 @@ export default function VerifyEmailPage() {
     <div className="relative flex min-h-screen flex-col items-center bg-sky-mist px-6 py-10">
       <Link
         href="/"
-        className="absolute left-6 top-6 flex items-center gap-2 rounded-full border border-vv-border bg-white px-4 py-2 text-sm font-medium text-text-secondary shadow-sm transition-colors hover:text-navy md:left-10 md:top-10"
+        className="absolute left-6 top-6 flex items-center gap-2 rounded-full border border-[var(--vv-border)] bg-white px-4 py-2 text-sm font-medium text-[var(--text-secondary)] shadow-sm transition-colors hover:text-navy md:left-10 md:top-10"
       >
         <ArrowLeft className="h-4 w-4" /> Home
       </Link>
@@ -111,11 +111,11 @@ export default function VerifyEmailPage() {
             <Mail className="h-7 w-7 text-sky" />
           </span>
           <h1 className="mt-6 font-outfit text-2xl font-bold text-navy">Verify your email</h1>
-          <p className="mx-auto mt-2 max-w-xs text-sm leading-relaxed text-text-secondary">
+          <p className="mx-auto mt-2 max-w-xs text-sm leading-relaxed text-[var(--text-secondary)]">
             We sent a verification link to <span className="font-semibold text-navy">{user?.email}</span>. Click the link to activate your account.
           </p>
 
-          <div className="mt-6 rounded-xl border border-vv-border bg-surface p-5 text-left text-sm text-text-secondary">
+          <div className="mt-6 rounded-xl border border-[var(--vv-border)] bg-surface p-5 text-left text-sm text-[var(--text-secondary)]">
             <p className="mb-2 font-semibold text-navy">Didn&apos;t see it?</p>
             <ul className="space-y-1.5">
               <li>· Check your spam or junk folder</li>
