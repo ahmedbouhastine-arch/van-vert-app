@@ -9,6 +9,7 @@ import { LoadingScreen } from "@/components/LoadingScreen";
 import type { Application, UserProfile } from "@/types";
 import React from "react";
 import { PageTransition } from "@/components/PageTransition";
+import { VvPageHeader } from "@/components/vv/VvPageHeader";
 
 
 function AuthorizedApplicationDetail({ id, claims, isAuthorized }: { id: string, claims?: { role?: string | null }, isAuthorized: boolean }) {
@@ -40,19 +41,16 @@ function AuthorizedApplicationDetail({ id, claims, isAuthorized }: { id: string,
   }
   
   if (!application) {
-    return <div className="text-center text-muted-foreground p-8">You do not have permission to view this page.</div>;
+    return <div className="p-8 text-center text-[var(--text-muted)]">You do not have permission to view this page.</div>;
   }
-  
+
   return (
       <PageTransition className="flex flex-col gap-4">
-          <div className="flex flex-col gap-1">
-              <h1 className="text-2xl font-bold font-headline tracking-tight">
-                  Review Application
-              </h1>
-              <p className="text-muted-foreground">
-                  Reviewing {user?.displayName}&apos;s application for {application.licenseType}.
-              </p>
-          </div>
+          <VvPageHeader
+            kicker="Review"
+            title="Review application"
+            sub={`Reviewing ${user?.displayName ?? "the applicant"}'s application for ${application.licenseType}.`}
+          />
           <AdminApplicationClient application={application} user={user ?? undefined} claims={claims} />
       </PageTransition>
   )
