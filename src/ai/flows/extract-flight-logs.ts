@@ -55,7 +55,6 @@ async function splitPdfIntoChunks(pdfBytes: Uint8Array, maxPages: number): Promi
     chunks.push(Buffer.from(chunkBytes).toString('base64'));
   }
 
-  console.log(`Split ${totalPages}-page PDF into ${chunks.length} chunks of up to ${maxPages} pages each.`);
   return { chunks, totalPages };
 }
 
@@ -71,7 +70,6 @@ async function processDocumentChunked(pdfBytes: Uint8Array) {
 
   for (let i = 0; i < chunks.length; i++) {
     const pageOffset = i * DOC_AI_PAGE_LIMIT;
-    console.log(`Processing chunk ${i + 1}/${chunks.length} (pages ${pageOffset + 1}-${Math.min(pageOffset + DOC_AI_PAGE_LIMIT, totalPages)})...`);
 
     const [result] = await client.processDocument({
       name: PROCESSOR_NAME,
@@ -229,13 +227,6 @@ export async function extractFlightLogs(input: ExtractFlightLogsInput): Promise<
   const entities = await processDocumentChunked(pdfBytes);
   if (entities.length === 0) return { flights: [], logbookFormat: 'simple' };
 
-  console.log('Total entities from Document AI:', entities.length);
-  console.log('Entity types found:', [...new Set(entities.map(e => e.type))]);
-  console.log('Raw hour entities:', entities
-    .filter(e => ['dual_hours','PIC_hours_solo_incl','instrument_hours','solo_incl'].includes(e.type ?? ''))
-    .map(e => ({ type: e.type, raw: e.mentionText }))
-  );
-
   type RowData = {
     date?: string;
     aircraft?: string;
@@ -304,8 +295,6 @@ export async function extractFlightLogs(input: ExtractFlightLogsInput): Promise<
   // If neither → simple
   const logbookFormat = hasSoloInclText ? 'typeB' : hasPicInclSolo ? 'typeA' : 'simple';
 
-  console.log('Detected logbook format:', logbookFormat);
-
   const currentYear = new Date().getFullYear();
   
   const allMapped = Array.from(rowMap.values())
@@ -335,20 +324,6 @@ export async function extractFlightLogs(input: ExtractFlightLogsInput): Promise<
     return { ...f, date: inferredDate };
   });
 
-  console.log('ALL rows before filter:', JSON.stringify(flightsWithDates, null, 2));
-  console.log('Rows failing filter:', flightsWithDates.filter(f => {
-    const dateValid =
-      // Normal valid date
-      (/^\d{4}-\d{2}-\d{2}$/.test(f.date) &&
-      !isNaN(new Date(f.date).getTime()) &&
-      new Date(f.date).getFullYear() >= 1990 &&
-      new Date(f.date).getFullYear() <= currentYear)
-      ||
-      // Unknown day date like "2019-02-00"
-      /^\d{4}-\d{2}-00$/.test(f.date);
-    return !(dateValid && f.duration > 0);
-  }));
-
   const flights = flightsWithDates.filter(f => {
     const dateValid =
       // Normal valid date
@@ -361,9 +336,6 @@ export async function extractFlightLogs(input: ExtractFlightLogsInput): Promise<
       /^\d{4}-\d{2}-00$/.test(f.date);
     return dateValid && f.duration > 0;
   });
-
-  console.log(`Built ${flights.length} flights from Document AI entities`);
-  console.log('Sample flights:', JSON.stringify(flights.slice(0, 3), null, 2));
 
   return { flights, logbookFormat };
 }

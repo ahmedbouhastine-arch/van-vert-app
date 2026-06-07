@@ -25,7 +25,6 @@ export async function sendWelcomeEmail(
       throw new Error(error.message);
     }
 
-    console.log(`✅ Welcome email sent successfully to ${toEmail}`);
     return { success: true, id: data?.id };
   } catch (err) {
     console.error('❌ Error sending welcome email:', err);

@@ -21,7 +21,6 @@ export async function sendVerificationEmail(
       throw new Error(error.message);
     }
 
-    console.log(`✅ Verification email sent successfully to ${toEmail}`);
     return { success: true, id: data?.id };
   } catch (err) {
     console.error('❌ Error sending verification email:', err);

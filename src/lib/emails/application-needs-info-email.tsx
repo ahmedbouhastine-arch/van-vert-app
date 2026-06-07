@@ -28,7 +28,6 @@ export async function sendApplicationNeedsMoreInfoEmail(
       throw new Error(error.message);
     }
 
-    console.log(`✅ Application needs more info email sent successfully to ${toEmail}`);
     return { success: true, id: data?.id };
   } catch (err) {
     console.error('❌ Error sending application needs more info email:', err);

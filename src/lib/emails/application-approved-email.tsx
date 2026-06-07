@@ -26,7 +26,6 @@ export async function sendApplicationApprovedEmail(
       throw new Error(error.message);
     }
 
-    console.log(`✅ Application approved email sent successfully to ${toEmail}`);
     return { success: true, id: data?.id };
   } catch (err) {
     console.error('❌ Error sending application approved email:', err);

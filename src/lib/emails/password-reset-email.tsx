@@ -21,7 +21,6 @@ export async function sendPasswordResetEmail(
             throw new Error(error.message);
         }
 
-        console.log(`✅ Password reset email sent successfully to ${toEmail}`);
         return { success: true, id: data?.id };
     } catch (err) {
         console.error('❌ Error sending password reset email:', err);

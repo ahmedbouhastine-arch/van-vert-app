@@ -28,7 +28,6 @@ export async function sendApplicationRejectedEmail(
       throw new Error(error.message);
     }
 
-    console.log(`✅ Application rejected email sent successfully to ${toEmail}`);
     return { success: true, id: data?.id };
   } catch (err) {
     console.error('❌ Error sending application rejected email:', err);
