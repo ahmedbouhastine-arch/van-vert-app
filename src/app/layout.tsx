@@ -3,10 +3,11 @@ import Script from "next/script";
 import "./globals.css";
 import { Toaster } from "@/components/ui/toaster";
 import { ThemeProvider } from "@/components/ThemeProvider";
-import { Inter, Poppins } from "next/font/google";
+import { Inter, Poppins, Outfit } from "next/font/google";
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
 const poppins = Poppins({ subsets: ["latin"], weight: ["600", "700"], variable: "--font-poppins" });
+const outfit = Outfit({ subsets: ["latin"], variable: "--font-outfit" });
 
 export const metadata: Metadata = {
   title: "Van-Vert",
@@ -41,7 +42,7 @@ export default function RootLayout({
           `}
         </Script>
       </head>
-      <body className={`${inter.variable} ${poppins.variable} font-body antialiased`}>
+      <body className={`${inter.variable} ${poppins.variable} ${outfit.variable} font-body antialiased`}>
         <ThemeProvider
             attribute="class"
             defaultTheme="dark"

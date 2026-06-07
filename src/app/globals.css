@@ -2,6 +2,41 @@
 @tailwind components;
 @tailwind utilities;
 
+:root {
+  /* Van-Vert brand tokens */
+  --navy:           #002d78;
+  --navy-deep:      #001d50;
+  --sky:            #0078a5;
+  --sky-light:      #0087a5;
+  --sky-pale:       #e1f4f7;
+  --sky-mist:       #f0f8fb;
+  --sky-bright:     #0087a5;
+
+  --surface:        #f8fbfd;
+  /* Renamed from --border/--border-soft (brand guide names) to avoid
+     colliding with shadcn's --border, which feeds hsl(var(--border)) */
+  --vv-border:      #daeaf0;
+  --vv-border-soft: #ecf4f7;
+  --text-primary:   #0a1628;
+  --text-secondary: #4a6070;
+  --text-muted:     #8ba0ae;
+
+  --status-ready:     #16a34a;
+  --status-attention: #d97706;
+  --status-missing:   #dc2626;
+  --status-submitted: #0078a5;
+
+  --font-display: 'Outfit', sans-serif;
+  --font-body:    'Inter', sans-serif;
+
+  --r-sm: 4px;
+  --r-md: 6px;
+  --r-lg: 8px;
+  --r-xl: 12px;
+  --r-2xl: 16px;
+  --r-full: 9999px;
+}
+
 @layer base {
   :root {
     --background: 206 33% 95%;
