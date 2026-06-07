@@ -173,11 +173,11 @@ export default function HomePage() {
   return (
     <div className="flex min-h-screen flex-col bg-white">
       {/* Header */}
-      <header className="sticky top-0 z-40 flex h-16 items-center justify-between border-b border-vv-border bg-white/90 px-6 backdrop-blur md:px-10">
+      <header className="sticky top-0 z-40 flex h-16 items-center justify-between border-b border-[var(--vv-border)] bg-white/90 px-6 backdrop-blur md:px-10">
         <Link href="/">
           <Logo />
         </Link>
-        <nav className="hidden items-center gap-7 text-sm font-medium text-text-secondary md:flex">
+        <nav className="hidden items-center gap-7 text-sm font-medium text-[var(--text-secondary)] md:flex">
           {navLinks.map((link) => (
             <Link key={link.label} href={link.href} className="transition-colors hover:text-navy">
               {link.label}
@@ -185,7 +185,7 @@ export default function HomePage() {
           ))}
         </nav>
         <div className="flex items-center gap-3">
-          <Link href="/login" className="text-sm font-medium text-text-secondary transition-colors hover:text-navy">
+          <Link href="/login" className="text-sm font-medium text-[var(--text-secondary)] transition-colors hover:text-navy">
             Sign in
           </Link>
           <Link href="/register">
@@ -283,9 +283,9 @@ export default function HomePage() {
                     </span>
                     <div>
                       <h3 className="font-outfit text-lg font-semibold text-navy">{feature.title}</h3>
-                      <p className="mt-2 text-sm leading-relaxed text-text-secondary">{feature.description}</p>
+                      <p className="mt-2 text-sm leading-relaxed text-[var(--text-secondary)]">{feature.description}</p>
                     </div>
-                    <p className="mt-auto pt-2 text-[11px] font-semibold uppercase tracking-wide text-text-muted">
+                    <p className="mt-auto pt-2 text-[11px] font-semibold uppercase tracking-wide text-[var(--text-muted)]">
                       {feature.tags.join(" · ")}
                     </p>
                   </VvCard>
@@ -316,10 +316,10 @@ export default function HomePage() {
                 {testimonials.slice(1).map((t) => (
                   <VvCard key={t.name}>
                     <p className="font-outfit text-2xl text-sky">&ldquo;</p>
-                    <p className="mt-1 text-sm leading-relaxed text-text-secondary">{t.quote}</p>
+                    <p className="mt-1 text-sm leading-relaxed text-[var(--text-secondary)]">{t.quote}</p>
                     <div className="mt-5">
                       <p className="text-sm font-semibold text-navy">{t.name}</p>
-                      <p className="text-xs text-text-muted">{t.role}</p>
+                      <p className="text-xs text-[var(--text-muted)]">{t.role}</p>
                     </div>
                   </VvCard>
                 ))}
@@ -335,7 +335,7 @@ export default function HomePage() {
             <h2 className="mt-3 font-outfit text-3xl font-bold tracking-tight text-navy md:text-4xl">
               Pay once your license is issued.
             </h2>
-            <p className="mx-auto mt-4 max-w-xl text-sm leading-relaxed text-text-secondary">
+            <p className="mx-auto mt-4 max-w-xl text-sm leading-relaxed text-[var(--text-secondary)]">
               No subscription wall in front of getting your conversion done. We make money when you fly.
             </p>
 
@@ -346,7 +346,7 @@ export default function HomePage() {
                   className={
                     tier.featured
                       ? "relative flex flex-col rounded-xl bg-navy p-7 text-white shadow-xl"
-                      : "relative flex flex-col rounded-xl border border-vv-border bg-white p-7"
+                      : "relative flex flex-col rounded-xl border border-[var(--vv-border)] bg-white p-7"
                   }
                 >
                   {tier.badge && (
@@ -354,20 +354,20 @@ export default function HomePage() {
                       {tier.badge}
                     </span>
                   )}
-                  <p className={`text-[11px] font-semibold uppercase tracking-[0.15em] ${tier.featured ? "text-sky-pale/60" : "text-text-muted"}`}>
+                  <p className={`text-[11px] font-semibold uppercase tracking-[0.15em] ${tier.featured ? "text-sky-pale/60" : "text-[var(--text-muted)]"}`}>
                     {tier.name}
                   </p>
-                  <p className={`mt-1 text-sm ${tier.featured ? "text-sky-pale/70" : "text-text-secondary"}`}>
+                  <p className={`mt-1 text-sm ${tier.featured ? "text-sky-pale/70" : "text-[var(--text-secondary)]"}`}>
                     {tier.description}
                   </p>
                   <p className={`mt-6 font-outfit text-4xl font-bold ${tier.featured ? "text-white" : "text-navy"}`}>
                     {tier.price}
                   </p>
-                  <p className={`text-xs ${tier.featured ? "text-sky-pale/60" : "text-text-muted"}`}>{tier.priceNote}</p>
+                  <p className={`text-xs ${tier.featured ? "text-sky-pale/60" : "text-[var(--text-muted)]"}`}>{tier.priceNote}</p>
 
                   <ul className="mt-6 flex flex-col gap-2.5 text-sm">
                     {tier.features.map((f) => (
-                      <li key={f} className={`flex items-start gap-2 ${tier.featured ? "text-white/85" : "text-text-secondary"}`}>
+                      <li key={f} className={`flex items-start gap-2 ${tier.featured ? "text-white/85" : "text-[var(--text-secondary)]"}`}>
                         <Plus className={`mt-0.5 h-3.5 w-3.5 shrink-0 rotate-45 ${tier.featured ? "text-sky-bright" : "text-sky"}`} />
                         {f}
                       </li>
@@ -385,7 +385,7 @@ export default function HomePage() {
               ))}
             </div>
 
-            <p className="mx-auto mt-8 max-w-md text-xs text-text-muted">
+            <p className="mx-auto mt-8 max-w-md text-xs text-[var(--text-muted)]">
               If your license isn&apos;t issued, you don&apos;t pay. Full refund guarantee on Solo tier.
             </p>
           </div>
@@ -405,13 +405,13 @@ export default function HomePage() {
                   <AccordionItem
                     key={faq.question}
                     value={`item-${idx}`}
-                    className="rounded-xl border border-vv-border bg-white px-5 data-[state=open]:border-sky"
+                    className="rounded-xl border border-[var(--vv-border)] bg-white px-5 data-[state=open]:border-sky"
                   >
                     <AccordionTrigger className="text-sm font-semibold text-navy hover:no-underline [&>svg]:text-sky">
                       {faq.question}
                     </AccordionTrigger>
                     {faq.answer && (
-                      <AccordionContent className="text-sm leading-relaxed text-text-secondary">
+                      <AccordionContent className="text-sm leading-relaxed text-[var(--text-secondary)]">
                         {faq.answer}
                       </AccordionContent>
                     )}
