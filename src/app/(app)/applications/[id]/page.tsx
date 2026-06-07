@@ -5,6 +5,7 @@ import { getAuthenticatedAppForUser } from "@/firebase/server-auth-actions";
 import type { Application } from "@/types";
 import { headers } from "next/headers";
 import { PageTransition } from "@/components/PageTransition";
+import { VvPageHeader } from "@/components/vv/VvPageHeader";
 
 // Helper to serialize Firestore Timestamps
 function serializeTimestamps(obj: unknown): unknown {
@@ -62,14 +63,11 @@ export default async function ApplicationDetailPage({ params }: { params: Promis
 
     return (
       <PageTransition className="flex flex-col gap-4">
-          <div className="flex flex-col gap-1">
-              <h1 className="text-2xl font-bold font-headline tracking-tight">
-                  Application Details
-              </h1>
-              <p className="text-muted-foreground">
-                  Manage your application for the {applicationData.licenseType}.
-              </p>
-          </div>
+          <VvPageHeader
+            kicker="Application"
+            title="Application details"
+            sub={`Manage your application for the ${applicationData.licenseType}.`}
+          />
         <ApplicationClient application={serializedApplication} />
       </PageTransition>
     );
