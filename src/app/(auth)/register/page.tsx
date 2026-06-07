@@ -180,7 +180,7 @@ export default function RegisterPage() {
       <div className="flex flex-1 items-center justify-center bg-white px-6 py-16">
         <div className="w-full max-w-md">
           <h2 className="font-outfit text-3xl font-bold tracking-tight text-navy">Create account</h2>
-          <p className="mt-2 text-sm text-text-secondary">
+          <p className="mt-2 text-sm text-[var(--text-secondary)]">
             Already a pilot here?{" "}
             <Link href="/login" className="font-semibold text-sky hover:text-navy">Sign in</Link>.
           </p>
@@ -225,9 +225,9 @@ export default function RegisterPage() {
                     {req.isValid ? (
                       <CheckCircle2 className="h-3.5 w-3.5 text-status-ready-text" />
                     ) : (
-                      <span className="h-3.5 w-3.5 rounded-full border border-vv-border" />
+                      <span className="h-3.5 w-3.5 rounded-full border border-[var(--vv-border)]" />
                     )}
-                    <span className={`text-[11px] font-medium uppercase tracking-wider ${req.isValid ? 'text-status-ready-text' : 'text-text-muted'}`}>
+                    <span className={`text-[11px] font-medium uppercase tracking-wider ${req.isValid ? 'text-status-ready-text' : 'text-[var(--text-muted)]'}`}>
                       {req.text}
                     </span>
                   </div>
@@ -235,12 +235,12 @@ export default function RegisterPage() {
               </div>
             </div>
 
-            <label className="flex items-start gap-2.5 text-sm text-text-secondary">
+            <label className="flex items-start gap-2.5 text-sm text-[var(--text-secondary)]">
               <input
                 type="checkbox"
                 checked={agreedToTerms}
                 onChange={(e) => setAgreedToTerms(e.target.checked)}
-                className="mt-0.5 h-4 w-4 rounded border-vv-border text-sky focus:ring-sky"
+                className="mt-0.5 h-4 w-4 rounded border-[var(--vv-border)] text-sky focus:ring-sky"
                 required
               />
               <span>
@@ -262,9 +262,9 @@ export default function RegisterPage() {
           </form>
 
           <div className="my-7 flex items-center gap-4">
-            <div className="h-px flex-1 bg-vv-border" />
-            <span className="text-xs font-medium uppercase tracking-widest text-text-muted">Or</span>
-            <div className="h-px flex-1 bg-vv-border" />
+            <div className="h-px flex-1 bg-[var(--vv-border)]" />
+            <span className="text-xs font-medium uppercase tracking-widest text-[var(--text-muted)]">Or</span>
+            <div className="h-px flex-1 bg-[var(--vv-border)]" />
           </div>
 
           <VvButton
@@ -273,7 +273,7 @@ export default function RegisterPage() {
             type="button"
             onClick={handleGoogleLogin}
             disabled={isSubmitting}
-            className="w-full border-vv-border text-text-primary hover:bg-surface hover:text-text-primary"
+            className="w-full border-[var(--vv-border)] text-[var(--text-primary)] hover:bg-surface hover:text-[var(--text-primary)]"
           >
             <GoogleIcon className="h-5 w-5" />
             Sign up with Google
