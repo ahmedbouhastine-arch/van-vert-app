@@ -1,24 +1,26 @@
-
 'use client';
 
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { useEffect, useState } from 'react';
+import Link from 'next/link';
+import { ArrowLeft, ArrowRight, Award, Compass, Briefcase, type LucideIcon } from 'lucide-react';
+
 import { licenseTypes } from "@/lib/licensing";
-import { useState, useEffect } from 'react';
 import { useUser, useAuth } from '@/firebase';
-import { Button } from '@/components/ui/button';
-import { ArrowRight, Loader2 } from 'lucide-react';
 import type { LicenseType } from '@/lib/licensing';
 import { useToast } from '@/hooks/use-toast';
 import { LoadingScreen } from "@/components/LoadingScreen";
 import { useRouter } from "next/navigation";
 import * as serverActions from "@/app/actions";
 import { PageTransition } from "@/components/PageTransition";
+import { VvPageHeader } from "@/components/vv/VvPageHeader";
+import { VvButton, vvButtonVariants } from "@/components/vv/VvButton";
+import { cn } from '@/lib/utils';
+
+const LICENSE_ICON: Record<string, LucideIcon> = {
+  ppl: Compass,
+  cpl: Briefcase,
+  atpl: Award,
+};
 
 export default function NewApplicationPage() {
   const { user, claims, loading: userLoading } = useUser();
@@ -27,7 +29,6 @@ export default function NewApplicationPage() {
   const { toast } = useToast();
   const [isCreating, setIsCreating] = useState<string | null>(null);
 
-  // Redirect admins/reviewers away from this page
   useEffect(() => {
     if (!userLoading && claims && ['reviewer', 'admin', 'head-admin'].includes(claims.role)) {
       router.push('/admin');
@@ -36,19 +37,19 @@ export default function NewApplicationPage() {
 
   const handleCreateApplication = async (licenseType: LicenseType) => {
     if (!user) {
-        toast({
-            variant: "destructive",
-            title: "Authentication Error",
-            description: "You must be logged in to create an application.",
-        });
-        return;
+      toast({
+        variant: "destructive",
+        title: "Authentication Error",
+        description: "You must be logged in to create an application.",
+      });
+      return;
     }
 
     setIsCreating(licenseType.id);
     try {
       const idToken = await auth.currentUser?.getIdToken();
       if (!idToken) {
-          throw new Error("Could not retrieve user authentication token.");
+        throw new Error("Could not retrieve user authentication token.");
       }
 
       const { applicationId } = await serverActions.createApplicationAction(licenseType.id, idToken);
@@ -72,44 +73,52 @@ export default function NewApplicationPage() {
     }
   };
 
-  // Show a loading screen while user data is being fetched or if they are being redirected.
   if (userLoading || (claims && ['reviewer', 'admin', 'head-admin'].includes(claims.role))) {
     return <LoadingScreen text="Verifying access..." />;
   }
 
   return (
-    <PageTransition className="mx-auto grid w-full max-w-4xl gap-4">
-      <div className="flex flex-col gap-2">
-        <h1 className="text-3xl font-bold font-headline tracking-tight">
-          Start a New Application
-        </h1>
-        <p className="text-muted-foreground">
-          Select the type of license you are applying for.
-        </p>
-      </div>
-      <div className="grid gap-6">
-        {licenseTypes.map((license) => (
-          <Card key={license.id}>
-            <CardHeader>
-              <CardTitle className="font-headline">{license.name}</CardTitle>
-              <CardDescription>{license.description}</CardDescription>
-            </CardHeader>
-            <CardContent>
-                <Button onClick={() => handleCreateApplication(license)} disabled={!!isCreating}>
-                  {isCreating === license.id ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Creating...
-                    </>
-                  ) : (
-                    <>
-                      Start Application <ArrowRight className="ml-2 h-4 w-4" />
-                    </>
-                  )}
-                </Button>
-            </CardContent>
-          </Card>
-        ))}
+    <PageTransition>
+      <VvPageHeader
+        title="New Application"
+        sub="Select your license type to begin. Your application will be created as a draft."
+        actions={
+          <Link href="/applications" className={cn(vvButtonVariants({ variant: "outline" }))}>
+            <ArrowLeft className="h-3.5 w-3.5" /> Back
+          </Link>
+        }
+      />
+
+      <div className="grid grid-cols-1 gap-5 md:grid-cols-3">
+        {licenseTypes.map((license) => {
+          const Icon = LICENSE_ICON[license.id] ?? Compass;
+          const creating = isCreating === license.id;
+          return (
+            <div key={license.id} className="flex flex-col overflow-hidden rounded-xl border border-[var(--vv-border)] bg-white">
+              <div className="flex-1 p-7">
+                <div className="mb-5 flex h-[52px] w-[52px] items-center justify-center rounded-[14px] bg-[var(--sky-pale)] text-[var(--sky)]">
+                  <Icon className="h-6 w-6" />
+                </div>
+                <h3 className="mb-2 font-outfit text-[22px] font-bold text-[var(--navy)]">{license.name}</h3>
+                <p className="text-sm leading-relaxed text-[var(--text-secondary)]">{license.description}</p>
+                <div className="mt-4 text-xs text-[var(--text-muted)]">
+                  {license.documentRequirements.length} documents required
+                </div>
+              </div>
+              <div className="px-7 pb-7">
+                <VvButton
+                  variant="sky"
+                  className="w-full justify-center"
+                  loading={creating}
+                  disabled={!!isCreating}
+                  onClick={() => handleCreateApplication(license)}
+                >
+                  Start Application <ArrowRight className="h-3.5 w-3.5" />
+                </VvButton>
+              </div>
+            </div>
+          );
+        })}
       </div>
     </PageTransition>
   );
