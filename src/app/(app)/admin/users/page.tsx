@@ -7,14 +7,14 @@ import { LoadingScreen } from "@/components/LoadingScreen";
 import type { UserProfile } from "@/types";
 import { collection, doc, updateDoc, type CollectionReference } from "firebase/firestore";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
 import { type User } from "firebase/auth";
 import { Loader2 } from "lucide-react";
 import { PageTransition } from "@/components/PageTransition";
+import { VvPageHeader } from "@/components/vv/VvPageHeader";
+import { VvButton } from "@/components/vv/VvButton";
 
 
 type Role = 'user' | 'admin' | 'head-admin' | 'reviewer';
@@ -54,23 +54,23 @@ function UserRow({
     const isPromotionToHeadAdminDisabled = currentUserClaims?.role === 'admin';
 
     return (
-        <TableRow>
+        <TableRow className="border-[var(--vv-border-soft)]">
             <TableCell>
                 <div className="flex items-center gap-3">
-                    <Avatar className="h-9 w-9">
+                    <Avatar className="h-9 w-9 border border-[var(--vv-border)]">
                         {user.photoURL && <AvatarImage src={user.photoURL} alt={user.displayName} data-ai-hint="person portrait" />}
-                        <AvatarFallback>{user.displayName?.charAt(0).toUpperCase()}</AvatarFallback>
+                        <AvatarFallback className="bg-[var(--sky-pale)] text-[var(--sky)]">{user.displayName?.charAt(0).toUpperCase()}</AvatarFallback>
                     </Avatar>
                     <div>
-                        <div className="font-medium">{user.displayName}</div>
-                        <div className="text-xs text-muted-foreground">{user.email}</div>
+                        <div className="font-outfit text-sm font-semibold text-[var(--navy)]">{user.displayName}</div>
+                        <div className="text-xs text-[var(--text-muted)]">{user.email}</div>
                     </div>
                 </div>
             </TableCell>
             <TableCell>
                 {canPerformActions ? (
                     <Select value={selectedRole} onValueChange={(value) => setSelectedRole(value as Role)}>
-                        <SelectTrigger className="w-[180px]">
+                        <SelectTrigger className="w-[180px] rounded-lg border-[var(--vv-border)]">
                             <SelectValue placeholder="Select a role" />
                         </SelectTrigger>
                         <SelectContent>
@@ -81,7 +81,7 @@ function UserRow({
                         </SelectContent>
                     </Select>
                 ) : (
-                            <div className="capitalize w-[180px] px-3 py-2 text-sm">
+                            <div className="w-[180px] px-3 py-2 text-sm capitalize text-[var(--text-secondary)]">
                                 {(user.role || 'user').replace(/-/g, ' ')}
                             </div>
                 )}
@@ -89,15 +89,14 @@ function UserRow({
             <TableCell className="text-right">
                 {canPerformActions ? (
                     <div className="flex items-center justify-end gap-2">
-                        <Button onClick={handleUpdate} disabled={selectedRole === user.role || isUpdating}>
-                            {isUpdating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                            Update Role
-                        </Button>
+                        <VvButton size="sm" onClick={handleUpdate} disabled={selectedRole === user.role || isUpdating} loading={isUpdating}>
+                            Update role
+                        </VvButton>
                     </div>
                 ) : isCurrentUser ? (
-                     <span className="text-sm text-muted-foreground pr-4">Cannot edit self</span>
+                     <span className="pr-4 text-sm text-[var(--text-muted)]">Cannot edit self</span>
                 ) : (
-                    <span className="text-sm text-muted-foreground pr-4">Permission Denied</span>
+                    <span className="pr-4 text-sm text-[var(--text-muted)]">Permission denied</span>
                 )
                 }
             </TableCell>
@@ -155,42 +154,41 @@ export default function UserManagementPage() {
     }
 
     return (
-        <PageTransition className="flex flex-col gap-4">
-            <div className="flex flex-col gap-1">
-                <h1 className="text-3xl font-bold font-headline tracking-tight">User Management</h1>
-                <p className="text-muted-foreground">Promote or demote users to different roles.</p>
+        <PageTransition>
+            <VvPageHeader
+              kicker="Operations"
+              title="User Management"
+              sub="Promote or demote users to different roles."
+            />
+            <div className="rounded-xl border border-[var(--vv-border)] bg-white">
+                <div className="border-b border-[var(--vv-border-soft)] p-6">
+                    <h3 className="font-outfit text-base font-semibold text-[var(--navy)]">All users</h3>
+                    <p className="mt-0.5 text-[13px] text-[var(--text-muted)]">View and manage user roles in the system.</p>
+                </div>
+                <Table>
+                    <TableHeader className="bg-[var(--surface)]">
+                        <TableRow className="border-[var(--vv-border-soft)] hover:bg-transparent">
+                            <TableHead className="text-[var(--text-muted)]">User</TableHead>
+                            <TableHead className="text-[var(--text-muted)]">Role</TableHead>
+                            <TableHead className="text-right text-[var(--text-muted)]">Actions</TableHead>
+                        </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                        {usersIsLoading && <TableRow className="border-[var(--vv-border-soft)]"><TableCell colSpan={3} className="h-24 text-center text-[var(--text-muted)]"><Loader2 className="mx-auto h-4 w-4 animate-spin" /></TableCell></TableRow>}
+                        {!usersIsLoading && (!users || users.length === 0) && <TableRow className="border-[var(--vv-border-soft)]"><TableCell colSpan={3} className="h-24 text-center text-[var(--text-muted)]">No users found.</TableCell></TableRow>}
+                        {users?.sort((a, b) => (a.displayName || '').localeCompare(b.displayName || '')).map(u => (
+                            <UserRow
+                                key={u.id}
+                                user={u}
+                                currentUser={user}
+                                currentUserClaims={claims}
+                                onRoleChange={handleRoleChange}
+                                isUpdating={isUpdating === u.id}
+                            />
+                        ))}
+                    </TableBody>
+                </Table>
             </div>
-            <Card>
-                <CardHeader>
-                    <CardTitle>All Users</CardTitle>
-                    <CardDescription>View and manage user roles in the system.</CardDescription>
-                </CardHeader>
-                <CardContent>
-                    <Table>
-                        <TableHeader>
-                            <TableRow>
-                                <TableHead>User</TableHead>
-                                <TableHead>Role</TableHead>
-                                <TableHead className="text-right">Actions</TableHead>
-                            </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                            {usersIsLoading && <TableRow><TableCell colSpan={3} className="text-center h-24">Loading users...</TableCell></TableRow>}
-                            {!usersIsLoading && (!users || users.length === 0) && <TableRow><TableCell colSpan={3} className="text-center h-24">No users found.</TableCell></TableRow>}
-                            {users?.sort((a, b) => (a.displayName || '').localeCompare(b.displayName || '')).map(u => (
-                                <UserRow
-                                    key={u.id}
-                                    user={u}
-                                    currentUser={user}
-                                    currentUserClaims={claims}
-                                    onRoleChange={handleRoleChange}
-                                    isUpdating={isUpdating === u.id}
-                                />
-                            ))}
-                        </TableBody>
-                    </Table>
-                </CardContent>
-            </Card>
         </PageTransition>
     );
 }
