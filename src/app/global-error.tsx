@@ -2,7 +2,7 @@
 
 import { useEffect } from 'react';
 import { getAuth, signOut } from 'firebase/auth';
-import { Button } from '@/components/ui/button';
+import { VvButton } from '@/components/vv/VvButton';
 import { Plane } from 'lucide-react';
 
 export default function GlobalError({
@@ -34,21 +34,21 @@ export default function GlobalError({
   return (
     <html>
       <body>
-        <div className="flex min-h-screen flex-col items-center justify-center bg-background p-4 text-foreground">
+        <div className="flex min-h-screen flex-col items-center justify-center bg-[var(--sky-mist)] p-4 text-[var(--text-primary)]">
           <div className="flex flex-col items-center gap-4 text-center">
             <div className="relative flex h-24 w-24 items-center justify-center">
-              <div className="absolute h-full w-full animate-spin rounded-full border-4 border-dashed border-destructive"></div>
-              <Plane className="h-10 w-10 text-destructive" />
+              <div className="absolute h-full w-full animate-spin rounded-full border-4 border-dashed border-[var(--status-missing)]"></div>
+              <Plane className="h-10 w-10 text-[var(--status-missing)]" />
             </div>
-            <h1 className="text-3xl font-bold font-headline tracking-tight text-destructive">
+            <h1 className="font-outfit text-3xl font-bold tracking-tight text-[var(--status-missing)]">
               Application Error
             </h1>
-            <p className="max-w-md text-muted-foreground">
+            <p className="max-w-md text-[var(--text-secondary)]">
               We&apos;re sorry, but something went wrong. The application has encountered an unrecoverable error. For your security, you have been logged out.
             </p>
-            <Button onClick={handleReturnToLogin}>
+            <VvButton onClick={handleReturnToLogin}>
               Return to Login Page
-            </Button>
+            </VvButton>
           </div>
         </div>
       </body>
