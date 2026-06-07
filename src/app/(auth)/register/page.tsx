@@ -4,9 +4,7 @@ export const dynamic = 'force-dynamic';
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { CheckCircle2, Eye, EyeOff, Loader2, User as UserIcon, Plane, AtSign, Lock, ArrowLeft } from "lucide-react";
+import { CheckCircle2, ArrowLeft, ArrowRight, User as UserIcon, Mail, Lock } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { getAuth, createUserWithEmailAndPassword, updateProfile, deleteUser } from "firebase/auth";
 import { useFirebaseApp, useFirestore, useUser } from "@/firebase";
@@ -15,9 +13,9 @@ import { GoogleIcon } from "@/components/GoogleIcon";
 import { LoadingScreen } from "@/components/LoadingScreen";
 import { signInWithGoogle } from "@/firebase/auth-actions";
 import * as serverActions from "@/app/actions";
-import { motion } from "framer-motion";
-import { PageTransition } from "@/components/PageTransition";
 import { BASE_URL } from "@/lib/utils";
+import { VvButton } from "@/components/vv/VvButton";
+import { VvInput } from "@/components/vv/VvInput";
 
 const passwordRequirements = [
     { id: "length", text: "8+ chars", regex: /.{8,}/ },
@@ -29,7 +27,7 @@ export default function RegisterPage() {
     const router = useRouter();
     const { toast } = useToast();
     const [password, setPassword] = useState("");
-    const [showPassword, setShowPassword] = useState(false);
+    const [agreedToTerms, setAgreedToTerms] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
 
     const app = useFirebaseApp();
@@ -54,7 +52,7 @@ export default function RegisterPage() {
             });
             return;
         }
-        
+
         setIsSubmitting(true);
         const formData = new FormData(event.currentTarget);
         const email = formData.get("email") as string;
@@ -63,11 +61,11 @@ export default function RegisterPage() {
         createUserWithEmailAndPassword(auth, email, password)
             .then(async (userCredential) => {
                 const user = userCredential.user;
-                
+
                 try {
                     // 1. First update the profile so the name is available on the backend
                     await updateProfile(user, { displayName: fullName });
-                    
+
                     // 2. Save the user to Firestore
                     if (firestore) {
                         await setDoc(doc(firestore, "users", user.uid), {
@@ -80,7 +78,7 @@ export default function RegisterPage() {
 
                     // 3. Now that the backend is fully synced, trigger the verification email
                     const emailResult = await serverActions.sendVerificationEmailAction(email);
-                    
+
                     if (!emailResult.success) {
                         console.error('Email sending failed:', emailResult.error);
                         toast({
@@ -89,7 +87,7 @@ export default function RegisterPage() {
                              description: 'Account created, but we couldn\'t send the verification email. Please contact support.',
                         });
                     }
-                    
+
                     router.push('/verify-email');
 
                 } catch (dbError) {
@@ -124,15 +122,15 @@ export default function RegisterPage() {
         }
         setIsSubmitting(true);
         const result = await signInWithGoogle(auth, firestore);
-        
+
         if (result.error) {
             toast({ variant: 'destructive', title: 'Sign up Failed', description: result.error });
             setIsSubmitting(false);
         } else {
              if (result.isNewUser) {
                  await serverActions.sendWelcomeEmailAction(
-                     auth.currentUser?.email || '', 
-                     auth.currentUser?.displayName || 'Pilot', 
+                     auth.currentUser?.email || '',
+                     auth.currentUser?.displayName || 'Pilot',
                      `${BASE_URL}/dashboard`
                  );
                  toast({ title: "Account Created!" });
@@ -146,142 +144,142 @@ export default function RegisterPage() {
     }
 
   return (
-    <PageTransition className="min-h-screen flex flex-col relative overflow-hidden bg-slate-950">
-      <div className="absolute inset-0 z-0">
-        <div className="absolute top-[-10%] right-[-10%] w-[40%] h-[40%] bg-primary/20 rounded-full blur-[120px] animate-pulse" />
-        <div className="absolute bottom-[-10%] left-[-10%] w-[40%] h-[40%] bg-accent/10 rounded-full blur-[120px]" />
+    <div className="flex min-h-screen">
+      {/* Left panel */}
+      <div className="relative hidden w-[38%] flex-col justify-between overflow-hidden bg-navy px-12 py-10 text-white lg:flex">
+        <div className="pointer-events-none absolute inset-0 overflow-hidden opacity-20">
+          <div className="absolute -bottom-40 -left-32 h-96 w-96 rounded-full border border-white/20" />
+          <div className="absolute -bottom-16 -left-10 h-64 w-64 rounded-full border border-white/20" />
+        </div>
+
+        <Link href="/" className="relative z-10 flex items-center gap-2 text-sm text-white/70 transition-colors hover:text-white">
+          <ArrowLeft className="h-4 w-4" /> Back to home
+        </Link>
+
+        <div className="relative z-10">
+          <span className="font-outfit text-2xl font-bold tracking-tight">
+            <span className="text-white">Van-</span>
+            <span className="text-sky-bright">Vert</span>
+          </span>
+
+          <p className="mt-12 text-xs font-semibold uppercase tracking-[0.2em] text-sky-pale/50">Get started</p>
+          <h1 className="mt-3 max-w-sm font-outfit text-3xl font-bold leading-tight tracking-tight">
+            One profile. Every authority you&apos;ll ever convert with.
+          </h1>
+          <p className="mt-4 max-w-sm text-sm leading-relaxed text-sky-pale/60">
+            Set up your profile once. We&apos;ll re-use your documents and translations across PPL, CPL, ATPL — and across every authority pair we support.
+          </p>
+        </div>
+
+        <p className="relative z-10 text-xs font-semibold uppercase tracking-[0.2em] text-sky-pale/40">
+          Vanguard Aviation Academy
+        </p>
       </div>
 
-      <div className="flex-1 flex items-center justify-center p-4 z-10 my-8">
-        <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.4 }}
-            className="w-full max-w-md"
-        >
-            <div className="mb-6 flex justify-center">
-              <Link href="/" className="group flex items-center gap-2">
-                <div className="p-3 rounded-2xl bg-primary/10 text-primary group-hover:bg-primary group-hover:text-white transition-all duration-300">
-                  <Plane className="h-8 w-8" />
-                </div>
-              </Link>
+      {/* Right panel */}
+      <div className="flex flex-1 items-center justify-center bg-white px-6 py-16">
+        <div className="w-full max-w-md">
+          <h2 className="font-outfit text-3xl font-bold tracking-tight text-navy">Create account</h2>
+          <p className="mt-2 text-sm text-text-secondary">
+            Already a pilot here?{" "}
+            <Link href="/login" className="font-semibold text-sky hover:text-navy">Sign in</Link>.
+          </p>
+
+          <form onSubmit={handleRegister} className="mt-8 flex flex-col gap-5">
+            <VvInput
+              id="full-name"
+              name="full-name"
+              label="Full name"
+              placeholder="Captain Ana Pereira"
+              leftIcon={<UserIcon className="h-4 w-4" />}
+              required
+              disabled={isSubmitting}
+            />
+
+            <VvInput
+              id="email"
+              name="email"
+              type="email"
+              label="Email"
+              placeholder="pilot@vanvert.co"
+              leftIcon={<Mail className="h-4 w-4" />}
+              required
+              disabled={isSubmitting}
+            />
+
+            <div className="flex flex-col gap-2.5">
+              <VvInput
+                id="password"
+                type="password"
+                label="Password"
+                placeholder="Choose a secure password"
+                leftIcon={<Lock className="h-4 w-4" />}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                disabled={isSubmitting}
+              />
+              <div className="flex flex-wrap gap-x-5 gap-y-1.5 px-1">
+                {validatedRequirements.map(req => (
+                  <div key={req.id} className="flex items-center gap-1.5">
+                    {req.isValid ? (
+                      <CheckCircle2 className="h-3.5 w-3.5 text-status-ready" />
+                    ) : (
+                      <span className="h-3.5 w-3.5 rounded-full border border-vv-border" />
+                    )}
+                    <span className={`text-[11px] font-medium uppercase tracking-wider ${req.isValid ? 'text-status-ready' : 'text-text-muted'}`}>
+                      {req.text}
+                    </span>
+                  </div>
+                ))}
+              </div>
             </div>
 
-            <div className="glass-card p-8 rounded-3xl shadow-2xl space-y-6">
-                <div className="text-center space-y-2">
-                    <h1 className="text-3xl font-extrabold font-headline tracking-tight text-white">Create Account</h1>
-                    <p className="text-muted-foreground">Join the future of aviation licensing</p>
-                </div>
+            <label className="flex items-start gap-2.5 text-sm text-text-secondary">
+              <input
+                type="checkbox"
+                checked={agreedToTerms}
+                onChange={(e) => setAgreedToTerms(e.target.checked)}
+                className="mt-0.5 h-4 w-4 rounded border-vv-border text-sky focus:ring-sky"
+                required
+              />
+              <span>
+                I agree to Van-Vert&apos;s{" "}
+                <Link href="/terms" className="text-sky hover:text-navy">Terms of Service</Link> and{" "}
+                <Link href="/privacy" className="text-sky hover:text-navy">Privacy Policy</Link>.
+              </span>
+            </label>
 
-                <form onSubmit={handleRegister} className="space-y-4">
-                    <div className="space-y-4">
-                        <div className="relative group">
-                            <UserIcon className="absolute left-3 top-3 h-5 w-5 text-muted-foreground group-focus-within:text-primary transition-colors" />
-                            <Input 
-                                id="full-name" 
-                                name="full-name" 
-                                placeholder="Full Name" 
-                                required 
-                                disabled={isSubmitting}
-                                className="pl-10 h-12 bg-white/5 border-white/10 rounded-xl text-white" 
-                            />
-                        </div>
-                        <div className="relative group">
-                            <AtSign className="absolute left-3 top-3 h-5 w-5 text-muted-foreground group-focus-within:text-primary transition-colors" />
-                            <Input
-                                id="email"
-                                name="email"
-                                type="email"
-                                placeholder="pilot@vanvert.co"
-                                required
-                                disabled={isSubmitting}
-                                className="pl-10 h-12 bg-white/5 border-white/10 rounded-xl text-white"
-                            />
-                        </div>
-                        <div className="space-y-3">
-                            <div className="relative group">
-                               <Lock className="absolute left-3 top-3 h-5 w-5 text-muted-foreground group-focus-within:text-primary transition-colors" />
-                               <Input 
-                                  id="password" 
-                                  type={showPassword ? "text" : "password"} 
-                                  value={password}
-                                  onChange={(e) => setPassword(e.target.value)}
-                                  placeholder="Secure Password"
-                                  required
-                                  disabled={isSubmitting}
-                                  className="pl-10 pr-10 h-12 bg-white/5 border-white/10 rounded-xl text-white"
-                              />
-                              <button
-                                type="button"
-                                onClick={() => setShowPassword(!showPassword)}
-                                className="absolute right-3 top-3 text-muted-foreground hover:text-white transition-colors"
-                              >
-                                {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
-                              </button>
-                            </div>
-                            
-                            <div className="flex gap-2 justify-between px-1">
-                                {validatedRequirements.map(req => (
-                                    <div key={req.id} className="flex items-center gap-1.5">
-                                        {req.isValid ? (
-                                            <CheckCircle2 className="h-3.5 w-3.5 text-green-400" />
-                                        ) : (
-                                            <div className="h-3.5 w-3.5 rounded-full border border-white/20" />
-                                        )}
-                                        <span className={`text-[10px] font-medium uppercase tracking-wider ${req.isValid ? 'text-green-400' : 'text-muted-foreground'}`}>
-                                            {req.text}
-                                        </span>
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-                    </div>
+            <VvButton
+              type="submit"
+              size="lg"
+              loading={isSubmitting}
+              disabled={isSubmitting || (password.length > 0 && !allRequirementsMet) || !agreedToTerms}
+              className="mt-1"
+            >
+              Create account <ArrowRight className="h-4 w-4" />
+            </VvButton>
+          </form>
 
-                    <Button 
-                      type="submit" 
-                      className="w-full h-12 rounded-xl text-lg font-bold shadow-lg shadow-primary/20 hover:scale-[1.02] transition-all bg-primary hover:bg-primary/90 mt-4" 
-                      disabled={isSubmitting || (password.length > 0 && !allRequirementsMet)}
-                    >
-                        {isSubmitting ? <Loader2 className="h-5 w-5 animate-spin" /> : "Sign Up"}
-                    </Button>
-                </form>
+          <div className="my-7 flex items-center gap-4">
+            <div className="h-px flex-1 bg-vv-border" />
+            <span className="text-xs font-medium uppercase tracking-widest text-text-muted">Or</span>
+            <div className="h-px flex-1 bg-vv-border" />
+          </div>
 
-                <div className="relative">
-                    <div className="absolute inset-0 flex items-center">
-                        <div className="w-full border-t border-white/10"></div>
-                    </div>
-                    <div className="relative flex justify-center text-xs uppercase">
-                        <span className="bg-slate-900/50 backdrop-blur-md px-2 text-muted-foreground">Or join with</span>
-                    </div>
-                </div>
-
-                <Button 
-                  variant="outline" 
-                  onClick={handleGoogleLogin} 
-                  disabled={isSubmitting}
-                  className="w-full h-12 rounded-xl border-white/10 bg-white/5 hover:bg-white/10 transition-all text-white flex gap-3"
-                >
-                    <GoogleIcon className="h-5 w-5" />
-                    Google Account
-                </Button>
-
-                <p className="text-center text-sm text-muted-foreground">
-                   Already a member?{' '}
-                   <Link href="/login" className="font-bold text-primary hover:text-primary/80 transition-colors">
-                    Log in
-                   </Link>
-                </p>
-            </div>
-        </motion.div>
+          <VvButton
+            variant="outline"
+            size="lg"
+            type="button"
+            onClick={handleGoogleLogin}
+            disabled={isSubmitting}
+            className="w-full border-vv-border text-text-primary hover:bg-surface hover:text-text-primary"
+          >
+            <GoogleIcon className="h-5 w-5" />
+            Sign up with Google
+          </VvButton>
+        </div>
       </div>
-
-      <button
-        onClick={() => router.back()}
-        className="absolute top-6 left-6 md:top-8 md:left-8 p-3 rounded-full glass-card hover:bg-white/5 transition-all text-white flex items-center gap-2 group z-20"
-      >
-        <ArrowLeft className="h-5 w-5 group-hover:-translate-x-1 transition-transform" />
-        <span className="text-sm font-medium">Back</span>
-      </button>
-    </PageTransition>
+    </div>
   );
 }
