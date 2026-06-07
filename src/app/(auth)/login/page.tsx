@@ -175,7 +175,7 @@ const LoginPage = () => {
       <div className="flex flex-1 items-center justify-center bg-white px-6 py-16">
         <div className="w-full max-w-md">
           <h2 className="font-outfit text-3xl font-bold tracking-tight text-navy">Sign in</h2>
-          <p className="mt-2 text-sm text-text-secondary">
+          <p className="mt-2 text-sm text-[var(--text-secondary)]">
             Don&apos;t have an account?{" "}
             <Link href="/register" className="font-semibold text-sky hover:text-navy">Create one</Link>.
           </p>
@@ -204,8 +204,8 @@ const LoginPage = () => {
                 disabled={isSubmitting}
               />
               <div className="mt-1 flex items-center justify-between">
-                <label className="flex items-center gap-2 text-sm text-text-secondary">
-                  <input type="checkbox" className="h-4 w-4 rounded border-vv-border text-sky focus:ring-sky" />
+                <label className="flex items-center gap-2 text-sm text-[var(--text-secondary)]">
+                  <input type="checkbox" className="h-4 w-4 rounded border-[var(--vv-border)] text-sky focus:ring-sky" />
                   Keep me signed in
                 </label>
                 <button
@@ -224,9 +224,9 @@ const LoginPage = () => {
           </form>
 
           <div className="my-7 flex items-center gap-4">
-            <div className="h-px flex-1 bg-vv-border" />
-            <span className="text-xs font-medium uppercase tracking-widest text-text-muted">Or</span>
-            <div className="h-px flex-1 bg-vv-border" />
+            <div className="h-px flex-1 bg-[var(--vv-border)]" />
+            <span className="text-xs font-medium uppercase tracking-widest text-[var(--text-muted)]">Or</span>
+            <div className="h-px flex-1 bg-[var(--vv-border)]" />
           </div>
 
           <VvButton
@@ -235,16 +235,16 @@ const LoginPage = () => {
             type="button"
             onClick={handleGoogleLogin}
             disabled={isSubmitting}
-            className="w-full border-vv-border text-text-primary hover:bg-surface hover:text-text-primary"
+            className="w-full border-[var(--vv-border)] text-[var(--text-primary)] hover:bg-surface hover:text-[var(--text-primary)]"
           >
             <GoogleIcon className="h-5 w-5" />
             Continue with Google
           </VvButton>
 
-          <p className="mt-8 text-center text-xs leading-relaxed text-text-muted">
+          <p className="mt-8 text-center text-xs leading-relaxed text-[var(--text-muted)]">
             Protected by SSO-grade encryption. By signing in you agree to our{" "}
-            <Link href="/terms" className="underline hover:text-text-secondary">Terms</Link> and{" "}
-            <Link href="/privacy" className="underline hover:text-text-secondary">Privacy Policy</Link>.
+            <Link href="/terms" className="underline hover:text-[var(--text-secondary)]">Terms</Link> and{" "}
+            <Link href="/privacy" className="underline hover:text-[var(--text-secondary)]">Privacy Policy</Link>.
           </p>
         </div>
       </div>
@@ -253,7 +253,7 @@ const LoginPage = () => {
          <DialogContent className="sm:max-w-md rounded-2xl">
            <DialogHeader>
              <DialogTitle className="font-outfit text-2xl font-bold text-navy">Reset password</DialogTitle>
-             <DialogDescription className="text-text-secondary">
+             <DialogDescription className="text-[var(--text-secondary)]">
                We&apos;ll send you a secure link to reset your password.
              </DialogDescription>
            </DialogHeader>
@@ -283,8 +283,8 @@ const LoginPage = () => {
          <DialogContent className="sm:max-w-md rounded-2xl">
            <DialogHeader>
              <DialogTitle className="font-outfit text-2xl font-bold text-navy">Account exists</DialogTitle>
-             <DialogDescription className="pt-2 text-text-secondary">
-               The email <span className="font-medium text-text-primary">{mustLinkEmail}</span> is already associated with an account using a different login method.
+             <DialogDescription className="pt-2 text-[var(--text-secondary)]">
+               The email <span className="font-medium text-[var(--text-primary)]">{mustLinkEmail}</span> is already associated with an account using a different login method.
                <br /><br />
                Please log in with your email and password first, and then you can link your Google account in your profile settings.
              </DialogDescription>
