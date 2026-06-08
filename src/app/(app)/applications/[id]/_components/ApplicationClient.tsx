@@ -74,6 +74,28 @@ function getErrorMessage(err: unknown): string {
   return 'An unexpected error occurred';
 }
 
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+// Storage Security Rules read application ownership from Firestore via a cross-service
+// get(), which can lag a few seconds behind a just-created application document. Retry
+// on 'storage/unauthorized' to ride out that propagation window instead of failing
+// uploads attempted right after creating an application.
+const UPLOAD_RETRY_DELAYS_MS = [1500, 3000];
+
+async function uploadBytesWithRetry(storageRef: ReturnType<typeof ref>, file: File) {
+  for (let attempt = 0; ; attempt++) {
+    try {
+      return await uploadBytes(storageRef, file);
+    } catch (error: unknown) {
+      const code = (error as { code?: string })?.code;
+      if (code !== 'storage/unauthorized' || attempt >= UPLOAD_RETRY_DELAYS_MS.length) {
+        throw error;
+      }
+      await sleep(UPLOAD_RETRY_DELAYS_MS[attempt]);
+    }
+  }
+}
+
 type VvBadgeStatus = NonNullable<VvStatusBadgeProps["status"]>;
 
 const APP_STATUS_TO_BADGE: Record<Application["status"], VvBadgeStatus> = {
@@ -368,7 +390,7 @@ export function ApplicationClient({
     try {
       const storage = getStorage(app);
       const storageRef = ref(storage, `applications/${appState.id}/${activeUploadDocId}/${file.name}`);
-      const snapshot = await uploadBytes(storageRef, file);
+      const snapshot = await uploadBytesWithRetry(storageRef, file);
       const publicUrl = await getDownloadURL(snapshot.ref);
 
       let detectedExpiryDate: string | null = null;
