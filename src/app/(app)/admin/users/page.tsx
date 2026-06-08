@@ -1,11 +1,12 @@
 
 'use client';
 
-import { useUser, useFirestore, useCollection, useMemoFirebase, errorEmitter, FirestorePermissionError } from "@/firebase";
+import { useUser, useFirestore, useCollection, useMemoFirebase } from "@/firebase";
 import React, { useState } from "react";
 import { LoadingScreen } from "@/components/LoadingScreen";
 import type { UserProfile } from "@/types";
-import { collection, doc, updateDoc, type CollectionReference } from "firebase/firestore";
+import { collection, type CollectionReference } from "firebase/firestore";
+import * as serverActions from '@/app/actions';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -120,33 +121,25 @@ export default function UserManagementPage() {
     const { data: users, isLoading: usersIsLoading } = useCollection<UserWithProfile>(usersQuery);
 
     const handleRoleChange = async (userId: string, newRole: 'user' | 'admin' | 'head-admin' | 'reviewer') => {
-        if (!firestore) return;
+        if (!user) return;
         setIsUpdating(userId);
-        const userRef = doc(firestore, 'users', userId);
-
-        updateDoc(userRef, { role: newRole })
-            .then(() => {
-                toast({
-                    title: "Role Updated",
-                    description: `User role has been successfully changed to ${newRole}.`,
-                });
-            })
-            .catch(() => {
-                const permissionError = new FirestorePermissionError({
-                    path: userRef.path,
-                    operation: 'update',
-                    requestResourceData: { role: newRole },
-                });
-                errorEmitter.emit('permission-error', permissionError);
-                toast({
-                    variant: 'destructive',
-                    title: "Update Failed",
-                    description: "You may not have permission to perform this action.",
-                });
-            })
-            .finally(() => {
-                setIsUpdating(null);
+        try {
+            const idToken = await user.getIdToken();
+            const { success } = await serverActions.updateUserRoleAction(userId, newRole, idToken);
+            if (!success) throw new Error('Failed to update role');
+            toast({
+                title: "Role Updated",
+                description: `User role has been successfully changed to ${newRole}.`,
             });
+        } catch {
+            toast({
+                variant: 'destructive',
+                title: "Update Failed",
+                description: "You may not have permission to perform this action.",
+            });
+        } finally {
+            setIsUpdating(null);
+        }
     };
 
     if (!user) {

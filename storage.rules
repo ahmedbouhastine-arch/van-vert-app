@@ -2,19 +2,13 @@ rules_version = '2';
 service firebase.storage {
   match /b/{bucket}/o {
     
-    function getUserRole(userId) {
-      return get(/databases/(default)/documents/users/$(userId)).data.role;
-    }
-
-    function isOwner(applicationId) {
-      // Check that the requesting user's ID matches the userId field in the corresponding application document.
-      let appUserId = get(/databases/(default)/documents/applications/$(applicationId)).data.userId;
-      return request.auth.uid == appUserId;
-    }
-    
     function isPrivileged() {
-      let userRole = getUserRole(request.auth.uid);
-      return userRole in ['reviewer', 'admin', 'head-admin'];
+      // Role is read from the auth token's custom claims (synced whenever a
+      // user's role changes) rather than via a Firestore lookup — the Storage
+      // bucket and Firestore database live in different regions, and
+      // cross-service get() calls across that distance reliably fail/timeout,
+      // which Firebase rules treat as a denial.
+      return request.auth.token.role in ['reviewer', 'admin', 'head-admin'];
     }
 
     // Rule for profile pictures: users can write to their own picture path.
@@ -23,13 +17,15 @@ service firebase.storage {
       allow read: if request.auth != null && (request.auth.token.firebase.sign_in_provider != 'anonymous' || request.auth.uid == userId);
       allow write: if request.auth != null && request.auth.uid == userId;
     }
-    
-    // Rule for application documents.
-    match /applications/{applicationId}/{allPaths=**} {
-      allow read: if request.auth != null && (isOwner(applicationId) || isPrivileged());
-      // Writes are handled by server-side actions which use service account credentials 
+
+    // Rule for application documents. The owning user's ID is encoded directly
+    // in the path so ownership can be checked without a cross-service Firestore
+    // lookup (see isPrivileged for why those are unreliable here).
+    match /applications/{userId}/{applicationId}/{allPaths=**} {
+      allow read: if request.auth != null && (request.auth.uid == userId || isPrivileged());
+      // Writes are handled by server-side actions which use service account credentials
       // and bypass these rules. Client-side writes are allowed if the user is the owner.
-      allow write: if request.auth != null && isOwner(applicationId);
+      allow write: if request.auth != null && request.auth.uid == userId;
     }
   }
 }

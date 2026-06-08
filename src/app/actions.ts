@@ -359,6 +359,66 @@ export async function signOutOtherSessionsAction(idToken?: string): Promise<{ su
     }
 }
 
+// Storage Security Rules can't look up a user's role from Firestore — the
+// Firestore database and Storage bucket live in different regions, so the
+// cross-service get() those rules would need times out and denies by default.
+// Instead the rules read `request.auth.token.role`, a custom claim mirrored
+// from `users/{uid}.role`. Call this right after the role is set/changed so
+// the claim stays in sync (it only takes effect on the user's next ID token
+// refresh — same caveat as any Firebase custom claim).
+async function syncRoleClaim(uid: string, role: string) {
+    await adminAuth.setCustomUserClaims(uid, { role });
+}
+
+export async function syncOwnRoleClaimAction(idToken?: string): Promise<{ success: boolean }> {
+    try {
+        const user = await getAuthenticatedUser(idToken);
+        const userDoc = await adminFirestore.collection('users').doc(user.uid).get();
+        const role = (userDoc.data()?.role as string) || 'user';
+        await syncRoleClaim(user.uid, role);
+        return { success: true };
+    } catch (e) {
+        handleServerAuthError(e, 'syncOwnRoleClaimAction');
+        return { success: false };
+    }
+}
+
+export async function updateUserRoleAction(
+    targetUserId: string,
+    newRole: 'user' | 'reviewer' | 'admin' | 'head-admin',
+    idToken?: string
+): Promise<{ success: boolean }> {
+    try {
+        const caller = await getAuthenticatedUser(idToken);
+        if (caller.uid === targetUserId) {
+            throw new Error("You cannot change your own role.");
+        }
+
+        const [callerDoc, targetDoc] = await Promise.all([
+            adminFirestore.collection('users').doc(caller.uid).get(),
+            adminFirestore.collection('users').doc(targetUserId).get(),
+        ]);
+        const callerRole = callerDoc.data()?.role;
+        const targetRole = targetDoc.data()?.role;
+
+        if (callerRole !== 'head-admin') {
+            if (callerRole !== 'admin') {
+                throw new Error("You do not have permission to change roles.");
+            }
+            if (targetRole === 'head-admin' || newRole === 'head-admin') {
+                throw new Error("Only a head admin can assign or change a head admin's role.");
+            }
+        }
+
+        await adminFirestore.collection('users').doc(targetUserId).update({ role: newRole });
+        await syncRoleClaim(targetUserId, newRole);
+        return { success: true };
+    } catch (e) {
+        handleServerAuthError(e, 'updateUserRoleAction');
+        return { success: false };
+    }
+}
+
 export async function sendVerificationEmailAction(email: string) {
     try {
         console.log(`Starting verification email action for: ${email}`);

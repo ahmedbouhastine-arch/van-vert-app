@@ -1,5 +1,6 @@
 import {Auth, GoogleAuthProvider, signInWithPopup, getAdditionalUserInfo, AuthError} from "firebase/auth";
 import {Firestore, doc, getDoc, setDoc, serverTimestamp} from "firebase/firestore";
+import { syncOwnRoleClaimAction } from "@/app/actions";
 
 export type SignInWithGoogleResult = { success: boolean; error?: string; isNewUser?: boolean; mustLink?: boolean; email?: string };
 
@@ -32,6 +33,9 @@ export const signInWithGoogle = async (auth: Auth, firestore: Firestore): Promis
                 });
              }
         }
+
+        const idToken = await user.getIdToken();
+        await syncOwnRoleClaimAction(idToken);
 
         return { success: true, isNewUser: userInfo?.isNewUser };
     } catch (error) {

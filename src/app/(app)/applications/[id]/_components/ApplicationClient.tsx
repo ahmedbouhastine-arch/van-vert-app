@@ -389,7 +389,7 @@ export function ApplicationClient({
 
     try {
       const storage = getStorage(app);
-      const storageRef = ref(storage, `applications/${appState.id}/${activeUploadDocId}/${file.name}`);
+      const storageRef = ref(storage, `applications/${appState.userId}/${appState.id}/${activeUploadDocId}/${file.name}`);
       const snapshot = await uploadBytesWithRetry(storageRef, file);
       const publicUrl = await getDownloadURL(snapshot.ref);
 

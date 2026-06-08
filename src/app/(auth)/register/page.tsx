@@ -77,6 +77,8 @@ export default function RegisterPage() {
                             createdAt: serverTimestamp(),
                         });
                     }
+                    const freshIdToken = await fbUser.getIdToken();
+                    await serverActions.syncOwnRoleClaimAction(freshIdToken);
                     if (isDevTestAccount(email)) {
                         // Dev seed accounts use fake addresses that can't receive a real
                         // verification email — mark them verified server-side instead and
