@@ -3,7 +3,7 @@
 
 import { useUser, useFirestore, useCollection, useMemoFirebase } from "@/firebase";
 import React, { useState } from "react";
-import { LoadingScreen } from "@/components/LoadingScreen";
+import { Skeleton } from "@/components/ui/skeleton";
 import type { UserProfile } from "@/types";
 import { collection, type CollectionReference } from "firebase/firestore";
 import * as serverActions from '@/app/actions';
@@ -12,7 +12,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
 import { type User } from "firebase/auth";
-import { Loader2 } from "lucide-react";
 import { PageTransition } from "@/components/PageTransition";
 import { VvPageHeader } from "@/components/vv/VvPageHeader";
 import { VvButton } from "@/components/vv/VvButton";
@@ -105,6 +104,56 @@ function UserRow({
     );
 }
 
+/* ── Skeletons ─────────────────────────────────────────────────────── */
+
+function UserRowSkeleton() {
+    return (
+        <TableRow className="border-[var(--vv-border-soft)]">
+            <TableCell>
+                <div className="flex items-center gap-3">
+                    <Skeleton className="h-9 w-9 shrink-0 rounded-full" />
+                    <div className="space-y-1.5">
+                        <Skeleton className="h-3.5 w-32" />
+                        <Skeleton className="h-3 w-44" />
+                    </div>
+                </div>
+            </TableCell>
+            <TableCell><Skeleton className="h-9 w-[180px] rounded-lg" /></TableCell>
+            <TableCell className="text-right"><Skeleton className="ml-auto h-8 w-28 rounded-lg" /></TableCell>
+        </TableRow>
+    );
+}
+
+function UsersPageSkeleton() {
+    return (
+        <PageTransition>
+            <div className="mb-8 space-y-2.5">
+                <Skeleton className="h-3 w-20" />
+                <Skeleton className="h-8 w-60 max-w-full" />
+                <Skeleton className="h-4 w-80 max-w-full" />
+            </div>
+            <div className="rounded-xl border border-[var(--vv-border)] bg-white">
+                <div className="space-y-2 border-b border-[var(--vv-border-soft)] p-6">
+                    <Skeleton className="h-4 w-24" />
+                    <Skeleton className="h-3 w-64 max-w-full" />
+                </div>
+                <Table>
+                    <TableHeader className="bg-[var(--surface)]">
+                        <TableRow className="border-[var(--vv-border-soft)] hover:bg-transparent">
+                            <TableHead className="text-[var(--text-muted)]">User</TableHead>
+                            <TableHead className="text-[var(--text-muted)]">Role</TableHead>
+                            <TableHead className="text-right text-[var(--text-muted)]">Actions</TableHead>
+                        </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                        {[...Array(5)].map((_, i) => <UserRowSkeleton key={i} />)}
+                    </TableBody>
+                </Table>
+            </div>
+        </PageTransition>
+    );
+}
+
 export default function UserManagementPage() {
     const { user, claims } = useUser();
     const firestore = useFirestore();
@@ -143,7 +192,7 @@ export default function UserManagementPage() {
     };
 
     if (!user) {
-        return <LoadingScreen />
+        return <UsersPageSkeleton />
     }
 
     return (
@@ -167,7 +216,7 @@ export default function UserManagementPage() {
                         </TableRow>
                     </TableHeader>
                     <TableBody>
-                        {usersIsLoading && <TableRow className="border-[var(--vv-border-soft)]"><TableCell colSpan={3} className="h-24 text-center text-[var(--text-muted)]"><Loader2 className="mx-auto h-4 w-4 animate-spin" /></TableCell></TableRow>}
+                        {usersIsLoading && [...Array(5)].map((_, i) => <UserRowSkeleton key={i} />)}
                         {!usersIsLoading && (!users || users.length === 0) && <TableRow className="border-[var(--vv-border-soft)]"><TableCell colSpan={3} className="h-24 text-center text-[var(--text-muted)]">No users found.</TableCell></TableRow>}
                         {users?.sort((a, b) => (a.displayName || '').localeCompare(b.displayName || '')).map(u => (
                             <UserRow

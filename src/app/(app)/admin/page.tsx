@@ -22,7 +22,7 @@ import {
   ArrowRight,
 } from "lucide-react";
 
-import { LoadingScreen } from "@/components/LoadingScreen";
+import { Skeleton } from "@/components/ui/skeleton";
 import { VvPageHeader } from "@/components/vv/VvPageHeader";
 import { VvStatusBadge, type VvStatusBadgeProps } from "@/components/vv/VvStatusBadge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -201,6 +201,77 @@ function ApplicationRow({
   );
 }
 
+/* ── Skeletons ─────────────────────────────────────────────────────── */
+
+function ApplicationRowSkeleton() {
+  return (
+    <div className="flex items-center gap-4 border-b border-[var(--vv-border-soft)] px-6 py-4 last:border-b-0">
+      <Skeleton className="h-9 w-9 shrink-0 rounded-full" />
+      <div className="min-w-0 flex-1 space-y-1.5">
+        <Skeleton className="h-3.5 w-36" />
+        <Skeleton className="h-3 w-48" />
+      </div>
+      <div className="hidden flex-col items-end gap-1.5 sm:flex">
+        <Skeleton className="h-3 w-12" />
+        <Skeleton className="h-3 w-9" />
+      </div>
+      <Skeleton className="h-5 w-[100px] rounded-full" />
+      <Skeleton className="hidden h-3 w-14 lg:block" />
+      <Skeleton className="h-4 w-4 shrink-0 rounded-full" />
+    </div>
+  );
+}
+
+function DashboardSkeleton() {
+  return (
+    <PageTransition>
+      <div className="mb-8 space-y-2.5">
+        <Skeleton className="h-3 w-20" />
+        <Skeleton className="h-8 w-72 max-w-full" />
+        <Skeleton className="h-4 w-96 max-w-full" />
+      </div>
+
+      <div className="mb-8 grid grid-cols-2 gap-4 xl:grid-cols-4">
+        {[...Array(4)].map((_, i) => (
+          <div key={i} className="rounded-xl border border-[var(--vv-border)] bg-white p-5">
+            <div className="mb-3 flex items-center gap-2.5">
+              <Skeleton className="h-9 w-9 rounded-lg" />
+              <Skeleton className="h-3 w-20" />
+            </div>
+            <Skeleton className="h-8 w-14" />
+            <Skeleton className="mt-2 h-3 w-20" />
+          </div>
+        ))}
+      </div>
+
+      <div className="mb-8 grid grid-cols-1 gap-5 xl:grid-cols-2">
+        {[...Array(2)].map((_, i) => (
+          <div key={i} className="flex h-full flex-col gap-3 rounded-xl border border-[var(--vv-border)] bg-white p-7">
+            <Skeleton className="mb-2 h-11 w-11 rounded-[12px]" />
+            <Skeleton className="h-3 w-16" />
+            <Skeleton className="h-6 w-44" />
+            <Skeleton className="h-4 w-full" />
+            <Skeleton className="h-4 w-4/5" />
+          </div>
+        ))}
+      </div>
+
+      <div className="overflow-hidden rounded-xl border border-[var(--vv-border)] bg-white">
+        <div className="flex items-center justify-between border-b border-[var(--vv-border-soft)] px-6 py-5">
+          <div className="space-y-2">
+            <Skeleton className="h-5 w-44" />
+            <Skeleton className="h-3 w-56" />
+          </div>
+          <Skeleton className="h-4 w-16" />
+        </div>
+        {[...Array(5)].map((_, i) => (
+          <ApplicationRowSkeleton key={i} />
+        ))}
+      </div>
+    </PageTransition>
+  );
+}
+
 /* ── Page ───────────────────────────────────────────────────────────── */
 
 export default function AdminDashboardPage() {
@@ -256,7 +327,7 @@ export default function AdminDashboardPage() {
       };
     }, [applicationsSnapshot]);
 
-  if (loading) return <LoadingScreen text="Loading admin dashboard..." />;
+  if (loading) return <DashboardSkeleton />;
 
   return (
     <PageTransition>
@@ -359,9 +430,11 @@ export default function AdminDashboardPage() {
         </div>
 
         {appsLoading ? (
-          <div className="flex items-center justify-center py-12">
-            <div className="h-5 w-5 animate-spin rounded-full border-2 border-[var(--sky)] border-t-transparent" />
-          </div>
+          <>
+            {[...Array(5)].map((_, i) => (
+              <ApplicationRowSkeleton key={i} />
+            ))}
+          </>
         ) : queueApps.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-12 text-center text-[var(--text-muted)]">
             <FileText className="mb-2 h-8 w-8 opacity-40" />

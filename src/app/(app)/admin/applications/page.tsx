@@ -7,6 +7,7 @@ import Link from 'next/link';
 import { useState, useMemo } from 'react';
 import type { Application, UserProfile } from '@/types';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Skeleton } from '@/components/ui/skeleton';
 import { ChevronRight, Download, FileText, Search } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { cn } from '@/lib/utils';
@@ -109,6 +110,27 @@ function ApplicationRow({
   );
 }
 
+/* ── Application Row Skeleton ───────────────────────────────────────── */
+
+function ApplicationRowSkeleton() {
+  return (
+    <div className="flex items-center gap-4 border-b border-[var(--vv-border-soft)] px-6 py-4 last:border-b-0">
+      <Skeleton className="h-9 w-9 shrink-0 rounded-full" />
+      <div className="min-w-0 flex-1 space-y-1.5">
+        <Skeleton className="h-3.5 w-40" />
+        <Skeleton className="h-3 w-52" />
+      </div>
+      <div className="hidden flex-col items-end gap-1.5 sm:flex">
+        <Skeleton className="h-3 w-12" />
+        <Skeleton className="h-3 w-10" />
+      </div>
+      <Skeleton className="h-5 w-[100px] rounded-full" />
+      <Skeleton className="hidden h-3 w-14 lg:block" />
+      <Skeleton className="h-4 w-4 shrink-0 rounded-full" />
+    </div>
+  );
+}
+
 /* ── Page ───────────────────────────────────────────────────────────── */
 
 function AdminApplicationsPage() {
@@ -170,10 +192,7 @@ function AdminApplicationsPage() {
       return (
         <div className="overflow-hidden rounded-xl border border-[var(--vv-border)] bg-white">
           {[...Array(3)].map((_, i) => (
-            <div
-              key={i}
-              className="h-[72px] animate-pulse border-b border-[var(--vv-border-soft)] bg-[var(--surface)]/50 last:border-b-0"
-            ></div>
+            <ApplicationRowSkeleton key={i} />
           ))}
         </div>
       );
