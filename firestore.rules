@@ -3,72 +3,85 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-  
-    // Function to get the role of the requesting user from their user profile
+
+    // Looks up the role stored on a user's profile document.
     function getUserRole(userId) {
       return get(/databases/$(database)/documents/users/$(userId)).data.role;
     }
-    
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isPrivileged(uid) {
+      // reviewer or higher can read everything they need to do their job
+      return getUserRole(uid) in ['reviewer', 'admin', 'head-admin'];
+    }
+
+    function isAdmin(uid) {
+      // admin or higher can make case decisions (status/feedback/documents)
+      return getUserRole(uid) in ['admin', 'head-admin'];
+    }
+
     // --- User Profiles ---
-    // Users can read any profile (for names/avatars).
-    // Users can create and update their own profile.
-    // Head Admins can update any profile to change roles.
+    // Anyone signed in (non-anonymously, unless it's their own doc) can read a
+    // profile — needed for names/avatars across applications & community.
+    // Users create/update their own profile but cannot change their own role.
+    // Head Admins can update any profile, including roles.
     match /users/{userId} {
-      allow read: if request.auth != null && (request.auth.token.firebase.sign_in_provider != 'anonymous' || request.auth.uid == userId);
-      allow create: if request.auth.uid == userId && 
-                    (request.resource.data.role == 'user' || 
-                     (request.resource.data.role == 'head-admin' && request.auth.token.email == 'head-admin@test.va'));
-      allow update: if (request.auth.uid == userId && (!('role' in resource.data) || request.resource.data.role == resource.data.role)) || 
+      allow read: if isSignedIn() &&
+                  (request.auth.token.firebase.sign_in_provider != 'anonymous' || request.auth.uid == userId);
+
+      // Self-registration always uses role 'user', except for the seeded dev
+      // test accounts (see src/lib/dev-test-accounts.ts) which register
+      // directly into their designated role so each permission level can be
+      // exercised locally without a head-admin promoting them by hand.
+      allow create: if request.auth.uid == userId &&
+                    (request.resource.data.role == 'user' ||
+                     (request.resource.data.role == 'reviewer' && request.auth.token.email == '2@dev.va') ||
+                     (request.resource.data.role == 'admin' && request.auth.token.email == '3@dev.va') ||
+                     (request.resource.data.role == 'head-admin' && request.auth.token.email == '4@dev.va'));
+
+      allow update: if (request.auth.uid == userId &&
+                        (!('role' in resource.data) || request.resource.data.role == resource.data.role)) ||
                     getUserRole(request.auth.uid) == 'head-admin';
-      allow delete: if false; // Deleting user profiles is disallowed.
+
+      allow delete: if false; // Profiles are never deleted directly (see account-deletion flow).
+
+      // --- Notifications subcollection ---
+      // Owners can read their notifications, mark them read, and clear them.
+      // Reviewers/admins/head-admins can also create notifications for a user
+      // (e.g. when they change that user's application status) — these writes
+      // happen on the applicant's behalf, not the reviewer's own subcollection.
+      match /notifications/{notificationId} {
+        allow read, update, delete: if isSignedIn() && request.auth.uid == userId;
+        allow create: if isSignedIn() &&
+                      (request.auth.uid == userId || isPrivileged(request.auth.uid));
+      }
     }
 
     // --- Applications ---
     match /applications/{applicationId} {
-      
-      // --- Helper Functions ---
+
       function isOwner() {
-        // Is the person making the request the owner of the document?
         return request.auth.uid == resource.data.userId;
       }
 
-      function isPrivileged() {
-        // Does the person have a role of reviewer or higher?
-        let userRole = getUserRole(request.auth.uid);
-        return userRole in ['reviewer', 'admin', 'head-admin'];
-      }
-      
-      function isAdmin() {
-        // Does the person have a role of admin or higher?
-        let userRole = getUserRole(request.auth.uid);
-        return userRole in ['admin', 'head-admin'];
-      }
-      
-      // --- Rules ---
-      // Read: Owners and all privileged users can read.
-      allow read: if request.auth != null && (isOwner() || isPrivileged());
-      
-      // Create: Only the owner can create an application for themselves.
-      allow create: if request.auth != null && request.auth.uid == request.resource.data.userId;
+      // Read: owners can see their own applications; reviewers and above can
+      // see every application (needed for the review queue & analytics).
+      allow read: if isSignedIn() && (isOwner() || isPrivileged(request.auth.uid));
 
-      // Update (Full): Owners can update their own drafts. Admins can update any application.
-      allow update: if request.auth != null && ((isOwner() && resource.data.status == 'draft') || isAdmin());
-      
-      // Update (Partial): Admins can update the 'documents' field and the 'updatedAt' timestamp.
-      // This is a separate rule that grants them specific, limited write access.
-      allow update: if request.auth != null && 
-                    isAdmin() && 
-                    request.resource.data.keys().hasOnly(['documents', 'updatedAt']);
-      
-      // Delete: Only the owner can delete their application.
-      allow delete: if request.auth != null && isOwner();
-    }
-    
-    // --- Notifications ---
-    // Users can only read and write to their own notifications subcollection.
-    match /users/{userId}/notifications/{notificationId} {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
+      // Create: a user may only create an application for themselves.
+      allow create: if isSignedIn() && request.auth.uid == request.resource.data.userId;
+
+      // Update: owners may edit their own application while it's still a
+      // draft (e.g. uploading documents, submitting). Admins/head-admins can
+      // update any application at any stage (status, feedback, documents).
+      allow update: if isSignedIn() &&
+                    ((isOwner() && resource.data.status == 'draft') || isAdmin(request.auth.uid));
+
+      // Delete: only the owner can remove their own application (e.g. a draft).
+      allow delete: if isSignedIn() && isOwner();
     }
   }
 }
-

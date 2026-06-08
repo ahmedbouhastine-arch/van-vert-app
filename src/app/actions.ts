@@ -362,7 +362,12 @@ export async function signOutOtherSessionsAction(idToken?: string): Promise<{ su
 export async function sendVerificationEmailAction(email: string) {
     try {
         console.log(`Starting verification email action for: ${email}`);
-        const verificationLink = await adminAuth.generateEmailVerificationLink(email);
+        // Without a continue URL, Firebase's hosted verification page has nowhere
+        // to send the user back to, so the app's /verified -> /dashboard handoff
+        // would never be reached.
+        const verificationLink = await adminAuth.generateEmailVerificationLink(email, {
+            url: `${BASE_URL}/verified`,
+        });
         const result = await sendVerificationEmail(email, verificationLink);
 
         if (!result.success) {
