@@ -1,6 +1,13 @@
 import * as React from "react";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
+import { PageTransition } from "@/components/PageTransition";
+
+const socialLinks = [
+  { label: "Instagram", icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="0.5" fill="currentColor"/></svg> },
+  { label: "WhatsApp", icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg> },
+  { label: "LinkedIn", icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round"><path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z"/><rect x="2" y="9" width="4" height="12"/><circle cx="4" cy="4" r="2"/></svg> },
+];
 
 const navLinks = [
   { href: "/#features", label: "Features" },
@@ -103,6 +110,7 @@ export function VvLegalContent({ sections }: { sections: VvLegalSection[] }) {
 
 export function VvLegalShell({ activeHref, title, lastUpdated, children }: VvLegalShellProps) {
   return (
+    <PageTransition>
     <div className="flex min-h-screen flex-col bg-white">
       <header className="sticky top-0 z-40 flex h-16 items-center justify-between border-b border-vv-border bg-white/90 px-6 backdrop-blur md:px-10">
         <Link href="/">
@@ -153,18 +161,46 @@ export function VvLegalShell({ activeHref, title, lastUpdated, children }: VvLeg
         <div className="mx-auto max-w-5xl">{children}</div>
       </main>
 
-      <footer className="bg-navy-deep px-6 pb-8 pt-16 text-white md:px-10">
-        <div className="mx-auto grid max-w-6xl gap-12 md:grid-cols-[1.4fr_1fr_1fr_1fr]">
+      <footer className="px-8 pb-8 pt-16" style={{ background: "var(--navy)", color: "rgba(255,255,255,0.7)" }}>
+        <div
+          className="mx-auto grid max-w-[1200px] gap-12 pb-12 md:grid-cols-[1.4fr_1fr_1fr_1fr]"
+          style={{ borderBottom: "1px solid rgba(255,255,255,0.1)" }}
+        >
           <div>
             <Logo light />
-            <p className="mt-4 max-w-xs text-sm leading-relaxed text-sky-pale/50">
-              The digital home for pilot license conversion. Built by aviators, for aviators.
+            <p
+              className="mt-2 text-[14px] leading-[1.5]"
+              style={{ color: "rgba(255,255,255,0.5)", maxWidth: 260 }}
+            >
+              The digital home for pilot license<br />conversion. Built by aviators, for aviators.
             </p>
+            {/* Social icons */}
+            <div className="mt-6 flex gap-4">
+              {socialLinks.map((s) => (
+                <a
+                  key={s.label}
+                  href="#"
+                  aria-label={s.label}
+                  className="flex h-9 w-9 items-center justify-center rounded-lg transition-all"
+                  style={{ background: "rgba(255,255,255,0.07)", color: "rgba(255,255,255,0.6)" }}
+                >
+                  {s.icon}
+                </a>
+              ))}
+            </div>
           </div>
           {footerColumns.map((col) => (
             <div key={col.title}>
-              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-sky-pale/40">{col.title}</p>
-              <ul className="mt-4 flex flex-col gap-2.5 text-sm text-sky-pale/60">
+              <p
+                className="text-[11px] font-semibold uppercase tracking-[3px]"
+                style={{ color: "rgba(255,255,255,0.4)" }}
+              >
+                {col.title}
+              </p>
+              <ul
+                className="mt-4 flex flex-col gap-2.5 text-[13px]"
+                style={{ color: "rgba(255,255,255,0.6)" }}
+              >
                 {col.links.map((link) => (
                   <li key={link.label}>
                     <Link href={link.href} className="transition-colors hover:text-white">
@@ -176,11 +212,15 @@ export function VvLegalShell({ activeHref, title, lastUpdated, children }: VvLeg
             </div>
           ))}
         </div>
-        <div className="mx-auto mt-16 flex max-w-6xl flex-col items-center justify-between gap-3 border-t border-white/10 pt-6 text-xs text-sky-pale/40 md:flex-row">
+        <div
+          className="mx-auto mt-0 flex max-w-[1200px] flex-col items-center justify-between gap-3 pt-6 text-xs md:flex-row"
+          style={{ color: "rgba(255,255,255,0.35)" }}
+        >
           <p>&copy; {new Date().getFullYear()} Vanguard Aviation Academy. All rights reserved.</p>
-          <p className="uppercase tracking-[0.2em]">Where excellence takes flight</p>
+          <p className="uppercase tracking-[3px]">Where excellence takes flight</p>
         </div>
       </footer>
     </div>
+    </PageTransition>
   );
 }

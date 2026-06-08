@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { VvButton } from "@/components/vv/VvButton";
 import { VvCard } from "@/components/vv/VvCard";
+import { PageTransition } from "@/components/PageTransition";
 
 // ─── Data (unchanged) ─────────────────────────────────────────────────────────
 
@@ -259,6 +260,7 @@ export default function HomePage() {
   const [openFaq, setOpenFaq] = useState<number>(0);
 
   return (
+    <PageTransition>
     <div className="flex min-h-screen flex-col bg-white">
 
       {/* ── Navbar ─────────────────────────────────────────────────────────── */}
@@ -522,6 +524,7 @@ export default function HomePage() {
           id="features"
           className="px-8"
           style={{
+            scrollMarginTop: 68,
             background: "var(--white)",
             paddingTop: "var(--space-section)",
             paddingBottom: "var(--space-section)",
@@ -675,6 +678,7 @@ export default function HomePage() {
           id="pricing"
           className="px-8"
           style={{
+            scrollMarginTop: 68,
             background: "var(--white)",
             paddingTop: "var(--space-section)",
             paddingBottom: "var(--space-section)",
@@ -812,6 +816,7 @@ export default function HomePage() {
           id="faq"
           className="px-8"
           style={{
+            scrollMarginTop: 68,
             background: "var(--sky-mist)",
             paddingTop: "var(--space-section)",
             paddingBottom: "var(--space-section)",
@@ -843,25 +848,43 @@ export default function HomePage() {
                         {faq.question}
                       </span>
                       <span
-                        className="ml-4 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg transition-all"
+                        className="relative ml-4 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg transition-colors duration-200"
                         style={{
                           background: isOpen ? "var(--sky)" : "var(--sky-pale)",
                           color: isOpen ? "white" : "var(--sky)",
                         }}
                       >
-                        {isOpen ? (
-                          <Minus className="h-4 w-4" strokeWidth={2.5} />
-                        ) : (
-                          <Plus className="h-4 w-4" strokeWidth={2.5} />
-                        )}
+                        <Plus
+                          className="absolute h-4 w-4 transition-all duration-200 ease-out"
+                          strokeWidth={2.5}
+                          style={{
+                            opacity: isOpen ? 0 : 1,
+                            transform: isOpen ? "rotate(90deg) scale(0.6)" : "rotate(0deg) scale(1)",
+                          }}
+                        />
+                        <Minus
+                          className="absolute h-4 w-4 transition-all duration-200 ease-out"
+                          strokeWidth={2.5}
+                          style={{
+                            opacity: isOpen ? 1 : 0,
+                            transform: isOpen ? "rotate(0deg) scale(1)" : "rotate(-90deg) scale(0.6)",
+                          }}
+                        />
                       </span>
                     </button>
-                    {isOpen && faq.answer && (
+                    {faq.answer && (
                       <div
-                        className="px-7 pb-[26px] text-[15px] leading-[1.65]"
-                        style={{ color: "var(--text-secondary)" }}
+                        className="grid transition-[grid-template-rows] duration-300 ease-in-out"
+                        style={{ gridTemplateRows: isOpen ? "1fr" : "0fr" }}
                       >
-                        {faq.answer}
+                        <div className="overflow-hidden">
+                          <div
+                            className="px-7 pb-[26px] text-[15px] leading-[1.65]"
+                            style={{ color: "var(--text-secondary)" }}
+                          >
+                            {faq.answer}
+                          </div>
+                        </div>
                       </div>
                     )}
                   </div>
@@ -991,5 +1014,6 @@ export default function HomePage() {
         </div>
       </footer>
     </div>
+    </PageTransition>
   );
 }
