@@ -2,7 +2,7 @@
 import 'server-only';
 
 import { genkit } from 'genkit';
-import { vertexAI } from '@genkit-ai/vertexai';
+import { googleAI } from '@genkit-ai/googleai';
 import { z } from 'zod';
 
 const ExtractExpiryDateInputSchema = z.object({
@@ -17,12 +17,12 @@ const ExtractExpiryDateOutputSchema = z.object({
 });
 export type ExtractExpiryDateOutput = z.infer<typeof ExtractExpiryDateOutputSchema>;
 
-const ai = genkit({ plugins: [vertexAI({ projectId: 'REDACTED_FIREBASE_PROJECT_ID', location: 'us-central1' })] });
+const ai = genkit({ plugins: [googleAI({ apiKey: process.env.GEMINI_API_KEY })] });
 
 export async function extractExpiryDate(input: ExtractExpiryDateInput): Promise<ExtractExpiryDateOutput> {
 
   const result = await ai.generate({
-    model: 'vertexai/gemini-2.0-flash',
+    model: googleAI.model('gemini-2.0-flash'),
     prompt: [
       { text: `You are an expert at processing official documents. Find and extract the expiry date from the provided document. Look for labels like "Expiry Date", "Expires", "Valid Until", or similar. Return ONLY in YYYY-MM-DD format, or null if not found.` },
       { media: { url: input.documentDataUri } }
