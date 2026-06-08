@@ -1,11 +1,6 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   output: 'standalone',
-  // By providing a static build ID, we prevent mismatches between client and server assets
-  // after a new deployment, which resolves the "Server Action was not found" error.
-  generateBuildId: async () => {
-    return 'vanvertapp-stable-build-id';
-  },
   typescript: {
     ignoreBuildErrors: true,
   },
