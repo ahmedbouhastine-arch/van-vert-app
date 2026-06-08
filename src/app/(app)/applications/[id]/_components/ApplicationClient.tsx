@@ -216,14 +216,22 @@ function DocumentCard({
                     >
                         <X className="h-4 w-4" />
                     </Button>
+                    {doc.status !== 'missing' && (
+                        <Button
+                            type="button"
+                            variant="outline"
+                            size="icon"
+                            onClick={() => onCheckExpiry(doc.id)}
+                            disabled={isExpiryCheckDisabled}
+                            aria-label="Retry AI expiry check"
+                            title="Retry AI expiry check"
+                            className="shrink-0 rounded-lg border-[var(--vv-border)]"
+                        >
+                            {isCheckingExpiry ? <Loader2 className="h-4 w-4 animate-spin" /> : <Bot className="h-4 w-4" />}
+                        </Button>
+                    )}
                 </div>
             </div>
-            {doc.status !== 'missing' && (
-                <VvButton variant="outline" size="sm" onClick={() => onCheckExpiry(doc.id)} disabled={isExpiryCheckDisabled} loading={isCheckingExpiry} className="w-full max-w-sm justify-center">
-                    <Bot className="h-3.5 w-3.5" />
-                    AI check expiry
-                </VvButton>
-            )}
           </div>
         )}
         {doc.isExpiringSoon && (
