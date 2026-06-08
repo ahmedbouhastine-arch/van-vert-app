@@ -396,13 +396,17 @@ export function ApplicationClient({
       let detectedExpiryDate: string | null = null;
       if (docDefinition.requiresExpiry && (file.type.startsWith('image/') || file.type === 'application/pdf')) {
         toast({ title: 'AI Processing', description: 'Analyzing document for expiry date.' });
-        const idToken = await auth.currentUser?.getIdToken();
-        const { expiryDate } = await serverActions.extractExpiryDateAction({ 
-          applicationId: appState.id,
-          documentUrl: publicUrl,
-          idToken 
-        });
-        detectedExpiryDate = expiryDate || null;
+        try {
+          const idToken = await auth.currentUser?.getIdToken();
+          const { expiryDate } = await serverActions.extractExpiryDateAction({
+            applicationId: appState.id,
+            documentUrl: publicUrl,
+            idToken
+          });
+          detectedExpiryDate = expiryDate || null;
+        } catch (aiError) {
+          console.error("Expiry date detection failed:", aiError);
+        }
       }
 
       if (detectedExpiryDate) {
