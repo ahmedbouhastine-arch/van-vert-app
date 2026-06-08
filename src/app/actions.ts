@@ -346,12 +346,8 @@ export async function deleteUserAccountAction(idToken?: string): Promise<{ succe
     }
 }
 
-// Firebase Auth has no concept of per-device sessions, so the only way to sign
-// out other devices is to revoke ALL refresh tokens for the account. This also
-// invalidates the calling session's `auth_time` for Storage/Firestore security
-// rule evaluation (even though its ID token keeps verifying server-side), so
-// the client must force its own re-login right after this succeeds — see
-// handleSignOutOtherSessions in settings/page.tsx.
+// Firebase Auth has no concept of per-device sessions — revoking refresh tokens
+// signs the account out everywhere except the current, still-valid ID token.
 export async function signOutOtherSessionsAction(idToken?: string): Promise<{ success: boolean }> {
     try {
         const user = await getAuthenticatedUser(idToken);

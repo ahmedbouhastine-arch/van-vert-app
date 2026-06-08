@@ -148,19 +148,11 @@ export default function SettingsPage() {
             const idToken = await user!.getIdToken();
             const { success } = await signOutOtherSessionsAction(idToken);
             if (success) {
+                toast({ title: "Signed out of other sessions", description: "Any other devices will be asked to log in again." });
                 setShowSignOutConfirm(false);
-                // Revoking refresh tokens invalidates every session's `auth_time` for
-                // Storage/Firestore security rules — including this one. The current
-                // tab would otherwise look "logged in" while silently losing access
-                // to uploads and other rule-gated requests, so sign it out too and
-                // require a fresh login to get a token issued after the revocation.
-                toast({ title: "Signed out everywhere", description: "For security, you've also been signed out here. Please log back in." });
-                await fetch('/api/auth/session/logout', { method: 'POST' });
-                await signOut(getAuth());
-                window.location.href = '/login';
-                return;
+            } else {
+                throw new Error("Failed to revoke sessions");
             }
-            throw new Error("Failed to revoke sessions");
         } catch {
             toast({ variant: 'destructive', title: "Couldn't sign out other sessions", description: "Please try again." });
         } finally {
@@ -275,7 +267,7 @@ export default function SettingsPage() {
             </div>
             <VvButton variant="outline" size="sm" onClick={() => setShowSignOutConfirm(true)}>
               <LogOut className="h-3.5 w-3.5" />
-              Sign out everywhere
+              Sign out of other devices
             </VvButton>
           </div>
           <div className="p-6">
@@ -355,18 +347,18 @@ export default function SettingsPage() {
           <DialogContent className="rounded-2xl">
             <DialogHeader>
               <DialogTitle className="font-outfit text-xl font-semibold text-[var(--navy)]">
-                Sign out of all devices?
+                Sign out of other devices?
               </DialogTitle>
             </DialogHeader>
             <p className="text-sm leading-relaxed text-[var(--text-secondary)]">
-              This signs the account out everywhere, including <span className="font-semibold text-[var(--text-primary)]">{currentDevice}</span> —
-              you'll be signed out here too and need to log back in. Anyone using your account anywhere else will also need to log in again.
+              This signs the account out everywhere except <span className="font-semibold text-[var(--text-primary)]">{currentDevice}</span>.
+              Anyone using your account on another device or browser will need to log in again.
             </p>
             <DialogFooter>
               <VvButton variant="ghost" onClick={() => setShowSignOutConfirm(false)}>Cancel</VvButton>
               <VvButton onClick={handleSignOutOtherSessions} loading={isSigningOutOthers}>
                 <LogOut className="h-3.5 w-3.5" />
-                Sign out everywhere
+                Sign out other devices
               </VvButton>
             </DialogFooter>
           </DialogContent>
