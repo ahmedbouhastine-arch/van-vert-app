@@ -5,6 +5,7 @@ import { Bell, CheckCircle2, AlertCircle, Upload, FileText } from "lucide-react"
 import { collection, orderBy, query, updateDoc, doc, writeBatch } from "firebase/firestore";
 import { formatDistanceToNow } from "date-fns";
 import { cn } from "@/lib/utils";
+import { Skeleton } from "@/components/ui/skeleton";
 import { PageTransition } from "@/components/PageTransition";
 import { VvPageHeader } from "@/components/vv/VvPageHeader";
 import { VvEmptyState } from "@/components/vv/VvEmptyState";
@@ -63,7 +64,7 @@ export default function NotificationsPage() {
     return query(collection(firestore, "users", user.uid, "notifications"), orderBy("createdAt", "desc"));
   }, [firestore, user]);
 
-  const { data: notifications } = useCollection<Notification>(notifsQuery);
+  const { data: notifications, isLoading } = useCollection<Notification>(notifsQuery);
   const unread = notifications?.filter((n) => !n.isRead) ?? [];
   const read = notifications?.filter((n) => n.isRead) ?? [];
 
@@ -99,7 +100,19 @@ export default function NotificationsPage() {
           ) : undefined
         }
       />
-      {notifications && notifications.length > 0 ? (
+      {isLoading ? (
+        <div className="mt-6 flex flex-col gap-2">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <div key={i} className="flex items-start gap-4 rounded-xl border border-[var(--vv-border)] bg-white px-5 py-4">
+              <Skeleton className="h-8 w-8 shrink-0 rounded-lg" />
+              <div className="min-w-0 flex-1 space-y-1.5">
+                <Skeleton className="h-3.5 w-2/3" />
+                <Skeleton className="h-3 w-24" />
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : notifications && notifications.length > 0 ? (
         <div>
           {unread.length > 0 && (
             <div>

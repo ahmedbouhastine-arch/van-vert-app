@@ -1,7 +1,7 @@
 'use client';
 export const dynamic = 'force-dynamic';
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import {
   ArrowRight,
@@ -258,6 +258,13 @@ function SectionHeader({
 
 export default function HomePage() {
   const [openFaq, setOpenFaq] = useState<number>(0);
+  const [comingSoon, setComingSoon] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!comingSoon) return;
+    const timer = setTimeout(() => setComingSoon(null), 2500);
+    return () => clearTimeout(timer);
+  }, [comingSoon]);
 
   return (
     <PageTransition>
@@ -967,18 +974,19 @@ export default function HomePage() {
             <div className="mt-6 flex gap-4">
               {[
                 { label: "Instagram", icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="0.5" fill="currentColor"/></svg> },
-                { label: "WhatsApp", icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg> },
+                { label: "WhatsApp", icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round"><path d="M3 21l1.65-3.8a9 9 0 1 1 3.4 2.9z"/><path d="M9 10a.5 .5 0 0 0 1 0v-1a.5 .5 0 0 0-1 0v1a5 5 0 0 0 5 5h1a.5 .5 0 0 0 0-1h-1a.5 .5 0 0 0 0 1"/></svg> },
                 { label: "LinkedIn", icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round"><path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z"/><rect x="2" y="9" width="4" height="12"/><circle cx="4" cy="4" r="2"/></svg> },
               ].map((s) => (
-                <a
+                <button
                   key={s.label}
-                  href="#"
+                  type="button"
                   aria-label={s.label}
+                  onClick={() => setComingSoon(s.label)}
                   className="flex h-9 w-9 items-center justify-center rounded-lg transition-all"
                   style={{ background: "rgba(255,255,255,0.07)", color: "rgba(255,255,255,0.6)" }}
                 >
                   {s.icon}
-                </a>
+                </button>
               ))}
             </div>
           </div>
@@ -996,9 +1004,19 @@ export default function HomePage() {
               >
                 {col.links.map((link) => (
                   <li key={link.label}>
-                    <Link href={link.href} className="transition-colors hover:text-white">
-                      {link.label}
-                    </Link>
+                    {link.href === "#" ? (
+                      <button
+                        type="button"
+                        onClick={() => setComingSoon(link.label)}
+                        className="transition-colors hover:text-white"
+                      >
+                        {link.label}
+                      </button>
+                    ) : (
+                      <Link href={link.href} className="transition-colors hover:text-white">
+                        {link.label}
+                      </Link>
+                    )}
                   </li>
                 ))}
               </ul>
@@ -1013,6 +1031,16 @@ export default function HomePage() {
           <p className="uppercase tracking-[3px]">Where excellence takes flight</p>
         </div>
       </footer>
+      {comingSoon && (
+        <div
+          role="status"
+          onClick={() => setComingSoon(null)}
+          className="fixed bottom-6 left-1/2 z-50 -translate-x-1/2 cursor-pointer rounded-full px-5 py-2.5 text-[13px] shadow-lg transition-opacity"
+          style={{ background: "var(--navy)", color: "white", border: "1px solid rgba(255,255,255,0.12)" }}
+        >
+          {comingSoon} — coming soon
+        </div>
+      )}
     </div>
     </PageTransition>
   );

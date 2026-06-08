@@ -3,7 +3,7 @@ import 'server-only';
 
 import { z } from 'zod';
 
-export const FlagExpiringDocumentsInputSchema = z.object({
+const FlagExpiringDocumentsInputSchema = z.object({
   documents: z.array(
     z.object({
       name: z.string().describe('The name of the document.'),
@@ -14,7 +14,7 @@ export const FlagExpiringDocumentsInputSchema = z.object({
 });
 export type FlagExpiringDocumentsInput = z.infer<typeof FlagExpiringDocumentsInputSchema>;
 
-export const FlagExpiringDocumentsOutputSchema = z.array(
+const FlagExpiringDocumentsOutputSchema = z.array(
   z.object({
     name: z.string().describe('The name of the document.'),
     isExpiringSoon: z.boolean().describe('Whether the document is expiring soon based on the provided daysUntilExpiry.'),

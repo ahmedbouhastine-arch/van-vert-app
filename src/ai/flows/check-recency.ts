@@ -9,12 +9,12 @@ const FlightLogSchema = z.object({
     duration: z.number().describe('The duration of the flight in hours.'),
 });
 
-export const CheckRecencyInputSchema = z.object({
+const CheckRecencyInputSchema = z.object({
   flights: z.array(FlightLogSchema).describe('An array of flight log objects.'),
 });
 export type CheckRecencyInput = z.infer<typeof CheckRecencyInputSchema>;
 
-export const CheckRecencyOutputSchema = z.object({
+const CheckRecencyOutputSchema = z.object({
     hasRecency: z.boolean().describe('Whether the pilot has at least 15 flight hours in the last 6 months.'),
     totalHours: z.number().describe('The total flight hours within the last 6 months.'),
 });

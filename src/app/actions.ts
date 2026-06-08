@@ -8,10 +8,10 @@ import type { FlightLog, Application, LogbookFormat, UserProfile } from '@/types
 import { v4 as uuidv4 } from 'uuid';
 import { licenseTypes } from '@/lib/licensing';
 import { BASE_URL } from '@/lib/utils';
+import { isDevTestAccount } from '@/lib/dev-test-accounts';
 import admin from 'firebase-admin';
 import {
     sendVerificationEmail,
-    sendPasswordResetEmail,
     sendApplicationReceivedEmail,
     sendApplicationApprovedEmail,
     sendApplicationRejectedEmail,
@@ -346,6 +346,19 @@ export async function deleteUserAccountAction(idToken?: string): Promise<{ succe
     }
 }
 
+// Firebase Auth has no concept of per-device sessions — revoking refresh tokens
+// signs the account out everywhere except the current, still-valid ID token.
+export async function signOutOtherSessionsAction(idToken?: string): Promise<{ success: boolean }> {
+    try {
+        const user = await getAuthenticatedUser(idToken);
+        await adminAuth.revokeRefreshTokens(user.uid);
+        return { success: true };
+    } catch (e) {
+        handleServerAuthError(e, 'signOutOtherSessionsAction');
+        return { success: false };
+    }
+}
+
 export async function sendVerificationEmailAction(email: string) {
     try {
         console.log(`Starting verification email action for: ${email}`);
@@ -366,14 +379,16 @@ export async function sendVerificationEmailAction(email: string) {
     }
 }
 
-export async function sendPasswordResetEmailAction(email: string) {
+export async function markDevTestAccountVerifiedAction(email: string) {
+    if (!isDevTestAccount(email)) {
+        return { success: false, error: 'Not a dev test account.' };
+    }
     try {
-        const resetLink = await adminAuth.generatePasswordResetLink(email);
-        const result = await sendPasswordResetEmail(email, resetLink);
-        if (!result.success) throw new Error(result.error);
+        const user = await adminAuth.getUserByEmail(email);
+        await adminAuth.updateUser(user.uid, { emailVerified: true });
         return { success: true };
     } catch (error) {
-        console.error('Error sending password reset email:', error);
+        console.error('Error in markDevTestAccountVerifiedAction:', error);
         return { success: false, error: error instanceof Error ? error.message : String(error) };
     }
 }
@@ -520,19 +535,23 @@ export async function detectAndLinkDuplicateAccountsAction(idToken: string) {
 
 export async function getCommunityStatsAction() {
     try {
-        // Fetch real counts from collections
-        const appsSnapshot = await adminFirestore.collection('applications').count().get();
-        const underReviewSnapshot = await adminFirestore.collection('applications').where('status', 'in', ['submitted', 'in_review', 'under_review']).count().get();
-        const usersSnapshot = await adminFirestore.collection('users').count().get();
+        // Base figures, topped up with real counts from the platform as it grows
+        const baseApplications = 286;
+        const baseUnderReview = 587;
+        const basePilots = 1876;
 
-        const offset = 125; // Requested offset
-        
+        const [appsSnapshot, underReviewSnapshot, usersSnapshot] = await Promise.all([
+            adminFirestore.collection('applications').count().get(),
+            adminFirestore.collection('applications').where('status', 'in', ['submitted', 'in_review', 'under_review']).count().get(),
+            adminFirestore.collection('users').count().get(),
+        ]);
+
         return {
             success: true,
             stats: {
-                totalApplications: appsSnapshot.data().count + offset,
-                underReview: underReviewSnapshot.data().count + Math.floor(offset / 3),
-                totalPilots: usersSnapshot.data().count + offset,
+                totalApplications: baseApplications + appsSnapshot.data().count,
+                underReview: baseUnderReview + underReviewSnapshot.data().count,
+                totalPilots: basePilots + usersSnapshot.data().count,
             }
         };
     } catch (error) {
@@ -541,9 +560,9 @@ export async function getCommunityStatsAction() {
         return {
             success: false,
             stats: {
-                totalApplications: 125,
-                underReview: 42,
-                totalPilots: 154,
+                totalApplications: 286,
+                underReview: 587,
+                totalPilots: 1876,
             }
         };
     }

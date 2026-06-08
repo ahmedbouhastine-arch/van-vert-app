@@ -11,7 +11,6 @@ import { GoogleIcon } from "@/components/GoogleIcon";
 import { LoadingScreen } from "@/components/LoadingScreen";
 import { ArrowLeft, ArrowRight, Mail, Lock, Eye, EyeOff } from "lucide-react";
 import { signInWithGoogle } from "@/firebase/auth-actions";
-import { sendPasswordResetEmailAction } from '@/app/actions';
 import { BASE_URL } from "@/lib/utils";
 import { VvButton } from "@/components/vv/VvButton";
 import { VvInput } from "@/components/vv/VvInput";
@@ -32,8 +31,6 @@ const LoginPage = () => {
     const firestore = useFirestore();
     const { user, loading, claims } = useUser();
     const [isSubmitting, setIsSubmitting] = useState(false);
-    const [isForgotPasswordOpen, setIsForgotPasswordOpen] = useState(false);
-    const [forgotPasswordEmail, setForgotPasswordEmail] = useState("");
     const [showPassword, setShowPassword] = useState(false);
 
     useEffect(() => {
@@ -93,26 +90,6 @@ const LoginPage = () => {
              );
              toast({ title: "Account Created" });
              router.push('/dashboard');
-        }
-    };
-
-    const handlePasswordReset = async (event: React.FormEvent<HTMLFormElement>) => {
-        event.preventDefault();
-        setIsSubmitting(true);
-        try {
-            const result = await sendPasswordResetEmailAction(forgotPasswordEmail);
-            if (result.success) {
-                toast({ description: "Password reset email sent! Check your inbox." });
-                setIsForgotPasswordOpen(false);
-            } else {
-                toast({ variant: 'destructive', title: 'Error', description: result.error || 'Failed to send password reset email. Please try again.' });
-            }
-        } catch (error) {
-            console.error('Password reset error:', error);
-            toast({ variant: 'destructive', title: 'Error', description: 'An unexpected error occurred. Please try again.' });
-        } finally {
-            setIsSubmitting(false);
-            setForgotPasswordEmail("");
         }
     };
 
@@ -325,18 +302,16 @@ const LoginPage = () => {
                                     />
                                     Keep me signed in
                                 </label>
-                                <button
-                                    type="button"
-                                    onClick={() => setIsForgotPasswordOpen(true)}
+                                <Link
+                                    href="/forgot-password"
                                     style={{
                                         color: 'var(--sky)', fontWeight: 500,
-                                        fontSize: 13, background: 'none', border: 'none',
-                                        cursor: 'pointer', transition: 'color 0.15s',
+                                        fontSize: 13, transition: 'color 0.15s',
                                     }}
                                     className="hover:text-navy"
                                 >
                                     Forgot password?
-                                </button>
+                                </Link>
                             </div>
                         </div>
 
@@ -406,41 +381,6 @@ const LoginPage = () => {
                     </p>
                 </div>
             </main>
-
-            {/* ── Forgot password dialog ───────────────────────────────────────── */}
-            <Dialog open={isForgotPasswordOpen} onOpenChange={setIsForgotPasswordOpen}>
-                <DialogContent className="sm:max-w-md rounded-2xl">
-                    <DialogHeader>
-                        <DialogTitle
-                            style={{ fontFamily: 'var(--font-display)', fontWeight: 600, fontSize: 24, color: 'var(--navy)' }}
-                        >
-                            Reset password
-                        </DialogTitle>
-                        <DialogDescription style={{ color: 'var(--text-secondary)' }}>
-                            We&apos;ll send you a secure link to reset your password.
-                        </DialogDescription>
-                    </DialogHeader>
-                    <form onSubmit={handlePasswordReset} className="space-y-4 pt-2">
-                        <VvInput
-                            id="forgot-password-email"
-                            type="email"
-                            placeholder="pilot@vanvert.co"
-                            leftIcon={<Mail className="h-4 w-4" />}
-                            required
-                            value={forgotPasswordEmail}
-                            onChange={(e) => setForgotPasswordEmail(e.target.value)}
-                        />
-                        <DialogFooter className="flex-col gap-3 sm:flex-row">
-                            <DialogClose asChild>
-                                <VvButton type="button" variant="ghost">Cancel</VvButton>
-                            </DialogClose>
-                            <VvButton type="submit" loading={isSubmitting} className="flex-1">
-                                Send link
-                            </VvButton>
-                        </DialogFooter>
-                    </form>
-                </DialogContent>
-            </Dialog>
 
             {/* ── Must link email dialog ───────────────────────────────────────── */}
             <Dialog open={!!mustLinkEmail} onOpenChange={(open) => !open && setMustLinkEmail(null)}>

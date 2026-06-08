@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { ArrowLeft, ArrowRight, User as UserIcon, Mail, Lock, Eye, EyeOff, Check } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { getAuth, createUserWithEmailAndPassword, updateProfile, deleteUser } from "firebase/auth";
+import { getAuth, createUserWithEmailAndPassword, updateProfile, deleteUser, signOut } from "firebase/auth";
 import { useFirebaseApp, useFirestore, useUser } from "@/firebase";
 import { doc, setDoc, serverTimestamp } from "firebase/firestore";
 import { GoogleIcon } from "@/components/GoogleIcon";
@@ -14,14 +14,20 @@ import { LoadingScreen } from "@/components/LoadingScreen";
 import { signInWithGoogle } from "@/firebase/auth-actions";
 import * as serverActions from "@/app/actions";
 import { BASE_URL } from "@/lib/utils";
+import { DEV_TEST_ACCOUNTS, isDevTestAccount } from "@/lib/dev-test-accounts";
 import { VvButton } from "@/components/vv/VvButton";
 import { VvInput } from "@/components/vv/VvInput";
+
+// Must satisfy both passwordRequirements below and Firebase's project-level
+// password policy (uppercase + number) — plain "testtest" is rejected server-side.
+const DEV_TEST_PASSWORD = 'Testtest1';
 
 const passwordRequirements = [
     { id: "length",    text: "8+ chars",  regex: /.{8,}/  },
     { id: "uppercase", text: "Uppercase", regex: /[A-Z]/  },
     { id: "number",    text: "Number",    regex: /[0-9]/  },
 ];
+
 
 export default function RegisterPage() {
     const router = useRouter();
@@ -45,17 +51,20 @@ export default function RegisterPage() {
 
     const handleRegister = (event: React.FormEvent<HTMLFormElement>) => {
         event.preventDefault();
-        if (!allRequirementsMet) {
+        const formData = new FormData(event.currentTarget);
+        const email = formData.get("email") as string;
+        const fullName = formData.get("full-name") as string;
+
+        if (!allRequirementsMet && !isDevTestAccount(email)) {
             toast({ variant: 'destructive', title: 'Weak Password', description: 'Please meet all password requirements.' });
             return;
         }
 
         setIsSubmitting(true);
-        const formData = new FormData(event.currentTarget);
-        const email = formData.get("email") as string;
-        const fullName = formData.get("full-name") as string;
 
-        createUserWithEmailAndPassword(auth, email, password)
+        const accountPassword = isDevTestAccount(email) ? DEV_TEST_PASSWORD : password;
+
+        createUserWithEmailAndPassword(auth, email, accountPassword)
             .then(async (userCredential) => {
                 const fbUser = userCredential.user;
                 try {
@@ -64,10 +73,21 @@ export default function RegisterPage() {
                         await setDoc(doc(firestore, "users", fbUser.uid), {
                             displayName: fullName,
                             email: fbUser.email,
-                            role: email === 'head-admin@test.va' ? 'head-admin' : 'user',
+                            role: isDevTestAccount(email) ? DEV_TEST_ACCOUNTS[email] : 'user',
                             createdAt: serverTimestamp(),
                         });
                     }
+                    if (isDevTestAccount(email)) {
+                        // Dev seed accounts use fake addresses that can't receive a real
+                        // verification email — mark them verified server-side instead and
+                        // re-authenticate so the client picks up the fresh emailVerified flag.
+                        await serverActions.markDevTestAccountVerifiedAction(email);
+                        await signOut(auth);
+                        toast({ title: 'Test account ready', description: `Log in with ${email} / ${DEV_TEST_PASSWORD}.` });
+                        router.push('/login');
+                        return;
+                    }
+
                     const emailResult = await serverActions.sendVerificationEmailAction(email);
                     if (!emailResult.success) {
                         toast({ variant: 'destructive', title: 'Email Issue', description: 'Account created, but we couldn\'t send the verification email. Please contact support.' });

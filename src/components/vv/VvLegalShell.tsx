@@ -1,3 +1,5 @@
+"use client";
+
 import * as React from "react";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
@@ -5,7 +7,7 @@ import { PageTransition } from "@/components/PageTransition";
 
 const socialLinks = [
   { label: "Instagram", icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="0.5" fill="currentColor"/></svg> },
-  { label: "WhatsApp", icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg> },
+  { label: "WhatsApp", icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round"><path d="M20.4 3.6A9.9 9.9 0 0 0 4.9 19.1L3.7 20.9l1.9-1.1a9.8 9.8 0 0 0 14.8-16.2Z"/><path d="M14.8 13.4c-.3-.1-.6-.2-.9-.4-.3-.2-.5-.5-.6-.8-.1-.3 0-.7.2-1 .2-.3.5-.5.9-.6.3-.1.7-.1 1 .1.3.2.5.5.6.8.1.3.1.6 0 .9-.1.3-.3.5-.6.7-.2.1-.5.2-.7.3-.2.1-.4.2-.5.5-.1.3-.1.6 0 .9"/></svg> },
   { label: "LinkedIn", icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round"><path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z"/><rect x="2" y="9" width="4" height="12"/><circle cx="4" cy="4" r="2"/></svg> },
 ];
 
@@ -70,27 +72,56 @@ export interface VvLegalSection {
 }
 
 export function VvLegalContent({ sections }: { sections: VvLegalSection[] }) {
+  const [activeId, setActiveId] = React.useState(sections[0]?.id);
+
+  React.useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const visible = entries
+          .filter((entry) => entry.isIntersecting)
+          .sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top);
+
+        if (visible[0]) {
+          setActiveId(visible[0].target.id);
+        }
+      },
+      { rootMargin: "-96px 0px -65% 0px", threshold: 0 }
+    );
+
+    sections.forEach((section) => {
+      const el = document.getElementById(section.id);
+      if (el) observer.observe(el);
+    });
+
+    return () => observer.disconnect();
+  }, [sections]);
+
   return (
     <div className="grid gap-12 md:grid-cols-[220px_1fr]">
       <nav className="hidden md:block">
-        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-text-muted">Contents</p>
-        <ul className="mt-4 flex flex-col gap-1">
-          {sections.map((section, idx) => (
-            <li key={section.id}>
-              <a
-                href={`#${section.id}`}
-                className={
-                  idx === 0
-                    ? "block rounded-md border-l-2 border-sky bg-sky-pale px-3 py-2 text-sm font-semibold text-sky"
-                    : "block rounded-md border-l-2 border-transparent px-3 py-2 text-sm text-text-secondary transition-colors hover:text-navy"
-                }
-              >
-                <span className="mr-2 text-xs text-text-muted">{String(idx + 1).padStart(2, "0")}</span>
-                {section.title}
-              </a>
-            </li>
-          ))}
-        </ul>
+        <div className="sticky top-24">
+          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-text-muted">Contents</p>
+          <ul className="mt-4 flex flex-col gap-1">
+            {sections.map((section, idx) => {
+              const isActive = activeId === section.id;
+              return (
+                <li key={section.id}>
+                  <a
+                    href={`#${section.id}`}
+                    className={
+                      isActive
+                        ? "block rounded-md border-l-2 border-sky bg-sky-pale px-3 py-2 text-sm font-semibold text-sky transition-colors duration-200"
+                        : "block rounded-md border-l-2 border-transparent px-3 py-2 text-sm text-text-secondary transition-colors duration-200 hover:text-navy"
+                    }
+                  >
+                    <span className="mr-2 text-xs text-text-muted">{String(idx + 1).padStart(2, "0")}</span>
+                    {section.title}
+                  </a>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
       </nav>
 
       <div className="flex flex-col gap-12">

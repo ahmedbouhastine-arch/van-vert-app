@@ -12,6 +12,7 @@ export type UserProfile = {
   role: 'user' | 'reviewer' | 'admin' | 'head-admin';
   createdAt: FirebaseTimestamp;
   birthDate?: string; // YYYY-MM-DD
+  country?: string;
 };
 
 export type AppUser = FirebaseUser & {

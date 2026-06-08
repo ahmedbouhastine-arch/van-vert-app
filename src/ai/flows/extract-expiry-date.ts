@@ -5,7 +5,7 @@ import { genkit } from 'genkit';
 import { vertexAI } from '@genkit-ai/vertexai';
 import { z } from 'zod';
 
-export const ExtractExpiryDateInputSchema = z.object({
+const ExtractExpiryDateInputSchema = z.object({
   documentDataUri: z.string().describe(
     "An image or PDF of a document, as a data URI that must include a MIME type and use Base64 encoding. Expected format: 'data:<mimetype>;base64,<encoded_data>'."
   ),
