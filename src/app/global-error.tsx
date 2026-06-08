@@ -5,6 +5,20 @@ import { getAuth, signOut } from 'firebase/auth';
 import { VvButton } from '@/components/vv/VvButton';
 import { Plane } from 'lucide-react';
 
+// A stale browser tab can hold JS chunks from a previous deployment. Once a new
+// version ships, fetching/executing a chunk against the old runtime throws
+// generic webpack errors like this rather than a typed ChunkLoadError. These are
+// not real application failures — a reload picks up the current deployment's
+// assets — so we recover silently instead of forcing a sign-out.
+function isStaleChunkError(error: Error): boolean {
+  const message = error.message || '';
+  return (
+    error.name === 'ChunkLoadError' ||
+    /Loading chunk [\d\w-]+ failed/i.test(message) ||
+    /Cannot read properties of undefined \(reading 'call'\)/i.test(message)
+  );
+}
+
 export default function GlobalError({
   error,
 }: {
@@ -13,6 +27,11 @@ export default function GlobalError({
   useEffect(() => {
     // Log the error to an error reporting service
     console.error('Global Error:', error);
+
+    if (isStaleChunkError(error)) {
+      window.location.reload();
+      return;
+    }
 
     // Attempt to log the user out
     try {
