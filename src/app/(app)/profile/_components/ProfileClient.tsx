@@ -1,6 +1,6 @@
 'use client';
 
-import { LoadingScreen } from "@/components/LoadingScreen";
+import { Skeleton } from "@/components/ui/skeleton";
 import type { UserProfile, Application } from '@/types';
 import type { User as FirebaseUser } from 'firebase/auth';
 
@@ -196,7 +196,25 @@ export function ProfileClient({ claims, applications }: {
   };
 
   /* ── Guard ───────────────────────────────────────────────────────────── */
-  if (loading || !user) return <LoadingScreen />;
+  if (loading || !user) return (
+    <div className="rounded-xl border border-[var(--vv-border)] bg-white p-8">
+      <div className="mb-8 flex items-center gap-6 border-b border-[var(--vv-border)] pb-8">
+        <Skeleton className="h-20 w-20 shrink-0 rounded-full" />
+        <div className="flex flex-col gap-2">
+          <Skeleton className="h-6 w-40" />
+          <Skeleton className="h-4 w-28" />
+        </div>
+      </div>
+      <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
+        {Array.from({ length: 4 }).map((_, i) => (
+          <div key={i} className="flex flex-col gap-2">
+            <Skeleton className="h-3 w-20" />
+            <Skeleton className="h-10 w-full rounded-lg" />
+          </div>
+        ))}
+      </div>
+    </div>
+  );
 
   const appCount = applications.length;
   const joinedDate = user.metadata.creationTime

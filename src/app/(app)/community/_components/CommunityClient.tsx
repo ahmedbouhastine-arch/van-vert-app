@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getCommunityStatsAction } from "@/app/actions";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { LoadingScreen } from "@/components/LoadingScreen";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export function CommunityClient() {
   const [stats, setStats] = useState<{ totalApplications: number, underReview: number, totalPilots: number } | null>(null);
@@ -25,7 +25,33 @@ export function CommunityClient() {
   }, []);
 
   if (loading) {
-      return <LoadingScreen text="Loading community overview..." />;
+    return (
+      <div className="flex flex-col gap-6 w-full">
+        <div className="flex flex-col gap-2">
+          <Skeleton className="h-7 w-56" />
+          <Skeleton className="h-4 w-[480px] max-w-full" />
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 2xl:grid-cols-3 gap-4">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <div key={i} className="rounded-xl border border-[var(--vv-border)] bg-white p-6">
+              <div className="mb-3 flex items-center justify-between">
+                <Skeleton className="h-3.5 w-24" />
+                <Skeleton className="h-4 w-4 rounded" />
+              </div>
+              <Skeleton className="mb-1.5 h-8 w-16" />
+              <Skeleton className="h-3 w-24" />
+            </div>
+          ))}
+        </div>
+        <div className="mt-2">
+          <div className="mb-4 grid w-full grid-cols-2 gap-2">
+            <Skeleton className="h-9 rounded-md" />
+            <Skeleton className="h-9 rounded-md" />
+          </div>
+          <Skeleton className="h-48 rounded-xl" />
+        </div>
+      </div>
+    );
   }
 
   return (

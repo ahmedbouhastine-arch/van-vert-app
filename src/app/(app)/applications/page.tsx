@@ -27,7 +27,7 @@ import { format } from "date-fns";
 import { useUser, useFirestore, useCollection, useMemoFirebase } from "@/firebase";
 import { collection, query, where, doc, deleteDoc, orderBy } from "firebase/firestore";
 import type { Application, FirebaseTimestamp } from "@/types";
-import { LoadingScreen } from "@/components/LoadingScreen";
+import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import { PageTransition } from "@/components/PageTransition";
 import { VvPageHeader } from "@/components/vv/VvPageHeader";
@@ -65,6 +65,55 @@ const FILTERS = [
   { id: "needs_attention", label: "Needs Attention" },
   { id: "approved", label: "Approved" },
 ] as const;
+
+function ApplicationsPageSkeleton() {
+  return (
+    <>
+      <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <Skeleton className="mb-3 h-8 w-44" />
+          <Skeleton className="h-4 w-[440px] max-w-full" />
+        </div>
+        <Skeleton className="h-9 w-40 shrink-0 rounded-lg" />
+      </div>
+      <div className="mb-5 flex flex-wrap gap-2">
+        {Array.from({ length: 5 }).map((_, i) => (
+          <Skeleton key={i} className="h-[34px] w-20 rounded-full" />
+        ))}
+      </div>
+      <div className="flex flex-col gap-3">
+        {Array.from({ length: 4 }).map((_, i) => (
+          <div key={i} className="rounded-xl border border-[var(--vv-border)] bg-white p-6">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-[1fr_180px_140px_24px] sm:gap-6">
+              <div>
+                <div className="mb-2 flex items-center gap-3">
+                  <Skeleton className="h-5 w-32" />
+                  <Skeleton className="h-5 w-20 rounded-full" />
+                </div>
+                <div className="flex gap-3">
+                  <Skeleton className="h-3 w-24" />
+                  <Skeleton className="h-3 w-20" />
+                </div>
+              </div>
+              <div>
+                <div className="mb-2 flex justify-between">
+                  <Skeleton className="h-2.5 w-20" />
+                  <Skeleton className="h-2.5 w-8" />
+                </div>
+                <Skeleton className="h-1 w-full rounded-full" />
+              </div>
+              <div className="flex flex-col items-end gap-1.5">
+                <Skeleton className="h-2.5 w-16" />
+                <Skeleton className="h-4 w-20" />
+              </div>
+              <Skeleton className="h-4 w-4 rounded" />
+            </div>
+          </div>
+        ))}
+      </div>
+    </>
+  );
+}
 
 export default function MyApplicationsPage() {
   const { user, claims, loading: userLoading } = useUser();
@@ -105,7 +154,7 @@ export default function MyApplicationsPage() {
   };
 
   if (isLoading) {
-    return <LoadingScreen text="Loading applications..." />;
+    return <ApplicationsPageSkeleton />;
   }
 
   if (claims && ['reviewer', 'admin', 'head-admin'].includes(claims.role)) {

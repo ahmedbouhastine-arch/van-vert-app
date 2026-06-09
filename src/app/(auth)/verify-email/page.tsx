@@ -8,8 +8,31 @@ import { useToast } from '@/hooks/use-toast';
 import { ArrowLeft, Loader2, LogOut, Mail } from 'lucide-react';
 import { signOut } from 'firebase/auth';
 import * as serverActions from '@/app/actions';
-import { LoadingScreen } from '@/components/LoadingScreen';
+import { Skeleton } from '@/components/ui/skeleton';
 import { VvButton } from '@/components/vv/VvButton';
+
+function VerifyEmailSkeleton() {
+    return (
+        <div className="flex min-h-screen flex-col items-center justify-center bg-[var(--sky-mist)] px-6 py-12">
+            <div className="mb-7">
+                <Skeleton className="h-7 w-28" />
+            </div>
+            <div className="w-full max-w-[480px] rounded-2xl border border-[var(--vv-border)] bg-white p-10">
+                <div className="flex flex-col items-center text-center">
+                    <Skeleton className="mb-6 h-16 w-16 rounded-2xl" />
+                    <Skeleton className="mb-3 h-8 w-52" />
+                    <Skeleton className="mb-1.5 h-4 w-72 max-w-full" />
+                    <Skeleton className="h-4 w-56 max-w-full" />
+                </div>
+                <Skeleton className="mt-7 h-24 rounded-lg" />
+                <div className="mt-6 flex flex-col gap-2.5">
+                    <Skeleton className="h-10 w-full rounded-lg" />
+                    <Skeleton className="mx-auto h-4 w-28" />
+                </div>
+            </div>
+        </div>
+    );
+}
 
 export default function VerifyEmailPage() {
     const { user, loading } = useUser();
@@ -63,7 +86,7 @@ export default function VerifyEmailPage() {
     };
 
     if (loading) {
-        return <LoadingScreen text="Checking your account..." />;
+        return <VerifyEmailSkeleton />;
     }
 
     return (

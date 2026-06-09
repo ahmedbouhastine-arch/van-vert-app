@@ -8,7 +8,7 @@ import { useToast } from '@/hooks/use-toast';
 import { signInWithEmailAndPassword } from "firebase/auth";
 import { useAuth, useUser, useFirestore } from "@/firebase";
 import { GoogleIcon } from "@/components/GoogleIcon";
-import { LoadingScreen } from "@/components/LoadingScreen";
+import { Skeleton } from "@/components/ui/skeleton";
 import { ArrowLeft, ArrowRight, Mail, Lock, Eye, EyeOff } from "lucide-react";
 import { signInWithGoogle } from "@/firebase/auth-actions";
 import { BASE_URL } from "@/lib/utils";
@@ -94,7 +94,32 @@ const LoginPage = () => {
     };
 
     if (loading || user) {
-        return <LoadingScreen text="Checking your credentials..." />;
+        return (
+            <div className="flex min-h-screen" style={{ display: 'grid', gridTemplateColumns: '5fr 6fr' }}>
+                <div className="hidden lg:block bg-[var(--navy)]" />
+                <div className="flex flex-col justify-center px-12 py-16 bg-white">
+                    <Skeleton className="mb-2 h-3 w-20" />
+                    <Skeleton className="mb-8 h-9 w-48" />
+                    <div className="flex flex-col gap-5">
+                        <div className="flex flex-col gap-2">
+                            <Skeleton className="h-3 w-12" />
+                            <Skeleton className="h-10 w-full rounded-lg" />
+                        </div>
+                        <div className="flex flex-col gap-2">
+                            <Skeleton className="h-3 w-16" />
+                            <Skeleton className="h-10 w-full rounded-lg" />
+                        </div>
+                        <Skeleton className="h-10 w-full rounded-lg" />
+                        <div className="flex items-center gap-3">
+                            <Skeleton className="h-px flex-1" />
+                            <Skeleton className="h-3 w-6" />
+                            <Skeleton className="h-px flex-1" />
+                        </div>
+                        <Skeleton className="h-10 w-full rounded-lg" />
+                    </div>
+                </div>
+            </div>
+        );
     }
 
     return (

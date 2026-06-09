@@ -10,7 +10,7 @@ import { getAuth, createUserWithEmailAndPassword, updateProfile, deleteUser, sig
 import { useFirebaseApp, useFirestore, useUser } from "@/firebase";
 import { doc, setDoc, serverTimestamp } from "firebase/firestore";
 import { GoogleIcon } from "@/components/GoogleIcon";
-import { LoadingScreen } from "@/components/LoadingScreen";
+import { Skeleton } from "@/components/ui/skeleton";
 import { signInWithGoogle } from "@/firebase/auth-actions";
 import * as serverActions from "@/app/actions";
 import { BASE_URL } from "@/lib/utils";
@@ -135,7 +135,30 @@ export default function RegisterPage() {
     };
 
     if (loading || user) {
-        return <LoadingScreen text="Preparing your pilot profile..." />;
+        return (
+            <div className="flex min-h-screen" style={{ display: 'grid', gridTemplateColumns: '5fr 6fr' }}>
+                <div className="hidden lg:block bg-[var(--navy)]" />
+                <div className="flex flex-col justify-center px-12 py-16 bg-white">
+                    <Skeleton className="mb-2 h-3 w-20" />
+                    <Skeleton className="mb-8 h-9 w-48" />
+                    <div className="flex flex-col gap-5">
+                        {Array.from({ length: 3 }).map((_, i) => (
+                            <div key={i} className="flex flex-col gap-2">
+                                <Skeleton className="h-3 w-16" />
+                                <Skeleton className="h-10 w-full rounded-lg" />
+                            </div>
+                        ))}
+                        <Skeleton className="h-10 w-full rounded-lg" />
+                        <div className="flex items-center gap-3">
+                            <Skeleton className="h-px flex-1" />
+                            <Skeleton className="h-3 w-6" />
+                            <Skeleton className="h-px flex-1" />
+                        </div>
+                        <Skeleton className="h-10 w-full rounded-lg" />
+                    </div>
+                </div>
+            </div>
+        );
     }
 
     return (

@@ -8,7 +8,7 @@ import { licenseTypes } from "@/lib/licensing";
 import { useUser, useAuth } from '@/firebase';
 import type { LicenseType } from '@/lib/licensing';
 import { useToast } from '@/hooks/use-toast';
-import { LoadingScreen } from "@/components/LoadingScreen";
+import { Skeleton } from "@/components/ui/skeleton";
 import { useRouter } from "next/navigation";
 import * as serverActions from "@/app/actions";
 import { PageTransition } from "@/components/PageTransition";
@@ -74,7 +74,29 @@ export default function NewApplicationPage() {
   };
 
   if (userLoading || (claims && ['reviewer', 'admin', 'head-admin'].includes(claims.role))) {
-    return <LoadingScreen text="Verifying access..." />;
+    return (
+      <>
+        <div className="mb-8 flex items-center justify-between">
+          <div>
+            <Skeleton className="mb-3 h-8 w-40" />
+            <Skeleton className="h-4 w-[400px] max-w-full" />
+          </div>
+          <Skeleton className="h-9 w-20 rounded-lg" />
+        </div>
+        <div className="grid grid-cols-1 gap-5 md:grid-cols-3">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <div key={i} className="overflow-hidden rounded-xl border border-[var(--vv-border)] bg-white p-7">
+              <Skeleton className="mb-5 h-[52px] w-[52px] rounded-[14px]" />
+              <Skeleton className="mb-2 h-6 w-32" />
+              <Skeleton className="mb-1 h-4 w-full" />
+              <Skeleton className="mb-4 h-4 w-3/4" />
+              <Skeleton className="h-3 w-36" />
+              <Skeleton className="mt-7 h-9 w-full rounded-lg" />
+            </div>
+          ))}
+        </div>
+      </>
+    );
   }
 
   return (
