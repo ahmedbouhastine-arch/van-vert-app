@@ -32,10 +32,10 @@ const footerColumns = [
   {
     title: "Authority",
     links: [
-      { label: "About VAA", href: "#" },
-      { label: "Compliance", href: "#" },
-      { label: "Security", href: "#" },
-      { label: "Status", href: "#" },
+      { label: "About VAA", href: "/about" },
+      { label: "Compliance", href: "/compliance" },
+      { label: "Security", href: "/security" },
+      { label: "Status", href: "/status" },
     ],
   },
   {
@@ -43,8 +43,8 @@ const footerColumns = [
     links: [
       { label: "Privacy Policy", href: "/privacy" },
       { label: "Terms of Service", href: "/terms" },
-      { label: "Cookie Policy", href: "#" },
-      { label: "Contact", href: "#" },
+      { label: "Cookie Policy", href: "/cookies" },
+      { label: "Contact", href: "/contact" },
     ],
   },
 ];
@@ -59,9 +59,10 @@ function Logo({ light = false }: { light?: boolean }) {
 }
 
 export interface VvLegalShellProps {
-  activeHref: "/privacy" | "/terms";
+  activeHref: "/privacy" | "/terms" | "/security" | "/cookies" | "/compliance";
   title: string;
   lastUpdated: string;
+  kicker?: string;
   children: React.ReactNode;
 }
 
@@ -97,7 +98,7 @@ export function VvLegalContent({ sections }: { sections: VvLegalSection[] }) {
   }, [sections]);
 
   return (
-    <div className="grid gap-12 md:grid-cols-[220px_1fr]">
+    <div className="grid gap-12 md:grid-cols-[260px_1fr]">
       <nav className="hidden md:block">
         <div className="sticky top-24">
           <p className="text-xs font-semibold uppercase tracking-[0.2em] text-text-muted">Contents</p>
@@ -124,14 +125,14 @@ export function VvLegalContent({ sections }: { sections: VvLegalSection[] }) {
         </div>
       </nav>
 
-      <div className="flex flex-col gap-12">
+      <div className="flex flex-col gap-14">
         {sections.map((section, idx) => (
           <div key={section.id} id={section.id} className="scroll-mt-24">
             <p className="text-xs font-semibold uppercase tracking-[0.2em] text-text-muted">
               Section {String(idx + 1).padStart(2, "0")}
             </p>
-            <h2 className="mt-2 font-outfit text-2xl font-bold tracking-tight text-navy">{section.title}</h2>
-            <div className="mt-3 flex flex-col gap-3 text-sm leading-relaxed text-text-secondary">{section.body}</div>
+            <h2 className="mt-2 font-outfit text-[28px] font-bold tracking-tight text-navy">{section.title}</h2>
+            <div className="mt-4 flex flex-col gap-3.5 text-[15px] leading-[1.7] text-text-secondary">{section.body}</div>
           </div>
         ))}
       </div>
@@ -139,7 +140,7 @@ export function VvLegalContent({ sections }: { sections: VvLegalSection[] }) {
   );
 }
 
-export function VvLegalShell({ activeHref, title, lastUpdated, children }: VvLegalShellProps) {
+export function VvLegalShell({ activeHref, title, lastUpdated, kicker = "Legal", children }: VvLegalShellProps) {
   return (
     <PageTransition>
     <div className="flex min-h-screen flex-col bg-white">
@@ -180,7 +181,7 @@ export function VvLegalShell({ activeHref, title, lastUpdated, children }: VvLeg
           <Link href="/" className="inline-flex items-center gap-2 text-sm text-white/60 transition-colors hover:text-white">
             <ArrowLeft className="h-4 w-4" /> Back to home
           </Link>
-          <p className="mt-8 text-xs font-semibold uppercase tracking-[0.2em] text-sky-pale/50">Legal</p>
+          <p className="mt-8 text-xs font-semibold uppercase tracking-[0.2em] text-sky-pale/50">{kicker}</p>
           <h1 className="mt-2 font-outfit text-5xl font-bold tracking-tight">{title}</h1>
           <p className="mt-4 text-xs font-semibold uppercase tracking-[0.15em] text-sky-pale/50">
             Last updated · {lastUpdated}

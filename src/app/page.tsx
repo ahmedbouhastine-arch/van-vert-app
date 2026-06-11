@@ -173,10 +173,10 @@ const footerColumns = [
   {
     title: "Authority",
     links: [
-      { label: "About VAA", href: "#" },
-      { label: "Compliance", href: "#" },
-      { label: "Security", href: "#" },
-      { label: "Status", href: "#" },
+      { label: "About VAA", href: "/about" },
+      { label: "Compliance", href: "/compliance" },
+      { label: "Security", href: "/security" },
+      { label: "Status", href: "/status" },
     ],
   },
   {
@@ -184,8 +184,8 @@ const footerColumns = [
     links: [
       { label: "Privacy Policy", href: "/privacy" },
       { label: "Terms of Service", href: "/terms" },
-      { label: "Cookie Policy", href: "#" },
-      { label: "Contact", href: "#" },
+      { label: "Cookie Policy", href: "/cookies" },
+      { label: "Contact", href: "/contact" },
     ],
   },
 ];
