@@ -45,7 +45,7 @@ export default function VerifyEmailPage() {
 
     useEffect(() => {
         if (!loading && user?.emailVerified) {
-            router.push('/dashboard');
+            router.push('/onboarding');
         }
     }, [user, loading, router]);
 

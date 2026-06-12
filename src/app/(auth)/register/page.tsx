@@ -129,6 +129,8 @@ export default function RegisterPage() {
                     `${BASE_URL}/dashboard`
                 );
                 toast({ title: "Account Created!" });
+                router.push('/onboarding');
+                return;
             }
             router.push('/dashboard');
         }

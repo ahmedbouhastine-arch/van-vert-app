@@ -78,9 +78,9 @@ function Logo({ light = false }: { light?: boolean }) {
 }
 
 const socialLinks = [
-  { label: "Instagram", icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="0.5" fill="currentColor"/></svg> },
+  { label: "Instagram", href: "https://www.instagram.com/vanguard_aviation/", icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="0.5" fill="currentColor"/></svg> },
   { label: "WhatsApp", icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round"><path d="M20.4 3.6A9.9 9.9 0 0 0 4.9 19.1L3.7 20.9l1.9-1.1a9.8 9.8 0 0 0 14.8-16.2Z"/><path d="M14.8 13.4c-.3-.1-.6-.2-.9-.4-.3-.2-.5-.5-.6-.8-.1-.3 0-.7.2-1 .2-.3.5-.5.9-.6.3-.1.7-.1 1 .1.3.2.5.5.6.8.1.3.1.6 0 .9-.1.3-.3.5-.6.7-.2.1-.5.2-.7.3-.2.1-.4.2-.5.5-.1.3-.1.6 0 .9"/></svg> },
-  { label: "LinkedIn", icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round"><path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z"/><rect x="2" y="9" width="4" height="12"/><circle cx="4" cy="4" r="2"/></svg> },
+  { label: "LinkedIn", href: "https://www.linkedin.com/company/vanguardaviation/", icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round"><path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z"/><rect x="2" y="9" width="4" height="12"/><circle cx="4" cy="4" r="2"/></svg> },
 ];
 
 export default function StatusPage() {
@@ -496,7 +496,8 @@ export default function StatusPage() {
               {socialLinks.map((s) => (
                 <a
                   key={s.label}
-                  href="#"
+                  href={s.href ?? "#"}
+                  {...(s.href ? { target: "_blank", rel: "noopener noreferrer" } : {})}
                   aria-label={s.label}
                   className="flex h-9 w-9 items-center justify-center rounded-lg transition-all"
                   style={{ background: "rgba(255,255,255,0.07)", color: "rgba(255,255,255,0.6)" }}
