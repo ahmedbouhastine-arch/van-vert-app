@@ -19,7 +19,7 @@ export function initializeAdminApp() {
     admin.initializeApp({
         credential: admin.credential.applicationDefault(),
         projectId: firebaseConfig.projectId,
-        storageBucket: 'REDACTED_FIREBASE_STORAGE_BUCKET',
+        storageBucket: 'studio-5434730977-5c28e.firebasestorage.app',
     });
     
     return {

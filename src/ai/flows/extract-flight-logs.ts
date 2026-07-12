@@ -5,7 +5,7 @@ import { PDFDocument } from 'pdf-lib';
 import { z } from 'zod';
 
 const client = new DocumentProcessorServiceClient();
-const PROCESSOR_NAME = 'projects/REDACTED_FIREBASE_SENDER_ID/locations/us/processors/47422f02bcaec722/processorVersions/1e5684bc4378fc3e';
+const PROCESSOR_NAME = 'projects/studio-5434730977-5c28e/locations/us/processors/47422f02bcaec722/processorVersions/1e5684bc4378fc3e';
 const DOC_AI_PAGE_LIMIT = 15;
 
 const ExtractFlightLogsInputSchema = z.object({

@@ -1,5 +1,5 @@
 #!/bin/bash
-PROJECT=REDACTED_FIREBASE_PROJECT_ID
+PROJECT=studio-5434730977-5c28e
 BACKEND=van-vert-app
 
 secrets=(
