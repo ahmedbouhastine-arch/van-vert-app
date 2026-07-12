@@ -68,6 +68,16 @@ async function withTimeout<T>(promise: Promise<T>, timeoutMs: number = 120000): 
     ]);
 }
 
+async function urlToDataUri(url: string): Promise<string> {
+    const response = await fetch(url);
+    if (!response.ok) {
+        throw new Error(`Failed to fetch document for AI processing: ${response.status}`);
+    }
+    const contentType = response.headers.get('content-type') || 'application/octet-stream';
+    const buffer = Buffer.from(await response.arrayBuffer());
+    return `data:${contentType};base64,${buffer.toString('base64')}`;
+}
+
 type StorageFile = {
     createWriteStream: (opts?: Record<string, unknown>) => {
         write: (chunk: unknown) => void;
@@ -245,7 +255,8 @@ export async function extractExpiryDateAction(args: { applicationId: string, doc
             throw new Error("User does not have permission to access this application.");
         }
 
-        const { expiryDate } = await withTimeout(extractExpiryDate({ documentDataUri: args.documentUrl }));
+        const documentDataUri = await urlToDataUri(args.documentUrl);
+        const { expiryDate } = await withTimeout(extractExpiryDate({ documentDataUri }));
         return { expiryDate: expiryDate || null };
 
     } catch (e: unknown) {
@@ -297,7 +308,8 @@ export async function getExpiryDateForSingleDocumentAction(
         const docToProcess = application.documents.find(d => d.id === docId);
         if (!docToProcess || !docToProcess.fileUrl) throw new Error("Invalid document for AI check.");
 
-        const { expiryDate } = await withTimeout(extractExpiryDate({ documentDataUri: docToProcess.fileUrl }));
+        const documentDataUri = await urlToDataUri(docToProcess.fileUrl);
+        const { expiryDate } = await withTimeout(extractExpiryDate({ documentDataUri }));
         return { expiryDate: expiryDate || null };
     } catch (e: unknown) {
         handleServerAuthError(e, 'getExpiryDateForSingleDocumentAction');
