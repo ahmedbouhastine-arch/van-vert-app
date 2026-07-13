@@ -20,11 +20,14 @@ import {
   X,
   RefreshCw,
   ChevronLeft, ChevronRight, Edit2,
-  Plus, Trash2
+  Plus, Trash2,
+  Calendar as CalendarIcon,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { format } from "date-fns";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
+import { format, parse, isValid } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
 import { checkRecency, type CheckRecencyOutput } from "@/ai/flows/check-recency";
 import * as serverActions from '@/app/actions';
@@ -197,14 +200,33 @@ function DocumentCard({
                 Expiry date
                 </Label>
                 <div className="flex w-full max-w-sm items-center space-x-2">
-                    <Input
-                    id={`expiry-${doc.id}`}
-                    type="date"
-                    value={doc.expiryDate || ''}
-                    onChange={(e) => onDateChange(doc.id, e.target.value)}
-                    disabled={doc.status === "missing" || isSubmitted}
-                    className="rounded-lg border-[var(--vv-border)] focus-visible:ring-[var(--sky)]"
-                    />
+                    <Popover>
+                        <PopoverTrigger asChild>
+                            <Button
+                            id={`expiry-${doc.id}`}
+                            type="button"
+                            variant="outline"
+                            disabled={doc.status === "missing" || isSubmitted}
+                            className={cn(
+                                "w-full justify-start rounded-lg border-[var(--vv-border)] font-normal focus-visible:ring-[var(--sky)]",
+                                !doc.expiryDate && "text-muted-foreground"
+                            )}
+                            >
+                                <CalendarIcon className="mr-2 h-4 w-4" />
+                                {doc.expiryDate && isValid(parse(doc.expiryDate, 'yyyy-MM-dd', new Date()))
+                                    ? format(parse(doc.expiryDate, 'yyyy-MM-dd', new Date()), 'dd/MM/yyyy')
+                                    : <span>dd/mm/yyyy</span>}
+                            </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0" align="start">
+                            <Calendar
+                                mode="single"
+                                selected={doc.expiryDate && isValid(parse(doc.expiryDate, 'yyyy-MM-dd', new Date())) ? parse(doc.expiryDate, 'yyyy-MM-dd', new Date()) : undefined}
+                                onSelect={(date) => date && onDateChange(doc.id, format(date, 'yyyy-MM-dd'))}
+                                autoFocus
+                            />
+                        </PopoverContent>
+                    </Popover>
                     <Button
                         type="button"
                         variant="outline"
@@ -418,7 +440,7 @@ export function ApplicationClient({
       }
 
       if (detectedExpiryDate) {
-        toast({ title: 'AI Success!', description: `Detected expiry date: ${format(new Date(detectedExpiryDate), 'PPP')}` });
+        toast({ title: 'AI Success!', description: `Detected expiry date: ${format(new Date(detectedExpiryDate), 'dd/MM/yyyy')}` });
       } else if (docDefinition.requiresExpiry) {
         toast({ variant: "default", title: 'AI Notice', description: 'Could not automatically detect an expiry date. Please enter it manually.' });
       }
@@ -499,7 +521,7 @@ export function ApplicationClient({
                     { documents: newDocuments },
                     { 
                         title: "AI Success!", 
-                        description: `Detected expiry date: ${format(new Date(expiryDate), 'PPP')}.` 
+                        description: `Detected expiry date: ${format(new Date(expiryDate), 'dd/MM/yyyy')}.`
                     }
                 );
             } else {

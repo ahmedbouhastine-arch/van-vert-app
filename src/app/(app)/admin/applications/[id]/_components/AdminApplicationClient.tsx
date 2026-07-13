@@ -168,7 +168,7 @@ function DocumentReviewCard({
                         <Calendar className="h-3 w-3" />
                         <span>Expiry:</span>
                     </span>
-                    <span className="font-medium">{safeFormatDate(doc.expiryDate, "MMM d, yyyy")}</span>
+                    <span className="font-medium">{safeFormatDate(doc.expiryDate, "dd/MM/yyyy")}</span>
                 </div>
             )}
 
