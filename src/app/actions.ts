@@ -148,7 +148,10 @@ export async function uploadFlightLogAction(formData: FormData, idToken?: string
         const storagePath = `applications/${applicationId}/flight-log-${uuidv4()}.pdf`;
         const publicUrl = await uploadStreamToStorage(bucket, storagePath, file.stream(), file.type);
 
-        const { flights, logbookFormat } = await withTimeout(extractFlightLogs({ storagePath: publicUrl }), 300000);
+        const { flights, logbookFormat } = await withTimeout(
+            extractFlightLogs({ storagePath: publicUrl, logbookFormat: 'SI-HM' }), // TODO: swap for real routing once the other 3 processors exist
+            300000
+        );
 
         const extractedLogs: FlightLog[] = flights.map(log => ({
             ...log,
@@ -231,7 +234,7 @@ export async function createApplicationAction(
             documents: documents,
             flightLogs: [],
             flightLogPdfUrl: "",
-            logbookFormat: 'simple' as LogbookFormat
+            logbookFormat: 'SI-HM' as LogbookFormat
         };
 
         await adminFirestore.collection('applications').doc(newAppId).set(appData);

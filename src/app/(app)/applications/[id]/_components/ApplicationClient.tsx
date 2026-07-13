@@ -300,7 +300,8 @@ export function ApplicationClient({
   const [isSavingLogs, setIsSavingLogs] = useState(false);
 
   const flightLogs = useMemo(() => appState.flightLogs || [], [appState.flightLogs]);
-  const logbookFormat = appState.logbookFormat || 'simple';
+  const logbookFormat = appState.logbookFormat || 'SI-HM';
+  const isCombined = logbookFormat.startsWith('SI-'); // PIC includes Solo (SI-*); S-* tracks Solo separately
 
   const calculateHours = (logs: FlightLog[], type: 'total' | 'PIC' | 'Solo' | 'Dual' | 'Instrument') => {
     return logs.reduce((sum, log) => {
@@ -545,6 +546,13 @@ export function ApplicationClient({
   }
 
   const handleSubmit = () => {
+    const flaggedCount = (appState.flightLogs || []).filter(l => l.needsReview).length;
+    if (flaggedCount > 0) {
+      const proceed = window.confirm(
+        `${flaggedCount} flight log ${flaggedCount === 1 ? 'entry is' : 'entries are'} still flagged for review. Submit anyway?`
+      );
+      if (!proceed) return;
+    }
     startTransition(() => {
         if (!firestore) return;
         const finalState = {
@@ -854,31 +862,48 @@ export function ApplicationClient({
                     <div className="text-[11px] font-semibold uppercase tracking-wider text-[var(--text-muted)]">Total hours</div>
                     <div className="mt-1.5 font-outfit text-2xl font-bold text-[var(--navy)]">{totalFlightHours.toFixed(2)}</div>
                 </div>
-                {logbookFormat !== 'simple' && (
-                    <>
-                        <div className="rounded-xl border border-[var(--status-ready)]/25 bg-[var(--status-ready)]/10 p-4">
-                            <div className="text-[11px] font-semibold uppercase tracking-wider text-[var(--text-muted)]">
-                                {logbookFormat === 'typeB' ? 'PIC hours (incl. solo)' : 'PIC hours'}
-                            </div>
-                            <div className="mt-1.5 font-outfit text-2xl font-bold text-[var(--status-ready)]">{picHours.toFixed(2)}</div>
-                        </div>
-                        {logbookFormat === 'typeA' && (
-                            <div className="rounded-xl border border-[var(--sky)]/25 bg-[var(--sky-pale)] p-4">
-                                <div className="text-[11px] font-semibold uppercase tracking-wider text-[var(--text-muted)]">Solo hours</div>
-                                <div className="mt-1.5 font-outfit text-2xl font-bold text-[var(--sky)]">{soloHours.toFixed(2)}</div>
-                            </div>
-                        )}
-                        <div className="rounded-xl border border-[var(--navy)]/15 bg-[var(--navy)]/5 p-4">
-                            <div className="text-[11px] font-semibold uppercase tracking-wider text-[var(--text-muted)]">Dual hours</div>
-                            <div className="mt-1.5 font-outfit text-2xl font-bold text-[var(--navy)]">{dualHours.toFixed(2)}</div>
-                        </div>
-                    </>
+                <div className="rounded-xl border border-[var(--status-ready)]/25 bg-[var(--status-ready)]/10 p-4">
+                    <div className="text-[11px] font-semibold uppercase tracking-wider text-[var(--text-muted)]">
+                        {isCombined ? 'PIC hours (incl. solo)' : 'PIC hours'}
+                    </div>
+                    <div className="mt-1.5 font-outfit text-2xl font-bold text-[var(--status-ready)]">{picHours.toFixed(2)}</div>
+                </div>
+                {!isCombined && (
+                    <div className="rounded-xl border border-[var(--sky)]/25 bg-[var(--sky-pale)] p-4">
+                        <div className="text-[11px] font-semibold uppercase tracking-wider text-[var(--text-muted)]">Solo hours</div>
+                        <div className="mt-1.5 font-outfit text-2xl font-bold text-[var(--sky)]">{soloHours.toFixed(2)}</div>
+                    </div>
                 )}
+                <div className="rounded-xl border border-[var(--navy)]/15 bg-[var(--navy)]/5 p-4">
+                    <div className="text-[11px] font-semibold uppercase tracking-wider text-[var(--text-muted)]">Dual hours</div>
+                    <div className="mt-1.5 font-outfit text-2xl font-bold text-[var(--navy)]">{dualHours.toFixed(2)}</div>
+                </div>
                 <div className="rounded-xl border border-[var(--status-attention)]/25 bg-[var(--status-attention)]/10 p-4">
                     <div className="text-[11px] font-semibold uppercase tracking-wider text-[var(--text-muted)]">Simulated instrument</div>
                     <div className="mt-1.5 font-outfit text-2xl font-bold text-[var(--status-attention)]">{instrumentSimHours.toFixed(2)}</div>
                 </div>
             </div>
+
+            {(() => {
+              const flaggedCount = (appState.flightLogs || []).filter(l => l.needsReview).length;
+              if (flaggedCount === 0) return null;
+              return (
+                <div className="mb-4 flex items-start gap-3 rounded-xl border border-[var(--status-attention)]/25 bg-[var(--status-attention)]/10 p-4">
+                  <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-[var(--status-attention)]" />
+                  <div className="flex-1">
+                    <h4 className="text-sm font-semibold text-[var(--navy)]">
+                      {flaggedCount} {flaggedCount === 1 ? 'entry needs' : 'entries need'} a quick check
+                    </h4>
+                    <p className="mt-0.5 text-sm text-[var(--text-secondary)]">
+                      A few values from your logbook scan looked off and got flagged automatically — worth a look before you submit.
+                    </p>
+                  </div>
+                  <VvButton variant="outline" size="sm" onClick={() => setIsReviewMode(true)}>
+                    Review flagged rows
+                  </VvButton>
+                </div>
+              );
+            })()}
 
             {isRecencyChecking ? (
                 <div className="mb-6 flex items-center gap-2 text-sm text-[var(--text-muted)]">
@@ -916,20 +941,16 @@ export function ApplicationClient({
                                 <button className={filterPillClass(selectedFlightTypeFilter === 'All')} onClick={() => setSelectedFlightTypeFilter('All')}>
                                     All
                                 </button>
-                                {logbookFormat !== 'simple' && (
-                                    <>
-                                        <button className={filterPillClass(selectedFlightTypeFilter === 'Dual')} onClick={() => setSelectedFlightTypeFilter('Dual')}>
-                                            Dual
-                                        </button>
-                                        <button className={filterPillClass(selectedFlightTypeFilter === 'PIC')} onClick={() => setSelectedFlightTypeFilter('PIC')}>
-                                            {logbookFormat === 'typeB' ? 'PIC (Incl. Solo)' : 'PIC'}
-                                        </button>
-                                        {logbookFormat === 'typeA' && (
-                                            <button className={filterPillClass(selectedFlightTypeFilter === 'Solo')} onClick={() => setSelectedFlightTypeFilter('Solo')}>
-                                                Solo
-                                            </button>
-                                        )}
-                                    </>
+                                <button className={filterPillClass(selectedFlightTypeFilter === 'Dual')} onClick={() => setSelectedFlightTypeFilter('Dual')}>
+                                    Dual
+                                </button>
+                                <button className={filterPillClass(selectedFlightTypeFilter === 'PIC')} onClick={() => setSelectedFlightTypeFilter('PIC')}>
+                                    {isCombined ? 'PIC (Incl. Solo)' : 'PIC'}
+                                </button>
+                                {!isCombined && (
+                                    <button className={filterPillClass(selectedFlightTypeFilter === 'Solo')} onClick={() => setSelectedFlightTypeFilter('Solo')}>
+                                        Solo
+                                    </button>
                                 )}
                                 <button className={filterPillClass(selectedFlightTypeFilter === 'Instrument')} onClick={() => setSelectedFlightTypeFilter('Instrument')}>
                                     Instrument
@@ -954,42 +975,24 @@ export function ApplicationClient({
                                                 </div>
                                             </div>
                                             <div className="flex flex-wrap justify-end gap-2">
-                                                {logbookFormat === 'typeA' && (
-                                                    <>
-                                                        {(log.dualReceived || 0) > 0 && (
-                                                            <span className="rounded-full border border-[var(--sky)]/25 bg-[var(--sky-pale)] px-2.5 py-1 text-xs font-medium text-[var(--sky)]">
-                                                                DUAL {log.dualReceived?.toFixed(2)}h
-                                                            </span>
-                                                        )}
-                                                        {(log.pilotInCommand || 0) > 0 && (
-                                                            <span className="rounded-full border border-[var(--status-ready)]/25 bg-[var(--status-ready)]/10 px-2.5 py-1 text-xs font-medium text-[var(--status-ready)]">
-                                                                PIC {log.pilotInCommand?.toFixed(2)}h
-                                                            </span>
-                                                        )}
-                                                        {(log.solo || 0) > 0 && (
-                                                            <span className="rounded-full border border-[var(--navy)]/15 bg-[var(--navy)]/5 px-2.5 py-1 text-xs font-medium text-[var(--navy)]">
-                                                                SOLO {log.solo?.toFixed(2)}h
-                                                            </span>
-                                                        )}
-                                                    </>
+                                                {log.needsReview && (
+                                                    <span className="inline-flex items-center gap-1 rounded-full border border-[var(--status-attention)]/25 bg-[var(--status-attention)]/10 px-2.5 py-1 text-xs font-medium text-[var(--status-attention)]">
+                                                        <AlertCircle className="h-3 w-3" /> Please check
+                                                    </span>
                                                 )}
-                                                {logbookFormat === 'typeB' && (
-                                                    <>
-                                                        {(log.dualReceived || 0) > 0 && (
-                                                            <span className="rounded-full border border-[var(--sky)]/25 bg-[var(--sky-pale)] px-2.5 py-1 text-xs font-medium text-[var(--sky)]">
-                                                                DUAL {log.dualReceived?.toFixed(2)}h
-                                                            </span>
-                                                        )}
-                                                        {(log.pilotInCommand || 0) > 0 && (
-                                                            <span className="rounded-full border border-[var(--status-ready)]/25 bg-[var(--status-ready)]/10 px-2.5 py-1 text-xs font-medium text-[var(--status-ready)]">
-                                                                PIC (INCL. SOLO) {log.pilotInCommand?.toFixed(2)}h
-                                                            </span>
-                                                        )}
-                                                    </>
+                                                {(log.dualReceived || 0) > 0 && (
+                                                    <span className="rounded-full border border-[var(--sky)]/25 bg-[var(--sky-pale)] px-2.5 py-1 text-xs font-medium text-[var(--sky)]">
+                                                        DUAL {log.dualReceived?.toFixed(2)}h
+                                                    </span>
                                                 )}
-                                                {logbookFormat === 'simple' && (
-                                                    <span className="rounded-full border border-[var(--vv-border)] bg-[var(--surface)] px-2.5 py-1 text-xs font-medium text-[var(--text-secondary)]">
-                                                        FLIGHT {log.duration.toFixed(2)}h
+                                                {(log.pilotInCommand || 0) > 0 && (
+                                                    <span className="rounded-full border border-[var(--status-ready)]/25 bg-[var(--status-ready)]/10 px-2.5 py-1 text-xs font-medium text-[var(--status-ready)]">
+                                                        {isCombined ? 'PIC (INCL. SOLO)' : 'PIC'} {log.pilotInCommand?.toFixed(2)}h
+                                                    </span>
+                                                )}
+                                                {!isCombined && (log.solo || 0) > 0 && (
+                                                    <span className="rounded-full border border-[var(--navy)]/15 bg-[var(--navy)]/5 px-2.5 py-1 text-xs font-medium text-[var(--navy)]">
+                                                        SOLO {log.solo?.toFixed(2)}h
                                                     </span>
                                                 )}
                                                 {(log.instrumentSimulatedHours || 0) > 0 && (
@@ -1051,21 +1054,26 @@ export function ApplicationClient({
                                             <TableHead>Date</TableHead>
                                             <TableHead>Aircraft</TableHead>
                                             <TableHead>Dual</TableHead>
-                                            <TableHead>{logbookFormat === 'typeB' ? 'PIC (Incl. Solo)' : 'PIC'}</TableHead>
-                                            {logbookFormat === 'typeA' && <TableHead>Solo</TableHead>}
+                                            <TableHead>{isCombined ? 'PIC (Incl. Solo)' : 'PIC'}</TableHead>
+                                            {!isCombined && <TableHead>Solo</TableHead>}
                                             <TableHead>Inst / Sim</TableHead>
                                             <TableHead className="w-[50px]"></TableHead>
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
                                         {editableFlights.map((log) => (
-                                            <TableRow key={log.id}>
+                                            <TableRow key={log.id} className={cn(log.needsReview && "bg-[var(--status-attention)]/5")}>
                                                 <TableCell className="p-2">
-                                                    <Input 
-                                                        value={log.date} 
-                                                        onChange={(e) => handleEditableFlightChange(log.id, 'date', e.target.value)}
-                                                        className="w-[130px] h-8 text-sm"
-                                                    />
+                                                    <div className="flex items-center gap-1.5">
+                                                        {log.needsReview && (
+                                                            <AlertCircle className="h-3.5 w-3.5 shrink-0 text-[var(--status-attention)]" aria-label={`Check: ${(log.flaggedFields || []).join(', ') || 'this row'}`} />
+                                                        )}
+                                                        <Input
+                                                            value={log.date}
+                                                            onChange={(e) => handleEditableFlightChange(log.id, 'date', e.target.value)}
+                                                            className="w-[130px] h-8 text-sm"
+                                                        />
+                                                    </div>
                                                 </TableCell>
                                                 <TableCell className="p-2">
                                                     <Input 
@@ -1090,11 +1098,11 @@ export function ApplicationClient({
                                                         className="w-[80px] h-8 text-sm"
                                                     />
                                                 </TableCell>
-                                                {logbookFormat === 'typeA' && (
+                                                {!isCombined && (
                                                     <TableCell className="p-2">
-                                                        <Input 
-                                                            type="number" step="0.1" 
-                                                            value={log.solo || ''} 
+                                                        <Input
+                                                            type="number" step="0.1"
+                                                            value={log.solo || ''}
                                                             onChange={(e) => handleEditableFlightChange(log.id, 'solo', parseFloat(e.target.value) || 0)}
                                                             className="w-[80px] h-8 text-sm"
                                                         />

@@ -48,9 +48,12 @@ export type FlightLog = {
   pilotInCommand?: number; // in hours
   solo?: number; // in hours
   instrumentSimulatedHours?: number;
+  needsReview?: boolean;
+  flaggedFields?: string[]; // e.g. ['aircraft', 'dual_hours'] - which fields failed the sanity check
 };
 
-export type LogbookFormat = 'typeA' | 'typeB' | 'simple';
+// SI = PIC includes Solo, S = Solo tracked separately. HM = hours:minutes, DEC = decimal.
+export type LogbookFormat = 'SI-HM' | 'SI-DEC' | 'S-HM' | 'S-DEC';
 
 export type Application = {
   id: string;

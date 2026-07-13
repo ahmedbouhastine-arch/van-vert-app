@@ -92,10 +92,11 @@ const safeFormatDate = (date: FirebaseTimestamp | Date | string | undefined | nu
 };
 
 const logbookFormatDescriptions: Record<LogbookFormat, string> = {
-    typeA: "Type A (Separate columns for PIC, Solo, Dual)",
-    typeB: "Type B (Combined PIC includes Solo, separate Dual)",
-    simple: "Simple (Single duration column only)"
-}; 
+    'SI-HM': "SI-HM (PIC includes Solo, hours:minutes)",
+    'SI-DEC': "SI-DEC (PIC includes Solo, decimal hours)",
+    'S-HM': "S-HM (Solo tracked separately, hours:minutes)",
+    'S-DEC': "S-DEC (Solo tracked separately, decimal hours)",
+};
 
 async function checkExpiryAction(documents: ApplicationDocument[]): Promise<FlagExpiringDocumentsOutput> {
     const docsToCheck = documents
@@ -234,17 +235,18 @@ export function AdminApplicationClient({
 
   // Flight Hours Calculation
   const flightLogs = useMemo(() => appState.flightLogs || [], [appState.flightLogs]);
-  const logbookFormat = appState.logbookFormat || 'simple';
+  const logbookFormat = appState.logbookFormat || 'SI-HM';
+  const isCombined = logbookFormat.startsWith('SI-');
 
   const calculateHours = useCallback((logs: FlightLog[], type: 'total' | 'PIC' | 'Solo' | 'Dual') => {
     return logs.reduce((sum, log) => {
         const getLogType = (l: FlightLog) => {
-             if (logbookFormat === 'typeA') {
+             if (isCombined) {
+                if ((l.pilotInCommand || 0) > 0) return 'PIC';
+                if ((l.dualReceived || 0) > 0) return 'Dual';
+            } else {
                 if ((l.pilotInCommand || 0) > 0) return 'PIC';
                 if ((l.solo || 0) > 0) return 'Solo';
-                if ((l.dualReceived || 0) > 0) return 'Dual';
-            } else if (logbookFormat === 'typeB') {
-                if ((l.pilotInCommand || 0) > 0) return 'PIC';
                 if ((l.dualReceived || 0) > 0) return 'Dual';
             }
             return l.flightType || 'Unknown';
@@ -257,7 +259,7 @@ export function AdminApplicationClient({
         if (type === 'Dual' && logType === 'Dual') return sum + (log.duration || 0);
         return sum;
     }, 0);
-  }, [logbookFormat]);
+  }, [isCombined]);
 
   const totalFlightHours = useMemo(() => calculateHours(flightLogs, 'total'), [flightLogs, calculateHours]);
   const picHours = useMemo(() => calculateHours(flightLogs, 'PIC'), [flightLogs, calculateHours]);
@@ -395,7 +397,7 @@ export function AdminApplicationClient({
   const requirements = [
       { label: 'Total Flight Time', current: totalFlightHours, target: 150, unit: 'hrs' },
       { label: 'Pilot in Command', current: picHours, target: 70, unit: 'hrs' },
-      ...(logbookFormat !== 'typeB' ? [{ label: 'Solo Flight', current: soloHours, target: 20, unit: 'hrs' }] : []),
+      ...(!logbookFormat.startsWith('SI-') ? [{ label: 'Solo Flight', current: soloHours, target: 20, unit: 'hrs' }] : []),
       { label: 'Dual Instruction', current: dualHours, target: 20, unit: 'hrs' },
   ];
 
@@ -604,8 +606,13 @@ export function AdminApplicationClient({
                             <div className="flex flex-col gap-4 border-b border-[var(--vv-border-soft)] p-6 sm:flex-row sm:items-center sm:justify-between">
                                 <div>
                                     <h3 className="font-outfit text-base font-semibold text-[var(--navy)]">Digital logbook</h3>
-                                    <p className="mt-1 text-[13px] text-[var(--text-muted)]">
-                                        Format detected: <span className="font-medium capitalize text-[var(--text-secondary)]">{logbookFormatDescriptions[logbookFormat] || logbookFormat}</span>
+                                    <p className="mt-1 flex items-center gap-2 text-[13px] text-[var(--text-muted)]">
+                                        <span>Format detected: <span className="font-medium capitalize text-[var(--text-secondary)]">{logbookFormatDescriptions[logbookFormat] || logbookFormat}</span></span>
+                                        {appState.flightLogs.some(l => l.needsReview) && (
+                                            <span className="rounded-full border border-[var(--status-attention)]/30 bg-[var(--status-attention)]/10 px-2.5 py-0.5 text-xs font-semibold text-[var(--status-attention)]">
+                                                {appState.flightLogs.filter(l => l.needsReview).length} flagged
+                                            </span>
+                                        )}
                                     </p>
                                 </div>
                                 <div className="flex items-center gap-4 rounded-lg border border-[var(--vv-border)] bg-[var(--surface)] p-2.5">
@@ -629,21 +636,26 @@ export function AdminApplicationClient({
                                         {appState.flightLogs && appState.flightLogs.length > 0 ? (
                                             appState.flightLogs.map(log => {
                                                 let logType = 'Unknown';
-                                                if (logbookFormat === 'typeA') {
-                                                    if ((log.pilotInCommand || 0) > 0) logType = 'PIC';
-                                                    else if ((log.solo || 0) > 0) logType = 'Solo';
-                                                    else if ((log.dualReceived || 0) > 0) logType = 'Dual';
-                                                } else if (logbookFormat === 'typeB') {
+                                                if (isCombined) {
                                                     if ((log.pilotInCommand || 0) > 0) logType = 'PIC';
                                                     else if ((log.dualReceived || 0) > 0) logType = 'Dual';
                                                 } else {
-                                                    logType = log.flightType || 'Unknown';
+                                                    if ((log.pilotInCommand || 0) > 0) logType = 'PIC';
+                                                    else if ((log.solo || 0) > 0) logType = 'Solo';
+                                                    else if ((log.dualReceived || 0) > 0) logType = 'Dual';
                                                 }
-                                                const typeLabel = logType === 'PIC' ? `PIC${logbookFormat === 'typeB' ? ' (Incl. Solo)' : ''}` : logType;
+                                                const typeLabel = logType === 'PIC' ? `PIC${isCombined ? ' (Incl. Solo)' : ''}` : logType;
 
                                                 return (
-                                                    <TableRow key={log.id} className="border-[var(--vv-border-soft)]">
-                                                        <TableCell className="font-medium text-[var(--navy)]">{safeFormatDate(log.date, 'MMM d, yyyy')}</TableCell>
+                                                    <TableRow key={log.id} className={cn("border-[var(--vv-border-soft)]", log.needsReview && "bg-[var(--status-attention)]/5")}>
+                                                        <TableCell className="font-medium text-[var(--navy)]">
+                                                            <span className="flex items-center gap-1.5">
+                                                                {log.needsReview && (
+                                                                    <AlertTriangle className="h-3.5 w-3.5 shrink-0 text-[var(--status-attention)]" aria-label={`Flagged: ${(log.flaggedFields || []).join(', ') || 'this row'}`} />
+                                                                )}
+                                                                {safeFormatDate(log.date, 'MMM d, yyyy')}
+                                                            </span>
+                                                        </TableCell>
                                                         <TableCell className="text-[var(--text-secondary)]">{log.aircraft}</TableCell>
                                                         <TableCell>
                                                             <span className={cn("inline-flex rounded-full border px-2.5 py-0.5 text-xs font-medium", TYPE_PILL_CLASS[logType] ?? TYPE_PILL_CLASS.Unknown)}>
