@@ -5,19 +5,19 @@ import { PDFDocument } from 'pdf-lib';
 import { z } from 'zod';
 import { checkAndCorrect, AIRCRAFT_RULE, DECIMAL_HOURS_RULE, HM_HOURS_RULE, DATE_RULE } from '@/lib/field-validation';
 
-const client = new DocumentProcessorServiceClient();
 const PROJECT = 'studio-5434730977-5c28e';
-const LOCATION = 'us';
+const LOCATION = 'europe-west2';
+const client = new DocumentProcessorServiceClient({ apiEndpoint: `${LOCATION}-documentai.googleapis.com` });
 const DOC_AI_PAGE_LIMIT = 15;
 
 export type LogbookFormat = 'SI-HM' | 'SI-DEC' | 'S-HM' | 'S-DEC';
 
 // Fill in each processor's ID as it finishes training in Document AI Workbench.
 const PROCESSOR_IDS: Record<LogbookFormat, string | null> = {
-  'SI-HM': 'TODO_PASTE_PROCESSOR_ID', // <- fill in once training finishes
-  'SI-DEC': null,
-  'S-HM': null,
-  'S-DEC': null,
+  'SI-HM': '989755d1517a9cc5',
+  'SI-DEC': 'b2409a46b0bdcbd5',
+  'S-HM': '125e002a35cd3cdc',
+  'S-DEC': '268a11e52ab50d55',
 };
 
 function processorName(format: LogbookFormat): string {
@@ -33,7 +33,8 @@ const FlightLogEntrySchema = z.object({
   dualReceived: z.number().optional().default(0),
   pilotInCommand: z.number().optional().default(0),
   solo: z.number().optional().default(0),
-  instrumentSimulatedHours: z.number().optional().default(0),
+  instrumentHours: z.number().optional().default(0),
+  simInstrumentHours: z.number().optional().default(0),
   needsReview: z.boolean().optional().default(false),
   flaggedFields: z.array(z.string()).optional().default([]),
 });
@@ -64,10 +65,27 @@ const MONTH_MAP: Record<string, string> = {
   JUL: '07', AUG: '08', SEP: '09', OCT: '10', NOV: '11', DEC: '12',
 };
 function buildDate(year: string, month: string, day: string): string {
-  const mm = MONTH_MAP[month.trim().toUpperCase().slice(0, 3)] ?? '';
+  const trimmedMonth = month.trim();
+  // Combined `date` layouts (e.g. "5/23") give month as a bare number; separate
+  // `month` column layouts (e.g. Type 1) give a text name like "May" - accept both.
+  const numericMonth = /^\d{1,2}$/.test(trimmedMonth) ? trimmedMonth.padStart(2, '0') : '';
+  const mm = numericMonth || MONTH_MAP[trimmedMonth.toUpperCase().slice(0, 3)] || '';
   const dd = day.trim().padStart(2, '0');
   if (!mm || !dd || !year.trim()) return '';
   return `${year.trim()}-${mm}-${dd}`;
+}
+
+// Date arrives as either a single combined "M/D" cell (`date`), or as separate
+// `month` / `day` fields - never both populated on the same document. Whichever
+// is blank tells us which layout this processor's source documents use.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function resolveMonthDay(entity: any): { month: string; day: string } {
+  const combined = getChild(entity, 'date');
+  if (combined) {
+    const [m, d] = combined.split('/');
+    return { month: (m ?? '').trim(), day: (d ?? '').trim() };
+  }
+  return { month: getChild(entity, 'month'), day: getChild(entity, 'day') };
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -104,17 +122,7 @@ function checkHours(raw: string, rule: typeof DECIMAL_HOURS_RULE) {
   return checkAndCorrect(raw, rule);
 }
 
-export async function extractFlightLogs(input: {
-  storagePath?: string;
-  flightLogPdf?: string;
-  logbookFormat: LogbookFormat;
-}): Promise<ExtractFlightLogsOutput> {
-  const mediaUrl = input.storagePath || input.flightLogPdf;
-  if (!mediaUrl) throw new Error('No PDF source provided.');
-  const format = input.logbookFormat;
-
-  const response = await fetch(mediaUrl);
-  const pdfBytes = new Uint8Array(await response.arrayBuffer());
+async function extractFromPdfBytes(pdfBytes: Uint8Array, format: LogbookFormat): Promise<ExtractFlightLogsOutput> {
   const entities = await processDocumentChunked(pdfBytes, format);
   if (entities.length === 0) return { flights: [], logbookFormat: format };
 
@@ -138,11 +146,13 @@ export async function extractFlightLogs(input: {
       const page = Number(entity.pageAnchor?.pageRefs?.[0]?.page ?? 0);
 
       const aircraftResult = checkAndCorrect(getChild(entity, 'aircraft') || 'Unknown', AIRCRAFT_RULE);
-      const dateResult = checkAndCorrect(buildDate(yearForPage(page), getChild(entity, 'month'), getChild(entity, 'day')), DATE_RULE);
+      const { month, day } = resolveMonthDay(entity);
+      const dateResult = checkAndCorrect(buildDate(yearForPage(page), month, day), DATE_RULE);
       const dualResult = checkHours(getChild(entity, 'dual_hours'), hoursRule);
       const picResult = checkHours(getChild(entity, 'pic_hours'), hoursRule);
       const soloResult = isCombined ? { value: 0, corrected: false, needsReview: false } : checkHours(getChild(entity, 'solo_hours'), hoursRule);
       const instrumentResult = checkHours(getChild(entity, 'instrument_hours'), hoursRule);
+      const simInstrumentResult = checkHours(getChild(entity, 'sim_instrument_hours'), hoursRule);
 
       const flaggedFields = [
         ...(aircraftResult.needsReview ? ['aircraft'] : []),
@@ -151,6 +161,7 @@ export async function extractFlightLogs(input: {
         ...(picResult.needsReview ? ['pic_hours'] : []),
         ...(soloResult.needsReview ? ['solo_hours'] : []),
         ...(instrumentResult.needsReview ? ['instrument_hours'] : []),
+        ...(simInstrumentResult.needsReview ? ['sim_instrument_hours'] : []),
       ];
 
       return {
@@ -160,7 +171,8 @@ export async function extractFlightLogs(input: {
         dualReceived: dualResult.value,
         pilotInCommand: picResult.value,
         solo: soloResult.value,
-        instrumentSimulatedHours: instrumentResult.value,
+        instrumentHours: instrumentResult.value,
+        simInstrumentHours: simInstrumentResult.value,
         needsReview: flaggedFields.length > 0,
         flaggedFields,
       };
@@ -168,4 +180,62 @@ export async function extractFlightLogs(input: {
     .filter(f => !!f.date && f.duration > 0);
 
   return { flights, logbookFormat: format };
+}
+
+async function fetchPdfBytes(input: { storagePath?: string; flightLogPdf?: string }): Promise<Uint8Array> {
+  const mediaUrl = input.storagePath || input.flightLogPdf;
+  if (!mediaUrl) throw new Error('No PDF source provided.');
+  const response = await fetch(mediaUrl);
+  return new Uint8Array(await response.arrayBuffer());
+}
+
+export async function extractFlightLogs(input: {
+  storagePath?: string;
+  flightLogPdf?: string;
+  logbookFormat: LogbookFormat;
+}): Promise<ExtractFlightLogsOutput> {
+  const pdfBytes = await fetchPdfBytes(input);
+  return extractFromPdfBytes(pdfBytes, input.logbookFormat);
+}
+
+// Row count dominates - a processor whose fields don't match the document's
+// layout typically extracts few or zero coherent rows (dates won't parse,
+// hours won't validate). Clean ratio only breaks near-ties between formats
+// that both parsed a similar number of rows.
+function scoreExtraction(output: { flights: Array<{ needsReview?: boolean }> }): number {
+  const rows = output.flights.length;
+  if (rows === 0) return 0;
+  const cleanRatio = output.flights.filter(f => !f.needsReview).length / rows;
+  return rows + cleanRatio;
+}
+
+export async function autoDetectAndExtractFlightLogs(input: {
+  storagePath?: string;
+  flightLogPdf?: string;
+}): Promise<ExtractFlightLogsOutput & { confidence: number }> {
+  const trainedFormats = (Object.keys(PROCESSOR_IDS) as LogbookFormat[]).filter(f => !!PROCESSOR_IDS[f]);
+  if (trainedFormats.length === 0) throw new Error('No trained logbook processors are configured.');
+
+  const pdfBytes = await fetchPdfBytes(input);
+
+  if (trainedFormats.length === 1) {
+    const output = await extractFromPdfBytes(pdfBytes, trainedFormats[0]);
+    return { ...output, confidence: scoreExtraction(output) };
+  }
+
+  const results = await Promise.allSettled(
+    trainedFormats.map(format => extractFromPdfBytes(pdfBytes, format))
+  );
+
+  const successes = results.filter(
+    (r): r is PromiseFulfilledResult<ExtractFlightLogsOutput> => r.status === 'fulfilled'
+  );
+  if (successes.length === 0) {
+    const firstFailure = results.find((r): r is PromiseRejectedResult => r.status === 'rejected');
+    throw firstFailure?.reason ?? new Error('All logbook processor calls failed.');
+  }
+
+  const scored = successes.map(r => ({ output: r.value, score: scoreExtraction(r.value) }));
+  const best = scored.reduce((a, b) => (b.score > a.score ? b : a));
+  return { ...best.output, confidence: best.score };
 }

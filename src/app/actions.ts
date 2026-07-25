@@ -3,7 +3,7 @@ import 'server-only';
 
 import { adminAuth, adminFirestore, adminStorage } from '@/lib/firebase-admin-prewarmed';
 import { extractExpiryDate } from '@/ai/flows/extract-expiry-date';
-import { extractFlightLogs } from '@/ai/flows/extract-flight-logs';
+import { autoDetectAndExtractFlightLogs } from '@/ai/flows/extract-flight-logs';
 import type { FlightLog, Application, LogbookFormat, UserProfile } from '@/types';
 import { v4 as uuidv4 } from 'uuid';
 import { licenseTypes } from '@/lib/licensing';
@@ -31,6 +31,16 @@ async function getAuthenticatedUser(idToken?: string) {
         console.error("Error verifying auth token:", error);
         throw new Error("Unauthorized: Invalid token.");
     }
+}
+
+function deriveFlightType(
+    log: { pilotInCommand?: number; solo?: number; dualReceived?: number },
+    isCombined: boolean
+): FlightLog['flightType'] {
+    if ((log.pilotInCommand || 0) > 0) return 'PIC';
+    if (!isCombined && (log.solo || 0) > 0) return 'Solo';
+    if ((log.dualReceived || 0) > 0) return 'Dual';
+    return 'Unknown';
 }
 
 function handleServerAuthError(error: unknown, context: string): never {
@@ -149,14 +159,15 @@ export async function uploadFlightLogAction(formData: FormData, idToken?: string
         const publicUrl = await uploadStreamToStorage(bucket, storagePath, file.stream(), file.type);
 
         const { flights, logbookFormat } = await withTimeout(
-            extractFlightLogs({ storagePath: publicUrl, logbookFormat: 'SI-HM' }), // TODO: swap for real routing once the other 3 processors exist
+            autoDetectAndExtractFlightLogs({ storagePath: publicUrl }),
             300000
         );
 
+        const isCombined = logbookFormat.startsWith('SI-');
         const extractedLogs: FlightLog[] = flights.map(log => ({
             ...log,
             id: uuidv4(),
-            flightType: 'PIC', // Defaulting to PIC during extraction if unknown
+            flightType: deriveFlightType(log, isCombined),
         }));
 
         await appRef.update({

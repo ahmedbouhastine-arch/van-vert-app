@@ -47,7 +47,8 @@ export type FlightLog = {
   dualReceived?: number; // in hours
   pilotInCommand?: number; // in hours
   solo?: number; // in hours
-  instrumentSimulatedHours?: number;
+  instrumentHours?: number; // flight simulator device time
+  simInstrumentHours?: number; // hood/foggers instrument time
   needsReview?: boolean;
   flaggedFields?: string[]; // e.g. ['aircraft', 'dual_hours'] - which fields failed the sanity check
 };

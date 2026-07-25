@@ -292,7 +292,7 @@ export function ApplicationClient({
   const [recencyResult, setRecencyResult] = useState<CheckRecencyOutput | null>(null);
   const [isRecencyChecking, setIsRecencyChecking] = useState(false);
   const [isUploadingLog, setIsUploadingLog] = useState(false);
-  const [selectedFlightTypeFilter, setSelectedFlightTypeFilter] = useState<'All' | 'PIC' | 'Solo' | 'Dual' | 'Instrument'>('All');
+  const [selectedFlightTypeFilter, setSelectedFlightTypeFilter] = useState<'All' | 'PIC' | 'Solo' | 'Dual' | 'FlightSim' | 'HoodFoggers'>('All');
   const [currentPage, setCurrentPage] = useState(1);
 
   const [isReviewMode, setIsReviewMode] = useState(false);
@@ -303,13 +303,14 @@ export function ApplicationClient({
   const logbookFormat = appState.logbookFormat || 'SI-HM';
   const isCombined = logbookFormat.startsWith('SI-'); // PIC includes Solo (SI-*); S-* tracks Solo separately
 
-  const calculateHours = (logs: FlightLog[], type: 'total' | 'PIC' | 'Solo' | 'Dual' | 'Instrument') => {
+  const calculateHours = (logs: FlightLog[], type: 'total' | 'PIC' | 'Solo' | 'Dual' | 'FlightSim' | 'HoodFoggers') => {
     return logs.reduce((sum, log) => {
       if (type === 'total') return sum + (log.duration || 0);
       if (type === 'PIC') return sum + (log.pilotInCommand || 0);
       if (type === 'Solo') return sum + (log.solo || 0);
       if (type === 'Dual') return sum + (log.dualReceived || 0);
-      if (type === 'Instrument') return sum + (log.instrumentSimulatedHours || 0);
+      if (type === 'FlightSim') return sum + (log.instrumentHours || 0);
+      if (type === 'HoodFoggers') return sum + (log.simInstrumentHours || 0);
       return sum;
     }, 0);
   };
@@ -318,7 +319,8 @@ export function ApplicationClient({
   const picHours = useMemo(() => calculateHours(flightLogs, 'PIC'), [flightLogs]);
   const soloHours = useMemo(() => calculateHours(flightLogs, 'Solo'), [flightLogs]);
   const dualHours = useMemo(() => calculateHours(flightLogs, 'Dual'), [flightLogs]);
-  const instrumentSimHours = useMemo(() => calculateHours(flightLogs, 'Instrument'), [flightLogs]);
+  const instrumentHours = useMemo(() => calculateHours(flightLogs, 'FlightSim'), [flightLogs]);
+  const simInstrumentHours = useMemo(() => calculateHours(flightLogs, 'HoodFoggers'), [flightLogs]);
 
   const filteredFlightLogs = useMemo(() => {
     if (selectedFlightTypeFilter === 'All') {
@@ -328,7 +330,8 @@ export function ApplicationClient({
         if (selectedFlightTypeFilter === 'Dual' && (log.dualReceived || 0) > 0) return true;
         if (selectedFlightTypeFilter === 'PIC' && (log.pilotInCommand || 0) > 0) return true;
         if (selectedFlightTypeFilter === 'Solo' && (log.solo || 0) > 0) return true;
-        if (selectedFlightTypeFilter === 'Instrument' && (log.instrumentSimulatedHours || 0) > 0) return true;
+        if (selectedFlightTypeFilter === 'FlightSim' && (log.instrumentHours || 0) > 0) return true;
+        if (selectedFlightTypeFilter === 'HoodFoggers' && (log.simInstrumentHours || 0) > 0) return true;
         return false;
     });
   }, [flightLogs, selectedFlightTypeFilter]);
@@ -738,7 +741,8 @@ export function ApplicationClient({
       dualReceived: 0,
       pilotInCommand: 0,
       solo: 0,
-      instrumentSimulatedHours: 0
+      instrumentHours: 0,
+      simInstrumentHours: 0
     };
     setEditableFlights(prev => [...prev, newFlight]);
   };
@@ -857,7 +861,7 @@ export function ApplicationClient({
             </div>
         </div>
         <div className="border-t border-[var(--vv-border-soft)] p-6">
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-4 mb-6">
                 <div className="rounded-xl border border-[var(--vv-border)] bg-[var(--surface)] p-4">
                     <div className="text-[11px] font-semibold uppercase tracking-wider text-[var(--text-muted)]">Total hours</div>
                     <div className="mt-1.5 font-outfit text-2xl font-bold text-[var(--navy)]">{totalFlightHours.toFixed(2)}</div>
@@ -879,8 +883,12 @@ export function ApplicationClient({
                     <div className="mt-1.5 font-outfit text-2xl font-bold text-[var(--navy)]">{dualHours.toFixed(2)}</div>
                 </div>
                 <div className="rounded-xl border border-[var(--status-attention)]/25 bg-[var(--status-attention)]/10 p-4">
-                    <div className="text-[11px] font-semibold uppercase tracking-wider text-[var(--text-muted)]">Simulated instrument</div>
-                    <div className="mt-1.5 font-outfit text-2xl font-bold text-[var(--status-attention)]">{instrumentSimHours.toFixed(2)}</div>
+                    <div className="text-[11px] font-semibold uppercase tracking-wider text-[var(--text-muted)]">Flight simulator</div>
+                    <div className="mt-1.5 font-outfit text-2xl font-bold text-[var(--status-attention)]">{instrumentHours.toFixed(2)}</div>
+                </div>
+                <div className="rounded-xl border border-[var(--status-attention)]/25 bg-[var(--status-attention)]/10 p-4">
+                    <div className="text-[11px] font-semibold uppercase tracking-wider text-[var(--text-muted)]">Hood/foggers</div>
+                    <div className="mt-1.5 font-outfit text-2xl font-bold text-[var(--status-attention)]">{simInstrumentHours.toFixed(2)}</div>
                 </div>
             </div>
 
@@ -952,8 +960,11 @@ export function ApplicationClient({
                                         Solo
                                     </button>
                                 )}
-                                <button className={filterPillClass(selectedFlightTypeFilter === 'Instrument')} onClick={() => setSelectedFlightTypeFilter('Instrument')}>
-                                    Instrument
+                                <button className={filterPillClass(selectedFlightTypeFilter === 'FlightSim')} onClick={() => setSelectedFlightTypeFilter('FlightSim')}>
+                                    Flight Simulator
+                                </button>
+                                <button className={filterPillClass(selectedFlightTypeFilter === 'HoodFoggers')} onClick={() => setSelectedFlightTypeFilter('HoodFoggers')}>
+                                    Hood/Foggers
                                 </button>
                             </div>
 
@@ -995,9 +1006,14 @@ export function ApplicationClient({
                                                         SOLO {log.solo?.toFixed(2)}h
                                                     </span>
                                                 )}
-                                                {(log.instrumentSimulatedHours || 0) > 0 && (
+                                                {(log.instrumentHours || 0) > 0 && (
                                                     <span className="rounded-full border border-[var(--status-attention)]/25 bg-[var(--status-attention)]/10 px-2.5 py-1 text-xs font-medium text-[var(--status-attention)]">
-                                                        INSTRUMENT {log.instrumentSimulatedHours?.toFixed(2)}h
+                                                        FLIGHT SIM {log.instrumentHours?.toFixed(2)}h
+                                                    </span>
+                                                )}
+                                                {(log.simInstrumentHours || 0) > 0 && (
+                                                    <span className="rounded-full border border-[var(--status-attention)]/25 bg-[var(--status-attention)]/10 px-2.5 py-1 text-xs font-medium text-[var(--status-attention)]">
+                                                        HOOD/FOGGERS {log.simInstrumentHours?.toFixed(2)}h
                                                     </span>
                                                 )}
                                             </div>
@@ -1056,7 +1072,8 @@ export function ApplicationClient({
                                             <TableHead>Dual</TableHead>
                                             <TableHead>{isCombined ? 'PIC (Incl. Solo)' : 'PIC'}</TableHead>
                                             {!isCombined && <TableHead>Solo</TableHead>}
-                                            <TableHead>Inst / Sim</TableHead>
+                                            <TableHead>Flight Sim</TableHead>
+                                            <TableHead>Hood/Foggers</TableHead>
                                             <TableHead className="w-[50px]"></TableHead>
                                         </TableRow>
                                     </TableHeader>
@@ -1109,10 +1126,18 @@ export function ApplicationClient({
                                                     </TableCell>
                                                 )}
                                                 <TableCell className="p-2">
-                                                    <Input 
-                                                        type="number" step="0.1" 
-                                                        value={log.instrumentSimulatedHours || ''} 
-                                                        onChange={(e) => handleEditableFlightChange(log.id, 'instrumentSimulatedHours', parseFloat(e.target.value) || 0)}
+                                                    <Input
+                                                        type="number" step="0.1"
+                                                        value={log.instrumentHours || ''}
+                                                        onChange={(e) => handleEditableFlightChange(log.id, 'instrumentHours', parseFloat(e.target.value) || 0)}
+                                                        className="w-[80px] h-8 text-sm"
+                                                    />
+                                                </TableCell>
+                                                <TableCell className="p-2">
+                                                    <Input
+                                                        type="number" step="0.1"
+                                                        value={log.simInstrumentHours || ''}
+                                                        onChange={(e) => handleEditableFlightChange(log.id, 'simInstrumentHours', parseFloat(e.target.value) || 0)}
                                                         className="w-[80px] h-8 text-sm"
                                                     />
                                                 </TableCell>
