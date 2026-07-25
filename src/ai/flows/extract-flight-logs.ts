@@ -14,10 +14,10 @@ export type LogbookFormat = 'SI-HM' | 'SI-DEC' | 'S-HM' | 'S-DEC';
 
 // Fill in each processor's ID as it finishes training in Document AI Workbench.
 const PROCESSOR_IDS: Record<LogbookFormat, string | null> = {
-  'SI-HM': '989755d1517a9cc5',
-  'SI-DEC': 'b2409a46b0bdcbd5',
-  'S-HM': '125e002a35cd3cdc',
-  'S-DEC': '268a11e52ab50d55',
+  'SI-HM': 'e3516a524641cbf3',   // "flight-logbook-si-hm" — confirmed HH:MM notation
+  'SI-DEC': '989755d1517a9cc5',  // "Type 1" — confirmed decimal notation despite its name
+  'S-HM': '125e002a35cd3cdc',    // "flight-logbook-s-hm"
+  'S-DEC': '268a11e52ab50d55',   // "flight-logbook-s-dec"
 };
 
 function processorName(format: LogbookFormat): string {
