@@ -142,11 +142,11 @@ export default function MyApplicationsPage() {
         title: 'Draft Deleted',
         description: `Application for '${appToDelete.licenseType}' has been deleted.`
       });
-    } catch {
+    } catch (error) {
       toast({
         variant: 'destructive',
         title: 'Delete Failed',
-        description: 'Could not delete the application. Please try again.'
+        description: error instanceof Error ? error.message : String(error)
       });
     } finally {
       setAppToDelete(null);

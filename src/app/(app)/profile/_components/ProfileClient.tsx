@@ -28,6 +28,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 /* ──────────────────────────────────────────────────────────────────────────
    Google icon SVG (inline)
    ────────────────────────────────────────────────────────────────────────── */
+function getErrorMessage(err: unknown): string {
+  if (!err) return 'Unknown error';
+  if (typeof err === 'string') return err;
+  const e = err as { message?: unknown };
+  if (typeof e.message === 'string') return e.message;
+  return 'An unexpected error occurred';
+}
+
 const GoogleIcon = () => (
   <svg width="20" height="20" viewBox="0 0 48 48" aria-hidden="true">
     <path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3c-1.6 4.7-6 8-11.3 8a12 12 0 0 1 0-24c3 0 5.8 1.1 7.9 3l5.7-5.7C33.6 6.1 29 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.4-.4-3.5z"/>
@@ -166,7 +174,7 @@ export function ProfileClient({ claims, applications }: {
       toast({ title: "Profile picture updated!" });
     } catch (error) {
       console.error('Profile picture upload failed:', error);
-      toast({ variant: "destructive", title: "Upload Failed", description: "Could not save your new profile picture." });
+      toast({ variant: "destructive", title: "Upload Failed", description: getErrorMessage(error) });
     } finally {
       setIsUploading(false);
       setIsCropModalOpen(false);
@@ -190,8 +198,8 @@ export function ProfileClient({ claims, applications }: {
       } else {
         throw new Error("Update failed");
       }
-    } catch {
-      toast({ variant: 'destructive', title: "Save Failed", description: "Could not update your profile." });
+    } catch (error) {
+      toast({ variant: 'destructive', title: "Save Failed", description: getErrorMessage(error) });
     }
   };
 

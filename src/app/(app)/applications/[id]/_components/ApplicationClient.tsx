@@ -360,7 +360,7 @@ export function ApplicationClient({
             toast(successToast);
         }
     })
-    .catch(() => {
+    .catch((error: unknown) => {
         const permissionError = new FirestorePermissionError({
             path: appRef.path,
             operation: 'update',
@@ -370,7 +370,7 @@ export function ApplicationClient({
         toast({
             variant: 'destructive',
             title: "Save Failed",
-            description: "Your changes could not be saved. Please try again.",
+            description: getErrorMessage(error),
         });
         setAppState(initialApplication);
     });
@@ -584,14 +584,14 @@ export function ApplicationClient({
                 description: "Your application has been submitted for review.",
             });
         })
-        .catch(() => {
+        .catch((error: unknown) => {
             const permissionError = new FirestorePermissionError({
                 path: appRef.path,
                 operation: 'update',
                 requestResourceData: finalState,
             });
             errorEmitter.emit('permission-error', permissionError);
-            toast({ variant: 'destructive', title: "Submission failed", description: "Could not submit your application." });
+            toast({ variant: 'destructive', title: "Submission failed", description: getErrorMessage(error) });
             setAppState(initialApplication);
         });
     });
@@ -695,7 +695,7 @@ export function ApplicationClient({
             toast({
                 variant: "destructive",
                 title: "AI Check Failed",
-                description: "Could not perform pilot recency check.",
+                description: getErrorMessage(error),
             });
         } finally {
             setIsRecencyChecking(false);
@@ -762,7 +762,7 @@ export function ApplicationClient({
         }
     } catch (error) {
         console.error("Save failed:", error);
-        toast({ variant: "destructive", title: "Save Failed", description: "Could not save flight log changes." });
+        toast({ variant: "destructive", title: "Save Failed", description: getErrorMessage(error) });
     } finally {
         setIsSavingLogs(false);
     }

@@ -190,8 +190,8 @@ export default function SettingsPage() {
             await fetch('/api/auth/session/logout', { method: 'POST' });
             await signOut(getAuth());
             window.location.href = '/login';
-        } catch {
-            toast({ variant: 'destructive', title: "Deletion Failed", description: "Could not delete your account." });
+        } catch (err) {
+            toast({ variant: 'destructive', title: "Deletion Failed", description: err instanceof Error ? err.message : String(err) });
         } finally {
             setIsDeleting(false);
         }

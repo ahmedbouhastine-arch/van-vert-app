@@ -81,7 +81,7 @@ export default function VerifyEmailPage() {
         } catch (error) {
             console.error("Logout failed:", error);
             setIsLoggingOut(false);
-            toast({ variant: "destructive", title: "Logout Failed", description: "An error occurred while trying to log out. Please try again." });
+            toast({ variant: "destructive", title: "Logout Failed", description: error instanceof Error ? error.message : String(error) });
         }
     };
 

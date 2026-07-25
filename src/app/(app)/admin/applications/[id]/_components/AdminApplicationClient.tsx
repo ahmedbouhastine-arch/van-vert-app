@@ -313,10 +313,10 @@ export function AdminApplicationClient({
         
         if (firestore) {
             const appRef = doc(firestore, 'applications', appState.id);
-            updateDoc(appRef, { documents: updatedDocs }).catch(() => {
+            updateDoc(appRef, { documents: updatedDocs }).catch((error: unknown) => {
                  const permissionError = new FirestorePermissionError({ path: appRef.path, operation: 'update', requestResourceData: { documents: updatedDocs } });
                  errorEmitter.emit('permission-error', permissionError);
-                 toast({ variant: 'destructive', title: 'Save Failed' });
+                 toast({ variant: 'destructive', title: 'Save Failed', description: getErrorMessage(error) });
                  setAppState(initialApplication);
             });
         }
@@ -339,8 +339,8 @@ export function AdminApplicationClient({
     const appRef = doc(firestore, 'applications', appState.id);
     updateDoc(appRef, { documents: newDocuments })
         .then(() => toast({ title: "Document Status Updated" }))
-        .catch(() => {
-            toast({ variant: 'destructive', title: "Update Failed", description: "Could not save document status." });
+        .catch((error: unknown) => {
+            toast({ variant: 'destructive', title: "Update Failed", description: getErrorMessage(error) });
             setAppState(initialApplication);
         });
   };
@@ -389,7 +389,7 @@ export function AdminApplicationClient({
         window.open(url, '_blank');
     } catch (error) {
         console.error("Download failed:", error);
-        toast({ variant: "destructive", title: "Download Failed" });
+        toast({ variant: "destructive", title: "Download Failed", description: getErrorMessage(error) });
     }
   };
 
