@@ -112,3 +112,54 @@ export type Notification = {
   isRead: boolean;
   createdAt: FirebaseTimestamp;
 };
+
+// --- CPL Pipeline (Students / Sub-tasks) ---
+// Tracks CPL (Commercial Pilot License) training candidates ("cadets") through
+// a pipeline distinct from the DGCA conversion `Application` above. Migrated
+// from the "VAA_CPL Conversion" Airtable base, which was a proof of concept
+// only — see scripts/migrate-cpl-students.ts.
+
+export type PriorityLevel = 'high' | 'medium' | 'low';
+
+export type ConversionStatus =
+  | 'pipeline'
+  | 'onboarded'
+  | 'waiting_for_docs'
+  | 'ready_to_fly'
+  | 'flying'
+  | 'cpl_application'
+  | 'done';
+
+export type TaskStatus = 'not_started' | 'in_progress' | 'completed';
+
+export type Student = {
+  id: string;
+  cadetName: string;
+  description?: string;
+  googleDriveUrl?: string;
+  recencyDate?: string; // YYYY-MM-DD
+  priorityLevel: PriorityLevel;
+  conversionStatus: ConversionStatus;
+  onboardingDate?: string; // YYYY-MM-DD
+  email?: string;
+  phone?: string;
+  source?: string;
+  soldByUserId?: string; // matched Van-Vert user id, when resolvable
+  soldByName?: string; // fallback display name otherwise
+  notes?: string;
+  createdAt: FirebaseTimestamp;
+  updatedAt: FirebaseTimestamp;
+};
+
+export type SubTask = {
+  id: string;
+  taskName: string;
+  taskStatus: TaskStatus;
+  date?: string; // YYYY-MM-DD
+  completed: boolean; // kept in sync with taskStatus === 'completed'
+  ownerUserId?: string;
+  ownerName?: string;
+  notes?: string;
+  createdAt: FirebaseTimestamp;
+  updatedAt: FirebaseTimestamp;
+};

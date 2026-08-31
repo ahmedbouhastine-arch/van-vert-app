@@ -191,6 +191,53 @@
         "requiresExpiry"
       ]
     },
+    "Student": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Student",
+      "type": "object",
+      "description": "A CPL (Commercial Pilot License) training candidate tracked through the pipeline. Distinct from Application, which tracks DGCA license conversion. Migrated from the 'VAA_CPL Conversion' Airtable base (proof of concept, not kept live).",
+      "properties": {
+        "id": { "type": "string", "description": "Unique identifier for the student entity." },
+        "cadetName": { "type": "string", "description": "The candidate's name." },
+        "description": { "type": "string", "description": "Free-text description, e.g. the training/conversion program." },
+        "googleDriveUrl": { "type": "string", "format": "uri", "description": "Link to the candidate's document folder." },
+        "recencyDate": { "type": "string", "format": "date", "description": "Recency/currency deadline date." },
+        "priorityLevel": { "type": "string", "enum": ["high", "medium", "low"] },
+        "conversionStatus": {
+          "type": "string",
+          "enum": ["pipeline", "onboarded", "waiting_for_docs", "ready_to_fly", "flying", "cpl_application", "done"]
+        },
+        "onboardingDate": { "type": "string", "format": "date" },
+        "email": { "type": "string", "format": "email" },
+        "phone": { "type": "string" },
+        "source": { "type": "string", "description": "Lead source." },
+        "soldByUserId": { "type": "string", "description": "Reference to User, when the assigned rep is matched to a Van-Vert account." },
+        "soldByName": { "type": "string", "description": "Fallback display name for the assigned rep when no matching Van-Vert user account exists." },
+        "notes": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "cadetName", "priorityLevel", "conversionStatus", "createdAt", "updatedAt"]
+    },
+    "SubTask": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "SubTask",
+      "type": "object",
+      "description": "A pipeline checklist item for one Student. Subcollection of Student.",
+      "properties": {
+        "id": { "type": "string", "description": "Unique identifier for the sub-task entity." },
+        "taskName": { "type": "string" },
+        "taskStatus": { "type": "string", "enum": ["not_started", "in_progress", "completed"] },
+        "date": { "type": "string", "format": "date" },
+        "completed": { "type": "boolean", "description": "Kept in sync with taskStatus === 'completed'." },
+        "ownerUserId": { "type": "string", "description": "Reference to User, when the owner is matched to a Van-Vert account." },
+        "ownerName": { "type": "string", "description": "Fallback display name for the owner when no matching Van-Vert user account exists." },
+        "notes": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "taskName", "taskStatus", "completed", "createdAt", "updatedAt"]
+    },
     "Notification": {
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "Notification",
@@ -268,6 +315,29 @@
               "name": "applicationId",
               "description": "The unique identifier for the application."
             }
+          ]
+        }
+      },
+      {
+        "path": "/students/{studentId}",
+        "definition": {
+          "entityName": "Student",
+          "schema": { "$ref": "#/entities/Student" },
+          "description": "Top-level collection for the CPL training pipeline. Admin/head-admin only — not user or reviewer accessible. Migrated from the 'VAA_CPL Conversion' Airtable proof of concept.",
+          "params": [
+            { "name": "studentId", "description": "The unique identifier for the student." }
+          ]
+        }
+      },
+      {
+        "path": "/students/{studentId}/subtasks/{subtaskId}",
+        "definition": {
+          "entityName": "SubTask",
+          "schema": { "$ref": "#/entities/SubTask" },
+          "description": "Subcollection of per-student pipeline checklist items. Admin/head-admin only.",
+          "params": [
+            { "name": "studentId", "description": "The unique identifier for the student." },
+            { "name": "subtaskId", "description": "The unique identifier for the sub-task." }
           ]
         }
       },
