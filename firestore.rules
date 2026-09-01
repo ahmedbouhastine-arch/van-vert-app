@@ -84,7 +84,7 @@ service cloud.firestore {
       allow delete: if isSignedIn() && isOwner();
     }
 
-    // --- CPL Pipeline (Students / Sub-tasks) ---
+    // --- Conversion Pipeline (Students / Sub-tasks) ---
     // Sales/ops pipeline data (rep assignment, lead source, internal notes) —
     // admin and head-admin only, not reviewer-facing like document review.
     match /students/{studentId} {

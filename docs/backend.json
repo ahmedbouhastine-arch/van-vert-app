@@ -195,17 +195,18 @@
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "Student",
       "type": "object",
-      "description": "A CPL (Commercial Pilot License) training candidate tracked through the pipeline. Distinct from Application, which tracks DGCA license conversion. Migrated from the 'VAA_CPL Conversion' Airtable base (proof of concept, not kept live).",
+      "description": "A license conversion training candidate ('cadet') tracked through the pipeline, across any conversion type. Distinct from Application, which tracks DGCA license conversion. Initial seed data migrated from the 'VAA_CPL Conversion' Airtable base (CPL-only proof of concept, not kept live).",
       "properties": {
         "id": { "type": "string", "description": "Unique identifier for the student entity." },
         "cadetName": { "type": "string", "description": "The candidate's name." },
+        "conversionType": { "type": "string", "enum": ["CPL", "ATPL", "PPL"], "description": "Which license this cadet is training toward." },
         "description": { "type": "string", "description": "Free-text description, e.g. the training/conversion program." },
         "googleDriveUrl": { "type": "string", "format": "uri", "description": "Link to the candidate's document folder." },
         "recencyDate": { "type": "string", "format": "date", "description": "Recency/currency deadline date." },
         "priorityLevel": { "type": "string", "enum": ["high", "medium", "low"] },
         "conversionStatus": {
           "type": "string",
-          "enum": ["pipeline", "onboarded", "waiting_for_docs", "ready_to_fly", "flying", "cpl_application", "done"]
+          "enum": ["pipeline", "onboarded", "waiting_for_docs", "ready_to_fly", "flying", "license_application", "done"]
         },
         "onboardingDate": { "type": "string", "format": "date" },
         "email": { "type": "string", "format": "email" },
@@ -217,7 +218,7 @@
         "createdAt": { "type": "string", "format": "date-time" },
         "updatedAt": { "type": "string", "format": "date-time" }
       },
-      "required": ["id", "cadetName", "priorityLevel", "conversionStatus", "createdAt", "updatedAt"]
+      "required": ["id", "cadetName", "conversionType", "priorityLevel", "conversionStatus", "createdAt", "updatedAt"]
     },
     "SubTask": {
       "$schema": "http://json-schema.org/draft-07/schema#",
@@ -323,7 +324,7 @@
         "definition": {
           "entityName": "Student",
           "schema": { "$ref": "#/entities/Student" },
-          "description": "Top-level collection for the CPL training pipeline. Admin/head-admin only — not user or reviewer accessible. Migrated from the 'VAA_CPL Conversion' Airtable proof of concept.",
+          "description": "Top-level collection for the license conversion training pipeline, across any conversion type. Admin/head-admin only — not user or reviewer accessible. Initial seed data migrated from the 'VAA_CPL Conversion' Airtable base (CPL-only proof of concept).",
           "params": [
             { "name": "studentId", "description": "The unique identifier for the student." }
           ]

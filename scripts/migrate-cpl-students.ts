@@ -4,6 +4,10 @@
  * /students collection. Airtable was a proof of concept only and is not kept
  * live after this runs — this is not a recurring sync.
  *
+ * Every record this script writes gets `conversionType: 'CPL'` for that
+ * reason — the destination schema supports other types, but this particular
+ * source doesn't have any.
+ *
  * Source data: scripts/data/airtable-cpl-export.json — a raw export of the
  * base's Students and Sub-tasks tables (Airtable base appBmvkGVZ8oY4o7N),
  * pulled once via the Airtable API. Re-export that file if the source data
@@ -61,7 +65,7 @@ const CONVERSION_STATUS_MAP: Record<string, ConversionStatus> = {
   'Waiting for docs': 'waiting_for_docs',
   'Ready to Fly': 'ready_to_fly',
   Flying: 'flying',
-  'CPL Application': 'cpl_application',
+  'CPL Application': 'license_application',
   Done: 'done',
 };
 
@@ -147,6 +151,12 @@ async function main() {
 
     const data: Record<string, unknown> = {
       cadetName: cadetName ?? `(unnamed — ${rec.id})`,
+      // Every record in this export came from the CPL-only "VAA_CPL
+      // Conversion" Airtable base, so this is a correct value for this
+      // one-off backfill — not a general default. New students created via
+      // the app after this migration runs must pick a conversionType
+      // explicitly; there's no source data here to read one from.
+      conversionType: 'CPL',
       priorityLevel: (priorityRaw && PRIORITY_MAP[priorityRaw]) || 'medium',
       conversionStatus: (statusRaw && CONVERSION_STATUS_MAP[statusRaw]) || 'pipeline',
       createdAt: now,
@@ -175,7 +185,7 @@ async function main() {
     if (sold.name) data.soldByName = sold.name;
 
     studentWrites.push({ id: rec.id, data });
-    console.log(`- Student ${rec.id} ("${data.cadetName}"): status=${data.conversionStatus}, priority=${data.priorityLevel}${shouldWrite ? '' : ' (dry run, not applied)'}`);
+    console.log(`- Student ${rec.id} ("${data.cadetName}"): type=${data.conversionType}, status=${data.conversionStatus}, priority=${data.priorityLevel}${shouldWrite ? '' : ' (dry run, not applied)'}`);
   }
 
   // --- Sub-tasks ---

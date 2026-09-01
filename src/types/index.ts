@@ -113,11 +113,16 @@ export type Notification = {
   createdAt: FirebaseTimestamp;
 };
 
-// --- CPL Pipeline (Students / Sub-tasks) ---
-// Tracks CPL (Commercial Pilot License) training candidates ("cadets") through
-// a pipeline distinct from the DGCA conversion `Application` above. Migrated
-// from the "VAA_CPL Conversion" Airtable base, which was a proof of concept
-// only — see scripts/migrate-cpl-students.ts.
+// --- Conversion Pipeline (Students / Sub-tasks) ---
+// Tracks license conversion training candidates ("cadets") through a pipeline
+// distinct from the DGCA conversion `Application` above. Covers all
+// conversion types (CPL, ATPL, PPL, ...), not just CPL. Initial seed data was
+// migrated from the "VAA_CPL Conversion" Airtable base (CPL-only, a proof of
+// concept) — see scripts/migrate-cpl-students.ts.
+
+// TODO: confirm final list with management — CPL and ATPL are confirmed,
+// PPL is a likely third but unconfirmed. One-line change either way.
+export type ConversionType = 'CPL' | 'ATPL' | 'PPL';
 
 export type PriorityLevel = 'high' | 'medium' | 'low';
 
@@ -127,7 +132,7 @@ export type ConversionStatus =
   | 'waiting_for_docs'
   | 'ready_to_fly'
   | 'flying'
-  | 'cpl_application'
+  | 'license_application'
   | 'done';
 
 export type TaskStatus = 'not_started' | 'in_progress' | 'completed';
@@ -135,6 +140,7 @@ export type TaskStatus = 'not_started' | 'in_progress' | 'completed';
 export type Student = {
   id: string;
   cadetName: string;
+  conversionType: ConversionType;
   description?: string;
   googleDriveUrl?: string;
   recencyDate?: string; // YYYY-MM-DD
