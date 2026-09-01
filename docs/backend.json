@@ -215,6 +215,7 @@
         "soldByUserId": { "type": "string", "description": "Reference to User, when the assigned rep is matched to a Van-Vert account." },
         "soldByName": { "type": "string", "description": "Fallback display name for the assigned rep when no matching Van-Vert user account exists." },
         "notes": { "type": "string" },
+        "applicationId": { "type": "string", "description": "Reference to Application, set when this pipeline record was auto-created from a submitted DGCA Application." },
         "createdAt": { "type": "string", "format": "date-time" },
         "updatedAt": { "type": "string", "format": "date-time" }
       },

@@ -153,6 +153,7 @@ export type Student = {
   soldByUserId?: string; // matched Van-Vert user id, when resolvable
   soldByName?: string; // fallback display name otherwise
   notes?: string;
+  applicationId?: string; // set when this pipeline record was auto-created from a submitted DGCA Application
   createdAt: FirebaseTimestamp;
   updatedAt: FirebaseTimestamp;
 };

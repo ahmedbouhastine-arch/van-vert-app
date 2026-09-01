@@ -582,6 +582,13 @@ export function ApplicationClient({
                 createdAt: serverTimestamp(),
             }).catch(notifError => console.error("Failed to create notification:", notifError));
 
+            // Best-effort: links this submission into the ops-facing Conversion
+            // Pipeline. Never blocks or surfaces errors on the submission itself —
+            // the pilot's application is already successfully submitted either way.
+            auth.currentUser?.getIdToken()
+                .then(idToken => serverActions.createStudentFromApplicationAction(appState.id, idToken))
+                .catch(linkError => console.error("Failed to link application to conversion pipeline:", linkError));
+
             toast({
                 title: "Application Submitted!",
                 description: "Your application has been submitted for review.",

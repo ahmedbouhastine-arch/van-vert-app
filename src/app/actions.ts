@@ -4,7 +4,7 @@ import 'server-only';
 import { adminAuth, adminFirestore, adminStorage } from '@/lib/firebase-admin-prewarmed';
 import { extractExpiryDate } from '@/ai/flows/extract-expiry-date';
 import { autoDetectAndExtractFlightLogs } from '@/ai/flows/extract-flight-logs';
-import type { FlightLog, Application, LogbookFormat, UserProfile } from '@/types';
+import type { FlightLog, Application, LogbookFormat, UserProfile, ConversionType } from '@/types';
 import { v4 as uuidv4 } from 'uuid';
 import { licenseTypes } from '@/lib/licensing';
 import { BASE_URL } from '@/lib/utils';
@@ -253,6 +253,59 @@ export async function createApplicationAction(
         return { applicationId: newAppId };
     } catch (e: unknown) {
         handleServerAuthError(e, 'createApplicationAction');
+    }
+}
+
+// Auto-links a submitted DGCA Application into the ops-facing Conversion Pipeline
+// (/students), so an admin doesn't have to manually add a cadet who already
+// submitted. Uses the Admin SDK because /students writes are admin-only — the
+// submitting pilot has no direct Firestore access to that collection.
+export async function createStudentFromApplicationAction(
+    applicationId: string,
+    idToken?: string,
+): Promise<{ studentId: string | null }> {
+    try {
+        const user = await getAuthenticatedUser(idToken);
+
+        const appRef = adminFirestore.collection('applications').doc(applicationId);
+        const appSnapshot = await appRef.get();
+        if (!appSnapshot.exists) throw new Error("Application not found.");
+        const applicationData = appSnapshot.data() as Application;
+        if (applicationData.userId !== user.uid) {
+            throw new Error("User does not have permission to access this application.");
+        }
+
+        // Idempotent: a retry (e.g. a network blip on the client) must not create a duplicate cadet.
+        const existing = await adminFirestore.collection('students').where('applicationId', '==', applicationId).limit(1).get();
+        if (!existing.empty) return { studentId: existing.docs[0].id };
+
+        const licenseType = licenseTypes.find(lt => lt.name === applicationData.licenseType);
+        if (!licenseType) {
+            // Not one of the CPL/ATPL/PPL conversion programs the pipeline tracks — nothing to link.
+            return { studentId: null };
+        }
+        const conversionType = licenseType.id.toUpperCase() as ConversionType;
+
+        const userRecord = await adminAuth.getUser(user.uid);
+        const studentData = {
+            cadetName: userRecord.displayName || 'Unknown',
+            conversionType,
+            priorityLevel: 'medium' as const,
+            // The cadet has already submitted their DGCA application by the time this
+            // runs, so the pipeline record should start where reality already is.
+            conversionStatus: 'license_application' as const,
+            email: userRecord.email || '',
+            source: 'Application submission',
+            applicationId,
+            createdAt: admin.firestore.FieldValue.serverTimestamp(),
+            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        };
+
+        const studentRef = await adminFirestore.collection('students').add(studentData);
+        return { studentId: studentRef.id };
+    } catch (e: unknown) {
+        console.error('createStudentFromApplicationAction failed:', e);
+        return { studentId: null };
     }
 }
 
