@@ -83,5 +83,17 @@ service cloud.firestore {
       // Delete: only the owner can remove their own application (e.g. a draft).
       allow delete: if isSignedIn() && isOwner();
     }
+
+    // --- Conversion Pipeline (Students / Sub-tasks) ---
+    // Tracks license conversion training candidates ("cadets") through a
+    // pipeline distinct from the /applications DGCA review flow above.
+    // Admin/head-admin only — not visible to applicants or reviewers.
+    match /students/{studentId} {
+      allow read, write: if isSignedIn() && isAdmin(request.auth.uid);
+
+      match /subtasks/{subtaskId} {
+        allow read, write: if isSignedIn() && isAdmin(request.auth.uid);
+      }
+    }
   }
 }
