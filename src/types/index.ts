@@ -112,3 +112,74 @@ export type Notification = {
   isRead: boolean;
   createdAt: FirebaseTimestamp;
 };
+
+// --- Conversion Pipeline (Students / Sub-tasks) ---
+// Tracks license conversion training candidates ("cadets") through a pipeline
+// distinct from the DGCA conversion `Application` above. Covers all
+// conversion types (CPL, ATPL, PPL, ...), not just CPL.
+
+// TODO: confirm final list with management — CPL and ATPL are confirmed,
+// PPL is a likely third but unconfirmed. One-line change either way.
+export type ConversionType = 'CPL' | 'ATPL' | 'PPL';
+
+export type PriorityLevel = 'high' | 'medium' | 'low';
+
+export type ConversionStatus =
+  | 'pipeline'
+  | 'onboarded'
+  | 'waiting_for_docs'
+  | 'ready_to_fly'
+  | 'flying'
+  | 'license_application'
+  | 'done';
+
+export type TaskStatus = 'not_started' | 'in_progress' | 'completed';
+
+// One row of the "recommended hours still needed" table on the student
+// detail panel — free-form requirement labels rather than a fixed set of
+// categories, since required hours vary by conversion type and pathway.
+export type HoursRequirement = {
+  id: string;
+  label: string; // e.g. "Dual cross-country"
+  hoursNeeded: number;
+};
+
+export type Student = {
+  id: string;
+  cadetName: string;
+  conversionType: ConversionType; // required, no default — chosen explicitly at creation
+  description?: string;
+  googleDriveUrl?: string;
+  recencyDate?: string; // YYYY-MM-DD
+  priorityLevel: PriorityLevel;
+  conversionStatus: ConversionStatus;
+  onboardingDate?: string; // YYYY-MM-DD
+  email?: string;
+  phone?: string;
+  source?: string;
+  soldByUserId?: string; // matched Van-Vert user id, when resolvable
+  soldByName?: string; // fallback display name otherwise
+  notes?: string;
+  linkedApplicationId?: string; // optional link to an existing DGCA Application
+  hoursNeeded?: HoursRequirement[]; // recommended remaining flight hours by category
+  // Denormalized subtask progress, kept in sync by the client whenever a
+  // subtask is created/toggled/deleted — avoids an N-listener fan-out to
+  // show "4 / 7 done" in the table/kanban without opening each student.
+  subtaskCompletedCount?: number;
+  subtaskTotalCount?: number;
+  createdAt: FirebaseTimestamp;
+  updatedAt: FirebaseTimestamp;
+};
+
+export type SubTask = {
+  id: string;
+  taskName: string;
+  taskStatus: TaskStatus;
+  date?: string; // YYYY-MM-DD
+  completed: boolean; // kept in sync with taskStatus === 'completed'
+  ownerUserId?: string;
+  ownerName?: string;
+  notes?: string;
+  createdAt: FirebaseTimestamp;
+  updatedAt: FirebaseTimestamp;
+};

@@ -57,6 +57,38 @@ export default {
           missing:    { text: '#dc2626', bg: '#fee2e2' },
         },
 
+        // Priority (Conversion Pipeline) — reuses the status palette's
+        // semantics (high = attention-red, medium = amber, low = neutral)
+        // rather than inventing new hues.
+        priority: {
+          high:   { text: '#dc2626', bg: '#fee2e2' },
+          medium: { text: '#d97706', bg: '#fef3c7' },
+          low:    { text: '#4a6070', bg: '#ecf4f7' },
+        },
+
+        // Conversion type (Conversion Pipeline) — distinct hues per license
+        // type. 'ppl' reuses the violet already used in VvAvatar's gradient
+        // set for palette consistency.
+        conversionType: {
+          cpl:  { text: '#0078a5', bg: '#e1f4f7' },
+          atpl: { text: '#002d78', bg: '#e7ecf7' },
+          ppl:  { text: '#7c3aed', bg: '#f1ebfd' },
+        },
+
+        // Conversion status (Conversion Pipeline) — one color per pipeline
+        // stage, in pipeline order. 'ready-to-fly' and 'flying' get their own
+        // hues (cyan, indigo) since they fall between the existing sky/navy
+        // status colors above.
+        conversionStatus: {
+          pipeline:           { text: '#64748b', bg: '#f1f5f9' },
+          onboarded:          { text: '#0078a5', bg: '#e1f4f7' },
+          'waiting-for-docs': { text: '#d97706', bg: '#fef3c7' },
+          'ready-to-fly':     { text: '#0891b2', bg: '#cffafe' },
+          flying:             { text: '#4f46e5', bg: '#e0e7ff' },
+          'license-application': { text: '#002d78', bg: '#e7ecf7' },
+          done:               { text: '#16a34a', bg: '#dcfce7' },
+        },
+
         // Shadcn token aliases → Van-Vert palette
         // These feed hsl(var(--*)) inside shadcn components
         border:     'hsl(var(--border))',

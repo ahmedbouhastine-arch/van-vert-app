@@ -8,6 +8,7 @@ import {
   BarChart,
   Users,
   ListChecks,
+  Route,
   type LucideIcon,
 } from "lucide-react";
 
@@ -54,6 +55,7 @@ export const NAV_BY_ROLE: Record<VvRole, VvNavConfig> = {
     primary: [
       { id: "dashboard", label: "Dashboard", icon: Home, href: "/admin" },
       { id: "admin-applications", label: "Applications", icon: FileText, href: "/admin/applications" },
+      { id: "admin-conversion-pipeline", label: "Conversion Pipeline", icon: Route, href: "/admin/conversion-pipeline" },
       { id: "admin-analytics", label: "Analytics", icon: BarChart, href: "/admin/analytics" },
     ],
     secondary: SECONDARY,
@@ -63,6 +65,7 @@ export const NAV_BY_ROLE: Record<VvRole, VvNavConfig> = {
     primary: [
       { id: "dashboard", label: "Dashboard", icon: Home, href: "/admin" },
       { id: "admin-applications", label: "Applications", icon: FileText, href: "/admin/applications" },
+      { id: "admin-conversion-pipeline", label: "Conversion Pipeline", icon: Route, href: "/admin/conversion-pipeline" },
       { id: "admin-analytics", label: "Analytics", icon: BarChart, href: "/admin/analytics" },
       { id: "admin-users", label: "User Management", icon: Users, href: "/admin/users" },
       { id: "admin-audit", label: "Audit Log", icon: ListChecks, href: "/admin/audit-log" },
