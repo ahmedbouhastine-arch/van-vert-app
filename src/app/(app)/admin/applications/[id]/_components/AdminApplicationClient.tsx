@@ -25,7 +25,8 @@ import { flagExpiringDocuments, FlagExpiringDocumentsOutput } from "@/ai/flows/f
 import { checkRecency } from "@/ai/flows/check-recency";
 import type { CheckRecencyOutput } from "@/ai/flows/check-recency";
 import { cn } from "@/lib/utils";
-import { useFirestore, errorEmitter, FirestorePermissionError } from "@/firebase";
+import { useFirestore, useAuth, errorEmitter, FirestorePermissionError } from "@/firebase";
+import * as serverActions from "@/app/actions";
 import { doc, serverTimestamp, updateDoc, addDoc, collection } from "firebase/firestore";
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -229,6 +230,7 @@ export function AdminApplicationClient({
   const { toast } = useToast();
   
   const firestore = useFirestore();
+  const auth = useAuth();
 
   const isAdminOrHigher = claims?.role === 'admin' || claims?.role === 'head-admin';
   const isDraft = appState.status === 'draft';
@@ -369,6 +371,20 @@ export function AdminApplicationClient({
                      isRead: false,
                      createdAt: serverTimestamp(),
                  }).catch(notifError => console.error("Failed to create notification:", notifError));
+
+                 // Email the applicant about the status change - previously this
+                 // Firestore write happened but nothing ever notified them outside
+                 // the app's own (easy to miss) in-app notification bell.
+                 // Fire-and-forget: shouldn't block or roll back a save that
+                 // already succeeded.
+                 (async () => {
+                     try {
+                         const idToken = await auth.currentUser?.getIdToken();
+                         await serverActions.notifyApplicationStatusChangeAction(appState.id, status, feedback, idToken);
+                     } catch (notifyError) {
+                         console.error("Failed to send status-change email:", notifyError);
+                     }
+                 })();
             }
             
             setAppState(prev => ({ ...prev, status, feedback }));

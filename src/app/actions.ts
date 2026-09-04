@@ -4,7 +4,7 @@ import 'server-only';
 import { adminAuth, adminFirestore, adminStorage } from '@/lib/firebase-admin-prewarmed';
 import { extractExpiryDate } from '@/ai/flows/extract-expiry-date';
 import { autoDetectAndExtractFlightLogs } from '@/ai/flows/extract-flight-logs';
-import type { FlightLog, Application, LogbookFormat, UserProfile } from '@/types';
+import type { FlightLog, Application, ApplicationStatus, LogbookFormat, UserProfile } from '@/types';
 import { v4 as uuidv4 } from 'uuid';
 import { licenseTypes } from '@/lib/licensing';
 import { BASE_URL } from '@/lib/utils';
@@ -16,6 +16,9 @@ import {
     sendApplicationApprovedEmail,
     sendApplicationRejectedEmail,
     sendApplicationNeedsMoreInfoEmail,
+    sendApplicationInReviewEmail,
+    sendStaffNewApplicationAlertEmail,
+    sendContactFormEmail,
     sendWelcomeEmail,
     sendPasswordChangedEmail
 } from '@/lib/send-email';
@@ -30,6 +33,26 @@ async function getAuthenticatedUser(idToken?: string) {
     } catch (error) {
         console.error("Error verifying auth token:", error);
         throw new Error("Unauthorized: Invalid token.");
+    }
+}
+
+// Writes one entry to the /auditLogs collection (see firestore.rules - this
+// collection is written exclusively via the Admin SDK, never directly by a
+// client). Best-effort: a logging failure is swallowed so it never breaks the
+// admin action that triggered it.
+async function writeAuditLogEntry(admin_: { uid: string }, action: string, details?: string) {
+    try {
+        const adminRecord = await adminAuth.getUser(admin_.uid);
+        await adminFirestore.collection('auditLogs').add({
+            adminId: admin_.uid,
+            adminName: adminRecord.displayName || adminRecord.email || 'Unknown admin',
+            adminEmail: adminRecord.email || 'unknown',
+            action,
+            details: details || null,
+            timestamp: admin.firestore.FieldValue.serverTimestamp(),
+        });
+    } catch (error) {
+        console.error('Failed to write audit log entry:', error);
     }
 }
 
@@ -438,6 +461,14 @@ export async function updateUserRoleAction(
 
         await adminFirestore.collection('users').doc(targetUserId).update({ role: newRole });
         await syncRoleClaim(targetUserId, newRole);
+
+        const targetData = targetDoc.data();
+        await writeAuditLogEntry(
+            { uid: caller.uid },
+            'Changed user role',
+            `${targetData?.displayName || targetData?.email || targetUserId} - ${targetRole || 'unknown'} -> ${newRole}`
+        );
+
         return { success: true };
     } catch (e) {
         handleServerAuthError(e, 'updateUserRoleAction');
@@ -484,50 +515,122 @@ export async function markDevTestAccountVerifiedAction(email: string) {
     }
 }
 
-export async function approveApplicationAction(applicationId: string, idToken?: string) {
+// Fires automatically from the live admin "Save Changes" / Approve / Reject
+// path in AdminApplicationClient.tsx whenever an application's status
+// actually changes. Previously this logic existed only in unused,
+// never-called approveApplicationAction/rejectApplicationAction/
+// sendApplicationNeedsMoreInfoEmailAction functions - the Firestore status
+// update was live, but nothing ever emailed the applicant. This is the
+// single place that decides which branded email (if any) a status
+// transition sends.
+export async function notifyApplicationStatusChangeAction(
+    applicationId: string,
+    newStatus: ApplicationStatus,
+    feedback: string,
+    idToken?: string
+) {
     try {
-        await getAuthenticatedUser(idToken);
+        const caller = await getAuthenticatedUser(idToken);
         const appRef = adminFirestore.collection('applications').doc(applicationId);
-        await appRef.update({ status: 'approved', updatedAt: admin.firestore.FieldValue.serverTimestamp() });
         const appSnapshot = await appRef.get();
-        const appData = appSnapshot.data()!;
-        const user = await adminAuth.getUser(appData.userId);
-        await sendApplicationApprovedEmail(user.email!, user.displayName || 'Pilot', `${BASE_URL}/dashboard`);
+        const appData = appSnapshot.data();
+        if (!appData) {
+            return { success: false, error: 'Application not found.' };
+        }
+        const userRecord = await adminAuth.getUser(appData.userId);
+        const email = userRecord.email!;
+        const name = userRecord.displayName || 'Pilot';
+
+        await writeAuditLogEntry(
+            { uid: caller.uid },
+            'Changed application status',
+            `${name} (${email}) - ${appData.licenseType || 'application'} ${applicationId} -> ${newStatus}`
+        );
+
+        switch (newStatus) {
+            case 'approved':
+                await sendApplicationApprovedEmail(email, name, `${BASE_URL}/dashboard`);
+                break;
+            case 'rejected':
+                await sendApplicationRejectedEmail(email, name, feedback || 'Please check your dashboard for details.');
+                break;
+            case 'needs_attention':
+                await sendApplicationNeedsMoreInfoEmail(email, name, feedback || 'Please check your dashboard for details.', `${BASE_URL}/dashboard`);
+                break;
+            case 'in_review':
+                // No Resend dashboard template exists for this status yet (unlike
+                // approved/rejected/needs_attention above, which reference template
+                // IDs already configured on the Resend dashboard) - send inline
+                // HTML instead of leaving the applicant un-notified. Swap this for
+                // a `template: { id, variables }` call once a matching template
+                // exists on the dashboard, same as the others.
+                await sendApplicationInReviewEmail(email, name, applicationId, `${BASE_URL}/dashboard`, feedback || undefined);
+                break;
+            default:
+                // 'draft' / 'submitted' - no applicant-facing email from this path.
+                break;
+        }
         return { success: true };
     } catch (error) {
-        console.error('Error approving application:', error);
+        console.error('Error notifying application status change:', error);
         return { success: false, error: error instanceof Error ? error.message : String(error) };
     }
 }
 
-export async function rejectApplicationAction(applicationId: string, reason: string, idToken?: string) {
+// Fires when an applicant actually submits (draft -> submitted) from
+// ApplicationClient.tsx. Nothing previously told staff a new application had
+// arrived - they only found out by checking the admin queue by hand.
+export async function notifyStaffNewSubmissionAction(applicationId: string, idToken?: string) {
     try {
-        await getAuthenticatedUser(idToken);
+        const caller = await getAuthenticatedUser(idToken);
         const appRef = adminFirestore.collection('applications').doc(applicationId);
-        await appRef.update({ status: 'rejected', feedback: reason, updatedAt: admin.firestore.FieldValue.serverTimestamp() });
         const appSnapshot = await appRef.get();
-        const appData = appSnapshot.data()!;
-        const user = await adminAuth.getUser(appData.userId);
-        await sendApplicationRejectedEmail(user.email!, user.displayName || 'Pilot', reason);
+        const appData = appSnapshot.data();
+        if (!appData) {
+            return { success: false, error: 'Application not found.' };
+        }
+        // Only the application's own owner can trigger this - mirrors the
+        // Firestore rule that only lets an owner update their own application.
+        if (appData.userId !== caller.uid) {
+            throw new Error('Unauthorized.');
+        }
+        const userRecord = await adminAuth.getUser(appData.userId);
+        await sendStaffNewApplicationAlertEmail({
+            applicantName: userRecord.displayName || 'Unknown pilot',
+            applicantEmail: userRecord.email || 'unknown',
+            licenseType: (appData.licenseType as string) || 'Unknown',
+            applicationId,
+            dashboardUrl: `${BASE_URL}/admin/applications/${applicationId}`,
+        });
         return { success: true };
     } catch (error) {
-        console.error('Error rejecting application:', error);
+        console.error('Error sending staff new-submission alert:', error);
         return { success: false, error: error instanceof Error ? error.message : String(error) };
     }
 }
 
-export async function sendApplicationNeedsMoreInfoEmailAction(applicationId: string, requiredInfo: string, idToken?: string) {
+// Public, unauthenticated - this is the site's own /contact page, mirroring
+// vanguard-aviation's api/submit-contact.js. Previously the form's onSubmit
+// was `e.preventDefault(); setSent(true);` with no actual send.
+export async function submitContactFormAction(input: {
+    name: string;
+    email: string;
+    subject: string;
+    message: string;
+}) {
     try {
-        await getAuthenticatedUser(idToken);
-        const appRef = adminFirestore.collection('applications').doc(applicationId);
-        const appSnapshot = await appRef.get();
-        const appData = appSnapshot.data()!;
-        const user = await adminAuth.getUser(appData.userId);
-        await sendApplicationNeedsMoreInfoEmail(user.email!, user.displayName || 'Pilot', requiredInfo, `${BASE_URL}/dashboard`);
+        const { name, email, subject, message } = input;
+        if (!name?.trim() || !email?.trim() || !subject?.trim() || !message?.trim()) {
+            return { success: false, error: 'All fields are required.' };
+        }
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
+            return { success: false, error: 'Please enter a valid email address.' };
+        }
+        await sendContactFormEmail({ name: name.trim(), email: email.trim(), subject: subject.trim(), message: message.trim() });
         return { success: true };
     } catch (error) {
-        console.error('Error sending needs more info email:', error);
-        return { success: false, error: error instanceof Error ? error.message : String(error) };
+        console.error('Error sending contact form email:', error);
+        return { success: false, error: 'Could not send your message. Please try again.' };
     }
 }
 
@@ -590,3 +693,78 @@ export async function getCommunityStatsAction() {
     }
 }
 
+
+// Powers the public /status page with a real, live check of the services
+// Van-Vert actually depends on - previously that page showed hardcoded
+// uptime percentages and a fabricated 90-day history (and listed an
+// "SMS Alerts (Pro)" service that was never built). This performs one
+// live probe of each dependency per page load; there is no persisted
+// history, so the page can only ever show current status, not a
+// historical uptime chart.
+export type SystemStatusCheck = {
+    name: string;
+    operational: boolean;
+    latencyMs: number | null;
+};
+
+export async function getSystemStatusAction(): Promise<{
+    checkedAt: string;
+    services: SystemStatusCheck[];
+}> {
+    const checks: { name: string; probe: () => Promise<void> }[] = [
+        {
+            name: 'Authentication',
+            probe: async () => {
+                await adminAuth.listUsers(1);
+            },
+        },
+        {
+            name: 'Database',
+            probe: async () => {
+                await adminFirestore.collection('users').limit(1).get();
+            },
+        },
+        {
+            name: 'Document Storage',
+            probe: async () => {
+                const [exists] = await adminStorage.bucket().exists();
+                if (!exists) throw new Error('Storage bucket not found.');
+            },
+        },
+        {
+            name: 'Email Delivery',
+            probe: async () => {
+                if (!process.env.RESEND_API_KEY) {
+                    throw new Error('RESEND_API_KEY is not configured.');
+                }
+                const resp = await fetch('https://api.resend.com/domains', {
+                    headers: { Authorization: `Bearer ${process.env.RESEND_API_KEY}` },
+                    cache: 'no-store',
+                });
+                if (!resp.ok) throw new Error(`Resend responded with ${resp.status}`);
+            },
+        },
+    ];
+
+    const serviceChecks = await Promise.all(
+        checks.map(async ({ name, probe }) => {
+            const start = Date.now();
+            try {
+                await probe();
+                return { name, operational: true, latencyMs: Date.now() - start };
+            } catch (error) {
+                console.error(`Status check failed for "${name}":`, error);
+                return { name, operational: false, latencyMs: null };
+            }
+        })
+    );
+
+    // The web app itself is trivially "operational" - it just served this
+    // request - so it isn't worth a network probe like the others above.
+    const services: SystemStatusCheck[] = [
+        { name: 'Web Application', operational: true, latencyMs: 0 },
+        ...serviceChecks,
+    ];
+
+    return { checkedAt: new Date().toISOString(), services };
+}

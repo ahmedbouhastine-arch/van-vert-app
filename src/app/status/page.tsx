@@ -1,10 +1,11 @@
 // Van-Vert — /status
-// Live system-status page: service list, 90-day uptime bar, incident log.
+// Live system-status page: performs a real, live check of core services on each load.
 
 import Link from "next/link";
-import { ArrowLeft, CheckCircle2 } from "lucide-react";
+import { ArrowLeft, CheckCircle2, AlertTriangle } from "lucide-react";
 import { VvButton } from "@/components/vv/VvButton";
 import { PageTransition } from "@/components/PageTransition";
+import { getSystemStatusAction } from "@/app/actions";
 
 const navLinks = [
   { href: "/#features", label: "Features" },
@@ -44,27 +45,6 @@ const footerColumns = [
   },
 ];
 
-interface Service {
-  name: string;
-  uptime: string;
-}
-
-const SERVICES: Service[] = [
-  { name: "Web Application", uptime: "99.99%" },
-  { name: "Document Upload & Storage", uptime: "99.98%" },
-  { name: "Authentication & SSO", uptime: "100%" },
-  { name: "Application Processing API", uptime: "99.97%" },
-  { name: "Email Notifications", uptime: "99.95%" },
-  { name: "SMS Alerts (Pro)", uptime: "99.90%" },
-  { name: "Reviewer Portal", uptime: "99.99%" },
-  { name: "Admin Dashboard", uptime: "99.99%" },
-];
-
-// Stable uptime bar — seeded so it doesn't flicker on re-render
-const BAR_STATES = Array.from({ length: 90 }, (_, i) =>
-  i === 47 ? "degraded" : "ok"
-);
-
 function Logo({ light = false }: { light?: boolean }) {
   return (
     <span
@@ -83,20 +63,16 @@ const socialLinks = [
   { label: "LinkedIn", href: "https://www.linkedin.com/company/vanguardaviation/", icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round"><path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z"/><rect x="2" y="9" width="4" height="12"/><circle cx="4" cy="4" r="2"/></svg> },
 ];
 
-export default function StatusPage() {
-  const now = new Date();
-  const checkedAt = now.toLocaleString("en-GB", {
+export default async function StatusPage() {
+  const { checkedAt: checkedAtIso, services } = await getSystemStatusAction();
+  const checkedAt = new Date(checkedAtIso).toLocaleString("en-GB", {
     day: "numeric",
     month: "short",
     year: "numeric",
     hour: "2-digit",
     minute: "2-digit",
   });
-
-  const ninetyDaysAgo = new Date(now);
-  ninetyDaysAgo.setDate(now.getDate() - 90);
-  const rangeStart = ninetyDaysAgo.toLocaleDateString("en-US", { month: "long", day: "numeric" });
-  const rangeEnd = now.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
+  const allOperational = services.every((s) => s.operational);
 
   return (
     <PageTransition>
@@ -190,15 +166,15 @@ export default function StatusPage() {
         <section style={{ paddingTop: 48, paddingBottom: 120 }}>
           <div style={{ maxWidth: 860, margin: "0 auto", padding: "0 32px" }}>
 
-            {/* All-green banner */}
+            {/* Live status banner */}
             <div
               style={{
                 display: "flex",
                 alignItems: "center",
                 gap: 14,
                 padding: "20px 24px",
-                background: "#f0fdf4",
-                border: "1px solid #bbf7d0",
+                background: allOperational ? "#f0fdf4" : "#fffbeb",
+                border: allOperational ? "1px solid #bbf7d0" : "1px solid #fde68a",
                 borderRadius: 12,
                 marginBottom: 40,
               }}
@@ -208,15 +184,15 @@ export default function StatusPage() {
                   width: 40,
                   height: 40,
                   borderRadius: 10,
-                  background: "#dcfce7",
-                  color: "var(--status-ready)",
+                  background: allOperational ? "#dcfce7" : "#fef3c7",
+                  color: allOperational ? "var(--status-ready)" : "var(--status-attention)",
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
                   flexShrink: 0,
                 }}
               >
-                <CheckCircle2 className="h-5 w-5" />
+                {allOperational ? <CheckCircle2 className="h-5 w-5" /> : <AlertTriangle className="h-5 w-5" />}
               </div>
               <div>
                 <div
@@ -227,7 +203,7 @@ export default function StatusPage() {
                     color: "var(--navy)",
                   }}
                 >
-                  All systems operational
+                  {allOperational ? "All systems operational" : "Some systems are experiencing issues"}
                 </div>
                 <div
                   style={{
@@ -236,7 +212,7 @@ export default function StatusPage() {
                     marginTop: 2,
                   }}
                 >
-                  Last checked · {checkedAt}
+                  Checked live just now · {checkedAt}
                 </div>
               </div>
             </div>
@@ -246,7 +222,7 @@ export default function StatusPage() {
               Services
             </div>
             <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
-              {SERVICES.map((svc, i) => (
+              {services.map((svc, i) => (
                 <div
                   key={svc.name}
                   style={{
@@ -255,7 +231,7 @@ export default function StatusPage() {
                     justifyContent: "space-between",
                     padding: "18px 0",
                     borderBottom:
-                      i < SERVICES.length - 1
+                      i < services.length - 1
                         ? "1px solid var(--border-soft)"
                         : "none",
                   }}
@@ -272,7 +248,7 @@ export default function StatusPage() {
                         width: 8,
                         height: 8,
                         borderRadius: "50%",
-                        background: "var(--status-ready)",
+                        background: svc.operational ? "var(--status-ready)" : "var(--status-attention)",
                         flexShrink: 0,
                       }}
                     />
@@ -300,7 +276,7 @@ export default function StatusPage() {
                         fontVariantNumeric: "tabular-nums",
                       }}
                     >
-                      {svc.uptime} uptime
+                      {svc.latencyMs !== null ? `${svc.latencyMs}ms` : "—"}
                     </span>
                     <span
                       style={{
@@ -308,161 +284,29 @@ export default function StatusPage() {
                         fontWeight: 600,
                         letterSpacing: "1px",
                         textTransform: "uppercase",
-                        color: "var(--status-ready)",
-                        background: "#f0fdf4",
+                        color: svc.operational ? "var(--status-ready)" : "var(--status-attention)",
+                        background: svc.operational ? "#f0fdf4" : "#fffbeb",
                         padding: "3px 10px",
                         borderRadius: 9999,
                       }}
                     >
-                      Operational
+                      {svc.operational ? "Operational" : "Unavailable"}
                     </span>
                   </div>
                 </div>
               ))}
             </div>
 
-            {/* 90-day uptime bar */}
+            {/* Live-check note */}
             <div style={{ marginTop: 48 }}>
-              <div className="vv-label" style={{ marginBottom: 16 }}>
-                90-day uptime
-              </div>
-              <div className="vv-card" style={{ padding: 28 }}>
-                <div
-                  style={{
-                    display: "flex",
-                    justifyContent: "space-between",
-                    alignItems: "baseline",
-                    marginBottom: 16,
-                  }}
-                >
-                  <span
-                    style={{
-                      fontFamily: "Outfit",
-                      fontSize: 36,
-                      fontWeight: 700,
-                      color: "var(--navy)",
-                      letterSpacing: "-0.02em",
-                    }}
-                  >
-                    99.98%
-                  </span>
-                  <span style={{ fontSize: 12, color: "var(--text-muted)" }}>
-                    {rangeStart} – {rangeEnd}
-                  </span>
-                </div>
-                <div
-                  style={{
-                    display: "flex",
-                    gap: 2,
-                    height: 28,
-                    borderRadius: 6,
-                    overflow: "hidden",
-                  }}
-                >
-                  {BAR_STATES.map((state, i) => (
-                    <div
-                      key={i}
-                      style={{
-                        flex: 1,
-                        background:
-                          state === "degraded"
-                            ? "var(--status-attention)"
-                            : "var(--status-ready)",
-                        opacity: state === "degraded" ? 1 : 0.8,
-                        borderRadius: 1,
-                      }}
-                      title={
-                        state === "degraded"
-                          ? "Partial degradation — 12 min"
-                          : "Operational"
-                      }
-                    />
-                  ))}
-                </div>
-                <div
-                  style={{
-                    display: "flex",
-                    justifyContent: "space-between",
-                    marginTop: 8,
-                    fontSize: 11,
-                    color: "var(--text-muted)",
-                  }}
-                >
-                  <span>90 days ago</span>
-                  <span>Today</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Incident log */}
-            <div style={{ marginTop: 48 }}>
-              <div className="vv-label" style={{ marginBottom: 16 }}>
-                Recent incidents
-              </div>
-              <div className="vv-card" style={{ padding: 0 }}>
-                <div
-                  style={{
-                    padding: "20px 24px",
-                    borderBottom: "1px solid var(--border-soft)",
-                  }}
-                >
-                  <div
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 8,
-                      marginBottom: 8,
-                    }}
-                  >
-                    <span
-                      style={{
-                        width: 6,
-                        height: 6,
-                        borderRadius: "50%",
-                        background: "var(--status-attention)",
-                      }}
-                    />
-                    <span
-                      style={{
-                        fontSize: 14,
-                        fontWeight: 600,
-                        color: "var(--navy)",
-                      }}
-                    >
-                      Email notification delay
-                    </span>
-                    <span
-                      style={{
-                        fontSize: 11,
-                        color: "var(--text-muted)",
-                        marginLeft: "auto",
-                      }}
-                    >
-                      April 22, 2026
-                    </span>
-                  </div>
-                  <p
-                    style={{
-                      fontSize: 13,
-                      color: "var(--text-secondary)",
-                      lineHeight: 1.5,
-                    }}
-                  >
-                    Email notifications were delayed by up to 12 minutes due to a
-                    queue backlog in our mail provider. No emails were lost.
-                    Resolved within 45 minutes.
-                  </p>
-                </div>
-                <div
-                  style={{
-                    padding: "16px 24px",
-                    fontSize: 13,
-                    color: "var(--text-muted)",
-                    textAlign: "center",
-                  }}
-                >
-                  No other incidents in the last 90 days.
-                </div>
+              <div className="vv-card" style={{ padding: 24 }}>
+                <p style={{ fontSize: 13, color: "var(--text-secondary)", lineHeight: 1.6 }}>
+                  This page performs a live check of our core services each time it loads —
+                  the status above reflects what just happened, not a historical average.
+                  We don&apos;t yet publish a historical uptime chart or incident log; if a
+                  service shows as unavailable, refresh this page after a few minutes to
+                  confirm whether it has recovered.
+                </p>
               </div>
             </div>
 

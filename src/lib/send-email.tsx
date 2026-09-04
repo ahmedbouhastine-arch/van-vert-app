@@ -11,3 +11,4 @@ export { sendApplicationReceivedEmail } from './emails/application-received-emai
 export { sendApplicationApprovedEmail } from './emails/application-approved-email';
 export { sendApplicationRejectedEmail } from './emails/application-rejected-email';
 export { sendApplicationNeedsMoreInfoEmail } from './emails/application-needs-info-email';
+export { sendApplicationInReviewEmail, sendStaffNewApplicationAlertEmail, sendContactFormEmail } from './emails/inline-notifications';
