@@ -2,11 +2,14 @@
 'use client';
 
 import React from "react";
+import { collection, query, orderBy, limit, type CollectionReference } from "firebase/firestore";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Skeleton } from "@/components/ui/skeleton";
 import { format } from "date-fns";
 import type { AuditLogEntry, FirebaseTimestamp } from "@/types";
 import { PageTransition } from "@/components/PageTransition";
 import { VvPageHeader } from "@/components/vv/VvPageHeader";
+import { useFirestore, useCollection, useMemoFirebase } from "@/firebase";
 
 // Helper function to safely format dates, whether they are Timestamps or strings
 const safeFormatDate = (date: FirebaseTimestamp | Date | string | undefined | null, formatString: string) => {
@@ -30,9 +33,20 @@ const safeFormatDate = (date: FirebaseTimestamp | Date | string | undefined | nu
 };
 
 export default function AuditLogPage() {
-    // In a real app, this data would be fetched from a Firestore collection.
-    // For now, it's an empty array as mock data has been removed.
-    const auditLogs: AuditLogEntry[] = [];
+    const firestore = useFirestore();
+
+    // Populated by writeAuditLogEntry() in src/app/actions.ts, which every
+    // admin-facing action (status changes, role changes) calls server-side.
+    const auditLogsQuery = useMemoFirebase(() => {
+        if (!firestore) return null;
+        return query(
+            collection(firestore, 'auditLogs') as CollectionReference<AuditLogEntry>,
+            orderBy('timestamp', 'desc'),
+            limit(200)
+        );
+    }, [firestore]);
+
+    const { data: auditLogs, isLoading } = useCollection<AuditLogEntry>(auditLogsQuery);
 
     return (
         <PageTransition>
@@ -56,14 +70,22 @@ export default function AuditLogPage() {
                         </TableRow>
                     </TableHeader>
                     <TableBody>
-                        {auditLogs.length === 0 ? (
+                        {isLoading ? (
+                            Array.from({ length: 5 }).map((_, i) => (
+                                <TableRow key={i} className="border-[var(--vv-border-soft)]">
+                                    <TableCell colSpan={4} className="py-4">
+                                        <Skeleton className="h-4 w-full max-w-md" />
+                                    </TableCell>
+                                </TableRow>
+                            ))
+                        ) : !auditLogs || auditLogs.length === 0 ? (
                             <TableRow className="border-[var(--vv-border-soft)]">
                                 <TableCell colSpan={4} className="h-24 text-center text-[var(--text-muted)]">
                                     No audit logs found.
                                 </TableCell>
                             </TableRow>
                         ) : (
-                            auditLogs.map((log: AuditLogEntry) => (
+                            auditLogs.map((log) => (
                                 <TableRow key={log.id} className="border-[var(--vv-border-soft)]">
                                     <TableCell>
                                         <div className="font-outfit text-sm font-semibold text-[var(--navy)]">{log.adminName}</div>

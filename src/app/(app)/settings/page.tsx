@@ -1,17 +1,20 @@
 'use client';
 
-import { useUser } from "@/firebase"
+import { useUser, useFirestore, useDoc, useMemoFirebase } from "@/firebase"
+import type { UserProfile } from "@/types";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
-import { useState, useTransition, useMemo } from "react";
+import { useState, useEffect, useTransition, useMemo } from "react";
 import { Bell, Lock, Monitor, LogOut, Trash2 } from "lucide-react";
 import { PageTransition } from "@/components/PageTransition";
 import { VvPageHeader } from "@/components/vv/VvPageHeader";
 import { VvButton } from "@/components/vv/VvButton";
+import { VvInput } from "@/components/vv/VvInput";
 import { cn } from "@/lib/utils";
-import { deleteUserAccountAction, signOutOtherSessionsAction } from "@/app/actions";
-import { getAuth, signOut } from "firebase/auth";
+import { deleteUserAccountAction, signOutOtherSessionsAction, updateUserProfileAction, sendPasswordChangedEmailAction } from "@/app/actions";
+import { getAuth, signOut, EmailAuthProvider, reauthenticateWithCredential, updatePassword } from "firebase/auth";
+import { doc, type DocumentReference, type DocumentData } from "firebase/firestore";
 
 /* ──────────────────────────────────────────────────────────────────────────
    Friendly "browser on OS" label from the user agent string
@@ -72,9 +75,26 @@ function SettingRow({ title, sub, control }: { title: string; sub: string; contr
 export default function SettingsPage() {
     const { user, claims, loading } = useUser();
     const { toast } = useToast();
+    const firestore = useFirestore();
+
+    /* ── Notification preferences ────────────────────────────────────────── */
+    const profileRef = useMemoFirebase(
+      () => (firestore && user ? doc(firestore, 'users', user.uid) as DocumentReference<DocumentData> : null),
+      [firestore, user]
+    );
+    const { data: profile } = useDoc<UserProfile>(profileRef);
 
     const [appUpdates, setAppUpdates] = useState(true);
     const [promoEmails, setPromoEmails] = useState(true);
+    const [prefsInitialized, setPrefsInitialized] = useState(false);
+
+    useEffect(() => {
+        if (profile && !prefsInitialized) {
+            setAppUpdates(profile.notificationPrefs?.applicationUpdates ?? true);
+            setPromoEmails(profile.notificationPrefs?.promotional ?? true);
+            setPrefsInitialized(true);
+        }
+    }, [profile, prefsInitialized]);
 
     const [isPendingNotifications, startTransitionNotifications] = useTransition();
 
@@ -85,6 +105,15 @@ export default function SettingsPage() {
       () => (typeof navigator !== 'undefined' ? describeDevice(navigator.userAgent) : 'This device'),
       []
     );
+
+    /* ── Change password ─────────────────────────────────────────────────── */
+    const [showChangePasswordDialog, setShowChangePasswordDialog] = useState(false);
+    const [currentPassword, setCurrentPassword] = useState('');
+    const [newPassword, setNewPassword] = useState('');
+    const [confirmPassword, setConfirmPassword] = useState('');
+    const [passwordError, setPasswordError] = useState<string | null>(null);
+    const [isChangingPassword, setIsChangingPassword] = useState(false);
+    const hasPasswordProvider = !!user?.providerData.some((p) => p.providerId === 'password');
 
     /* ── Delete account state ────────────────────────────────────────────── */
     const [isDeleting, setIsDeleting] = useState(false);
@@ -131,15 +160,89 @@ export default function SettingsPage() {
     }
 
     const handleNotificationsSave = () => {
-        startTransitionNotifications(() => {
-            // In a real app, you would save these preferences to the user's document in Firestore.
-            // For now, we'll just show a success toast.
-            toast({
-                title: "Preferences Saved",
-                description: "Your notification settings have been updated.",
-            });
+        startTransitionNotifications(async () => {
+            try {
+                const idToken = await user!.getIdToken();
+                const { success } = await updateUserProfileAction(
+                    { notificationPrefs: { applicationUpdates: appUpdates, promotional: promoEmails } },
+                    idToken
+                );
+                if (!success) throw new Error('Failed to save preferences');
+                toast({
+                    title: "Preferences Saved",
+                    description: "Your notification settings have been updated.",
+                });
+            } catch (err) {
+                toast({
+                    variant: 'destructive',
+                    title: "Save Failed",
+                    description: err instanceof Error ? err.message : 'Could not save your preferences.',
+                });
+            }
         });
     }
+
+    /* ── Change password ─────────────────────────────────────────────────── */
+    const resetPasswordDialog = () => {
+        setShowChangePasswordDialog(false);
+        setCurrentPassword('');
+        setNewPassword('');
+        setConfirmPassword('');
+        setPasswordError(null);
+    };
+
+    const handleChangePassword = async () => {
+        setPasswordError(null);
+
+        if (!user || !user.email) {
+            setPasswordError("Couldn't find your account email. Please refresh and try again.");
+            return;
+        }
+        if (!currentPassword || !newPassword || !confirmPassword) {
+            setPasswordError('All fields are required.');
+            return;
+        }
+        if (newPassword.length < 8) {
+            setPasswordError('New password must be at least 8 characters.');
+            return;
+        }
+        if (newPassword !== confirmPassword) {
+            setPasswordError('New password and confirmation do not match.');
+            return;
+        }
+
+        setIsChangingPassword(true);
+        try {
+            const credential = EmailAuthProvider.credential(user.email, currentPassword);
+            await reauthenticateWithCredential(user, credential);
+            await updatePassword(user, newPassword);
+
+            // Best-effort notification - the password change itself already
+            // succeeded above, so a failure here shouldn't block the user.
+            try {
+                const idToken = await user.getIdToken();
+                await sendPasswordChangedEmailAction(user.email, user.displayName || 'Pilot', idToken);
+            } catch (notifyError) {
+                console.error('Failed to send password-changed email:', notifyError);
+            }
+
+            toast({ title: 'Password updated', description: 'Your password has been changed successfully.' });
+            resetPasswordDialog();
+        } catch (err: unknown) {
+            const code = (err as { code?: string } | null)?.code;
+            const message =
+                code === 'auth/wrong-password' || code === 'auth/invalid-credential'
+                    ? 'Current password is incorrect.'
+                    : code === 'auth/too-many-requests'
+                    ? 'Too many attempts. Please try again later.'
+                    : err instanceof Error
+                    ? err.message
+                    : 'Could not update your password. Please try again.';
+            setPasswordError(message);
+        } finally {
+            setIsChangingPassword(false);
+        }
+    };
 
     /* ── Sign out of other sessions ──────────────────────────────────────── */
     const handleSignOutOtherSessions = async () => {
@@ -254,7 +357,20 @@ export default function SettingsPage() {
             </div>
           </div>
           <div className="border-t border-[var(--vv-border-soft)] p-6">
-            <VvButton variant="outline" size="sm">Change password</VvButton>
+            <VvButton
+              variant="outline"
+              size="sm"
+              onClick={() => setShowChangePasswordDialog(true)}
+              disabled={!hasPasswordProvider}
+              title={hasPasswordProvider ? undefined : "You signed in with Google - there's no password to change."}
+            >
+              Change password
+            </VvButton>
+            {!hasPasswordProvider && (
+              <p className="mt-2 text-xs text-[var(--text-muted)]">
+                You signed in with Google, so there&apos;s no password to change here.
+              </p>
+            )}
           </div>
         </div>
 
@@ -340,6 +456,54 @@ export default function SettingsPage() {
           </div>
         </div>
       </div>
+
+      {/* ── Change password modal ─────────────────────────────────────── */}
+      {showChangePasswordDialog && (
+        <Dialog open onOpenChange={(open) => { if (!open) resetPasswordDialog(); }}>
+          <DialogContent className="rounded-2xl">
+            <DialogHeader>
+              <DialogTitle className="font-outfit text-xl font-semibold text-[var(--navy)]">
+                Change password
+              </DialogTitle>
+            </DialogHeader>
+            <div className="flex flex-col gap-4">
+              {passwordError && (
+                <p className="rounded-lg border border-[#fecdd3] bg-[#fef2f2] px-3 py-2 text-xs text-[var(--status-missing)]">
+                  {passwordError}
+                </p>
+              )}
+              <VvInput
+                label="Current password"
+                type="password"
+                value={currentPassword}
+                onChange={(e) => setCurrentPassword(e.target.value)}
+                autoComplete="current-password"
+              />
+              <VvInput
+                label="New password"
+                type="password"
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                autoComplete="new-password"
+              />
+              <VvInput
+                label="Confirm new password"
+                type="password"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                autoComplete="new-password"
+              />
+            </div>
+            <DialogFooter>
+              <VvButton variant="ghost" onClick={resetPasswordDialog}>Cancel</VvButton>
+              <VvButton onClick={handleChangePassword} loading={isChangingPassword}>
+                <Lock className="h-3.5 w-3.5" />
+                Update password
+              </VvButton>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
 
       {/* ── Sign out other sessions confirmation modal ──────────────────── */}
       {showSignOutConfirm && (

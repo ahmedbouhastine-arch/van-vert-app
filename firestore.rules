@@ -95,5 +95,15 @@ service cloud.firestore {
         allow read, write: if isSignedIn() && isAdmin(request.auth.uid);
       }
     }
+
+    // --- Audit Log ---
+    // Written exclusively by server actions via the Admin SDK (which bypasses
+    // these rules entirely), whenever an admin/head-admin takes a significant
+    // action (application status change, role change, etc). Readable by
+    // admins/head-admins only; never writable directly by a client.
+    match /auditLogs/{entryId} {
+      allow read: if isSignedIn() && isAdmin(request.auth.uid);
+      allow write: if false;
+    }
   }
 }

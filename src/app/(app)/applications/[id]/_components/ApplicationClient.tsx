@@ -582,6 +582,19 @@ export function ApplicationClient({
                 createdAt: serverTimestamp(),
             }).catch(notifError => console.error("Failed to create notification:", notifError));
 
+            // Alert admissions staff by email that a new application is waiting
+            // for review - previously nothing did this, staff only found out by
+            // checking the admin queue by hand. Fire-and-forget: a failure here
+            // shouldn't block or roll back a submission that already succeeded.
+            (async () => {
+                try {
+                    const idToken = await auth.currentUser?.getIdToken();
+                    await serverActions.notifyStaffNewSubmissionAction(appState.id, idToken);
+                } catch (notifyError) {
+                    console.error("Failed to send staff new-submission alert:", notifyError);
+                }
+            })();
+
             toast({
                 title: "Application Submitted!",
                 description: "Your application has been submitted for review.",

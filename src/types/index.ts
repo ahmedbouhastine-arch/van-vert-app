@@ -13,6 +13,10 @@ export type UserProfile = {
   createdAt: FirebaseTimestamp;
   birthDate?: string; // YYYY-MM-DD
   country?: string;
+  notificationPrefs?: {
+    applicationUpdates: boolean;
+    promotional: boolean;
+  };
 };
 
 export type AppUser = FirebaseUser & {

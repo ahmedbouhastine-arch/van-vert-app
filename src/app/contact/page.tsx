@@ -6,6 +6,7 @@ import { ArrowLeft, ArrowRight } from "lucide-react";
 import { VvButton } from "@/components/vv/VvButton";
 import { VvInput } from "@/components/vv/VvInput";
 import { PageTransition } from "@/components/PageTransition";
+import { submitContactFormAction } from "@/app/actions";
 
 const navLinks = [
   { href: "/#features", label: "Features" },
@@ -77,10 +78,31 @@ const socialLinks = [
 
 export default function ContactPage() {
   const [sent, setSent] = React.useState(false);
+  const [isSubmitting, setIsSubmitting] = React.useState(false);
+  const [error, setError] = React.useState<string | null>(null);
+  const [form, setForm] = React.useState({ name: "", email: "", subject: "", message: "" });
 
-  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+  const updateField = (field: keyof typeof form) => (
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
+  ) => setForm((prev) => ({ ...prev, [field]: e.target.value }));
+
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    setSent(true);
+    setError(null);
+    setIsSubmitting(true);
+    try {
+      const result = await submitContactFormAction(form);
+      if (result.success) {
+        setSent(true);
+      } else {
+        setError(result.error || "Could not send your message. Please try again.");
+      }
+    } catch (err) {
+      console.error("Contact form submission failed:", err);
+      setError("Could not send your message. Please try again.");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -236,23 +258,48 @@ export default function ContactPage() {
                   onSubmit={handleSubmit}
                   className="flex flex-col gap-5"
                 >
+                  {error && (
+                    <div
+                      role="alert"
+                      style={{
+                        fontSize: 13,
+                        color: "var(--status-missing, #dc2626)",
+                        background: "rgba(220,38,38,0.06)",
+                        border: "1px solid rgba(220,38,38,0.2)",
+                        borderRadius: 8,
+                        padding: "10px 14px",
+                      }}
+                    >
+                      {error}
+                    </div>
+                  )}
+
                   <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                     <VvInput
                       label="Full name"
+                      name="name"
                       placeholder="Captain Ana Pereira"
+                      value={form.name}
+                      onChange={updateField("name")}
                       required
                     />
                     <VvInput
                       label="Email"
+                      name="email"
                       type="email"
                       placeholder="pilot@vanvert.co"
+                      value={form.email}
+                      onChange={updateField("email")}
                       required
                     />
                   </div>
 
                   <VvInput
                     label="Subject"
+                    name="subject"
                     placeholder="License conversion inquiry"
+                    value={form.subject}
+                    onChange={updateField("subject")}
                     required
                   />
 
@@ -261,8 +308,11 @@ export default function ContactPage() {
                       Message
                     </label>
                     <textarea
+                      name="message"
                       required
                       placeholder="Tell us how we can help…"
+                      value={form.message}
+                      onChange={updateField("message")}
                       className="min-h-[160px] w-full resize-y rounded-lg border-[1.5px] border-[var(--vv-border)] bg-white px-4 py-3.5 text-sm text-[var(--text-primary)] outline-none transition-colors placeholder:text-[var(--text-muted)] focus:border-[var(--sky)] focus:shadow-[0_0_0_4px_rgba(0,120,165,0.08)]"
                     />
                   </div>
@@ -271,6 +321,8 @@ export default function ContactPage() {
                     type="submit"
                     size="lg"
                     className="self-start"
+                    disabled={isSubmitting}
+                    loading={isSubmitting}
                   >
                     Send message <ArrowRight className="h-4 w-4" />
                   </VvButton>
